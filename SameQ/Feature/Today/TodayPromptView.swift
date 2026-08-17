@@ -152,8 +152,12 @@ struct TodayPromptView: View {
         }
     }
 
+    /// ボタンの有効条件は「何か入力されているか」だけにする（trim 後の判定にしない）。
+    /// 空白・改行だけの入力もボタンを押せる状態にして、`submitPost` 側の `emptyBody` チェックまで
+    /// 届かせる。そうしないとボタンが灰色になるだけで拒否メッセージが一切出せない
+    /// （スプリント05 evaluator 指摘、eval-1.md [1]）。
     private var canSubmit: Bool {
-        !session.isSubmitting && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !session.isSubmitting && !draft.isEmpty
     }
 
     /// 未回答のあいだのロック表示（F05）。ここから先へ進むボタンは置かない。

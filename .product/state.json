@@ -1,7 +1,7 @@
 {
   "currentSprint": "05",
-  "attempt": 1,
-  "status": "needs_fix",
+  "attempt": 2,
+  "status": "awaiting_eval",
   "history": [
     {
       "sprint": "01",
@@ -62,6 +62,12 @@
       "attempt": 1,
       "result": "needs_fix",
       "note": "evaluator が iPhone 17（iOS 26.3 / 26.5）シミュレータ2台で独自 XCUITest 12本（E01〜E12）＋ simctl 単体起動により実操作検証。受け入れ条件 5/6 で不合格。BAN画面の締め出し（ボタン0個・裏道なし）・BAN投稿者の非表示（22件読み切りまで0件）・連投拒否（前後空白付きの同一本文も拒否）・同一文字の繰り返し拒否・いいね/通報の連打制限と復帰・制限中の期限またぎ・schemaVersion 3→4 の移行はすべてOK。クラッシュ0、回帰8/8、使用性3。不足は1件のみ: 空白・改行だけの投稿で拒否メッセージが出ない（送信ボタンが無効なため emptyBody に到達しない。カウンタは 8/140 と表示される）。詳細は .product/sprints/05-ban-spam/eval-1.md"
+    },
+    {
+      "sprint": "05",
+      "attempt": 2,
+      "result": "awaiting_eval",
+      "note": "指摘1件のみ修正。TodayPromptView.canSubmit を trim後の空文字判定から !draft.isEmpty に変更し、空白・改行のみの投稿でも送信ボタンが押せ、LocalBackend.submitPost の emptyBody（日英併記の拒否メッセージ）まで届くようにした。SprintFiveAcceptanceTests.test02 を拒否メッセージの表示まで検証するよう更新。ユニット37本は全通過を確認。UIテスト（スプリント01〜05・31本）はコーディネーターが別途バックグラウンドで確認中。詳細は .product/sprints/05-ban-spam/self-review.md の attempt 2 を参照"
     }
   ]
 }

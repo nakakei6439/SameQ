@@ -16,15 +16,11 @@
 | 開発ハーネス | planner → generator → evaluator |
 
 ## 現在の状態
-- **フェーズ**: スプリント05（BAN・投稿頻度制限・スパム対策）評価済み → **不合格（attempt 1）。generator による修正待ち**
+- **フェーズ**: スプリント05（BAN・投稿頻度制限・スパム対策）**修正済み（attempt 2）・再評価待ち**
 - **状態**: スプリント05（F16・F17）を実装（attempt 1、2026-08-18）。1お題1投稿の担保（既存実装の確認のみ）、直近投稿と同一本文の連投拒否（`PersistedState.lastPostBody`）、空白・改行のみ／同一文字の過剰な繰り返しの拒否（`PostValidator`）、いいね・通報の連打制限（`RateLimiter`、Debug限定 `-SameQRateLimitTestMode` で短縮可）、BAN状態のアカウント締め出し（Debug限定 `-SameQBanned` → `BannedView`）、BANされた投稿者の回答の非表示化（`SeedData.json` の `bannedAuthorIDs` → `LocalBackend.visibleOthers`）を実装。制限メッセージは日本語・英語を併記。実装中に見つけた不具合（`TodayPromptView` と `TimelineView` が同じ `alertMessage` に二重に `.alert` を出し、競合してタイムラインごと閉じる）も修正。ユニット12本＋UIテスト7本を追加（合計 37 ＋ 31、スプリント01〜04の回帰も全通過）。詳細は [`plan.md`](.product/sprints/05-ban-spam/plan.md) / [`self-review.md`](.product/sprints/05-ban-spam/self-review.md)。
 - **評価結果（2026-08-18）**: スプリント05は **不合格**（attempt 1）。受け入れ条件 **5/6**（条件3の「空白・改行のみ」に拒否メッセージが出ない）・安定性OK（クラッシュ0）・データ整合性OK（schemaVersion 3→4 の移行でデータ欠落なし）・回帰8/8・使用性3。詳細は [`eval-1.md`](.product/sprints/05-ban-spam/eval-1.md)。スプリント04は合格済み（[`eval-1.md`](.product/sprints/04-report-block/eval-1.md)）。
-- **次にやること**: **スプリント05 の修正（generator / attempt 2）**。直すのは次の1件のみで、それ以外の受け入れ条件・回帰はすべて通っている。
-  - **[必須] 空白・改行だけを入力して「投稿する」を押したとき、拒否メッセージ（日英併記）を出す**（spec.md 180行「拒否メッセージが出て投稿されない」）。
-    現状は `TodayPromptView.canSubmit` が trim 後の空文字で送信ボタンを無効にするため `LocalBackend.submitPost` の `emptyBody` に到達せず、
-    アラートも出ない。一方で文字数カウンタは `8/140` と出て「入力済みなのに押せない」状態になる。
-    再現手順と観測値は [`eval-1.md`](.product/sprints/05-ban-spam/eval-1.md) の「不合格の原因 [1]」を参照。
-  - 修正後に `.product/sprints/05-ban-spam/self-review.md` を attempt 2 として更新し、再評価に回すこと。
+- **修正内容（attempt 2、2026-08-18）**: `TodayPromptView.canSubmit` を `!draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty` から `!draft.isEmpty` に変更。何か入力されていれば送信ボタンを押せるようにし、空白・改行のみの拒否は `LocalBackend.submitPost` 側の `emptyBody`（日英併記の拒否メッセージ）に委ねる形にした（同一文字の過剰な繰り返しと同じ導線に揃えた）。指摘された1点のみを修正し、他は変更していない。`SprintFiveAcceptanceTests.test02_blankAndRepeatedCharacterBodiesAreRejected` も、ボタンが無効になることだけでなく拒否メッセージが実際に表示されることまで検証するように更新。ユニット37本は全通過を確認済み。UIテスト（スプリント01〜05・31本）はビルド時間の都合でコーディネーター側が別途バックグラウンドで確認中。詳細は [`self-review.md`](.product/sprints/05-ban-spam/self-review.md) の「attempt 2」を参照。
+- **次にやること**: **evaluatorによる再検証**（スプリント05 attempt 2）。直した箇所は「空白・改行だけの投稿で拒否メッセージ（日英併記）が出ること」の1点のみ。
   - 合否には影響しない改善提案（着手時に踏まえる）: 繰り返し判定の誤検知（`Yessssssss` が拒否される）／連打制限がプロセス内メモリのみで再起動により解除される／連投拒否が直近1件のみ／BAN画面に問い合わせ導線が無い。
   - スプリント04の評価で挙がった改善提案（合否には影響しないが、着手時に踏まえる）:
     - **[1] 読み切り・0件の状態でも ⋯ ボタンがアクセシビリティツリーに残る**（見た目は非表示・タップ不可だがラベルが読み上げられる）。`.accessibilityHidden(true)` か条件付き生成に。
@@ -202,3 +198,4 @@
 - 2026-08-18: スプリント04 評価（evaluator）。iPhone 17（iOS 26.5 / 26.3）シミュレータ2台で独自 XCUITest 10本＋`simctl` 単体起動により実操作検証し **合格**。通報・ブロック・ブロック一覧と解除・お題をまたいだ持続・最後の1件をブロックしたときの空状態を確認。次はスプリント05の実装。
 - 2026-08-18: スプリント05 実装（generator）。F16・F17。1お題1投稿の担保確認、直近投稿と同一本文の連投拒否（`lastPostBody`）、空白・改行のみ／同一文字の過剰な繰り返しの拒否（`PostValidator`）、いいね・通報の連打制限（`RateLimiter`、Debug限定 `-SameQRateLimitTestMode`）、BAN状態のアカウント締め出し（Debug限定 `-SameQBanned` → `BannedView`）、BANされた投稿者の回答の非表示化（`SeedData.json` の `bannedAuthorIDs`）、制限メッセージの日英併記、`state.json` schemaVersion 4。実装中に `TodayPromptView`/`TimelineView` の二重アラート競合でタイムラインが閉じる不具合を発見・修正。ユニット12本＋UIテスト7本を追加（合計 37 ＋ 31、スプリント01〜04の回帰も全通過）。次はスプリント05の evaluator 検証。
 - 2026-08-18: スプリント05 評価（evaluator）。iPhone 17（iOS 26.3 / 26.5）シミュレータ2台で独自 XCUITest 12本（E01〜E12）＋`simctl` 単体起動により実操作検証し **不合格**。BAN画面から抜ける裏道なし・BAN投稿者の回答が22件の読み切りまで一度も出ない・連投拒否・繰り返し拒否・いいね/通報の連打制限・制限後の復帰・schemaVersion 3→4 の移行はいずれもOK。**空白・改行のみの投稿に拒否メッセージが出ない**点だけが受け入れ条件を満たさず（5/6）。次はスプリント05の修正（generator / attempt 2）。[`eval-1.md`](.product/sprints/05-ban-spam/eval-1.md)
+- 2026-08-18: スプリント05 修正（generator / attempt 2）。`TodayPromptView.canSubmit` の送信ボタン有効条件を trim 後の空文字判定から `!draft.isEmpty` に変更し、空白・改行のみの投稿でも `LocalBackend.submitPost` の `emptyBody`（日英併記の拒否メッセージ）まで届くようにした。指摘された1点のみ修正。`SprintFiveAcceptanceTests.test02_blankAndRepeatedCharacterBodiesAreRejected` を拒否メッセージの表示まで検証するよう更新。ユニット37本は全通過を確認、UIテストはコーディネーター側で別途確認中。次はスプリント05の evaluator 再検証。

@@ -35,3 +35,47 @@
 - 連打制限をアカウント単位でサーバー側に永続化する仕組み（Supabase接続後の課題）。
 - BAN理由・BAN解除申立てなど、運営とユーザーのやり取りに関する機能（仕様のスコープ外）。
 - 同一文面判定の高度化（編集距離による類似度判定など）。今回は仕様の「同一の本文」という文言どおり完全一致に留めた。
+
+---
+
+# attempt 2（2026-08-18）
+
+## 不合格理由（attempt 1・eval-1.md より）
+受け入れ条件3「空白・改行のみの投稿、および同一文字の過剰な繰り返しは**拒否メッセージが出て**投稿されない」のうち、
+**空白・改行のみのケースで拒否メッセージが一切出ない**まま「投稿する」ボタンが灰色で押せなくなるだけだった。
+`TodayPromptView.canSubmit` が trim 後の空文字判定でボタン自体を無効化しており、
+`LocalBackend.submitPost` 側が持つ `emptyBody` の拒否メッセージ（日英併記）に届く前に止まっていたのが原因。
+
+## 今回の修正（指摘された範囲のみ）
+- `SameQ/Feature/Today/TodayPromptView.swift` の `canSubmit` を
+  `!draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty` から `!draft.isEmpty` に変更。
+  何か入力されていれば送信ボタンは押せるようにし、空白・改行のみの拒否判定は
+  `LocalBackend.submitPost` 側の `emptyBody` チェックに委ねる（同一文字の過剰な繰り返しと同じ導線に揃えた）。
+  文字が1つも入力されていない場合（`draft.isEmpty == true`）は従来どおりボタンは無効のまま。
+- `SameQUITests/SprintFiveAcceptanceTests.swift` の `test02_blankAndRepeatedCharacterBodiesAreRejected` を、
+  「空白・改行のみを送信 → 送信ボタンは押せる → 拒否メッセージ（日英）が出る → 拒否されたので投稿は進まない」
+  ところまで検証するように書き換えた（旧テストは「ボタンが無効になること」しか確認しておらず、
+  attempt 1 の不具合を検出できていなかった）。同一文字の繰り返しシナリオは、書きかけの入力を持ち越さないよう
+  アプリを開き直す形に分離した。
+- カウンタ表示（空白のみで `8/140` と出る見た目）や、その他の改善提案（`Yessssssss` の誤検知・連打制限の
+  再起動での解除・連投拒否が直近1件のみ）は、今回の指摘範囲外のため**変更していない**（自分で見つけた弱点として
+  上に記録済み）。
+
+## 受け入れ条件の再確認結果
+
+| # | 条件 | attempt 1 | attempt 2 | 根拠 |
+|---|---|---|---|---|
+| 3 | 空白・改行のみの投稿、および同一文字の過剰な繰り返しは拒否メッセージが出て投稿されない | ✗（空白・改行のみで無音） | 達成 | 修正後、空白・改行のみ（`"   \n\n  "`）を入力して送信すると「空白や改行だけの回答は投稿できません。／You can't post a reply that's only blank space or line breaks.」が表示され、投稿は進まない（`today.input` が引き続き表示される）。同一文字の過剰な繰り返しは attempt 1 から達成済みのまま |
+
+他の受け入れ条件5つ（1・2・4・5・6）は attempt 1 で達成済みで、今回コード上変更していないため再確認は割愛した
+（`TodayPromptView.canSubmit` の変更はこの画面の送信ボタンの有効条件のみに閉じており、他の受け入れ条件が依存する
+バックエンド側の判定・BAN画面・連打制限のロジックには触れていない）。
+
+## 確認方法
+- ユニットテスト37本（`SameQTests`）: 全通過（0 failures）。今回のバックエンド側の判定ロジックは変更していないため、
+  もともとの想定どおり無変化。
+- UIテスト: `SprintFiveAcceptanceTests.test02_blankAndRepeatedCharacterBodiesAreRejected` を単体実行し、
+  新しい検証内容（拒否メッセージの表示）を含めて通過を確認。フルスイート（ユニット37本＋UIテスト31本、
+  スプリント01〜05の回帰含む）はビルド時間の都合で実行中に本報告を書いており、結果はコーディネーター側でも
+  別途確認してもらっている。
+- ビルド: `xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'platform=iOS Simulator,name=iPhone 17' build` → **BUILD SUCCEEDED**。

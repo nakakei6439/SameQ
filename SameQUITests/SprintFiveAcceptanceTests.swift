@@ -41,24 +41,43 @@ final class SprintFiveAcceptanceTests: XCTestCase {
 
     // MARK: 受け入れ条件2（空白・改行のみ、同一文字の過剰な繰り返しは拒否）
 
+    /// 空白・改行のみと、同一文字の過剰な繰り返しを別々の入力として確かめる
+    /// （書きかけを持ち越さないよう、シナリオの切れ目でアプリを開き直す）。
     func test02_blankAndRepeatedCharacterBodiesAreRejected() {
         let app = launch(arguments: ["-SameQAnswerCount", "5"], reset: true)
         completeOnboarding(app)
 
+        // 空白・改行のみ：何か入力されている以上、送信ボタン自体は押せる
+        // （ここで無効化すると拒否メッセージまで届かない。attempt 1 の evaluator 指摘）。
+        // 拒否は `submitPost` 側の判定で行い、日英併記のメッセージを画面に出す。
         let editor = app.textViews["today.input"]
         XCTAssertTrue(editor.waitForExistence(timeout: 10))
-
-        // 空白・改行のみ
         editor.tap()
         editor.typeText("   \n\n  ")
         if app.buttons["today.doneEditing"].exists { app.buttons["today.doneEditing"].tap() }
-        XCTAssertFalse(app.buttons["today.submit"].isEnabled, "空白だけでは送信ボタンが有効にならない")
+        XCTAssertTrue(app.buttons["today.submit"].isEnabled, "何か入力されていれば送信ボタンは押せる（拒否はメッセージ側で行う）")
+        app.buttons["today.submit"].tap()
 
-        // 同一文字の過剰な繰り返し
-        editor.tap()
-        editor.typeText("あ")
-        for _ in 0..<14 {
-            editor.typeText("あ")
+        XCTAssertTrue(
+            alertMessageContains(app, "空白や改行だけの回答は投稿できません"),
+            "空白・改行のみを拒否する日本語メッセージが出ない"
+        )
+        XCTAssertTrue(
+            alertMessageContains(app, "only blank space or line breaks"),
+            "空白・改行のみを拒否する英語メッセージが出ない"
+        )
+        dismissAlert(app)
+        // 拒否されているので投稿は進んでいない（入力欄がまだお題画面にある）
+        XCTAssertTrue(app.textViews["today.input"].exists, "拒否されたのに投稿が進んでしまった")
+
+        // 同一文字の過剰な繰り返し（新しい入力として確かめるため開き直す）
+        app.terminate()
+        app.launch()
+        let freshEditor = app.textViews["today.input"]
+        XCTAssertTrue(freshEditor.waitForExistence(timeout: 10))
+        freshEditor.tap()
+        for _ in 0..<15 {
+            freshEditor.typeText("あ")
         }
         if app.buttons["today.doneEditing"].exists { app.buttons["today.doneEditing"].tap() }
         app.buttons["today.submit"].tap()
@@ -73,11 +92,10 @@ final class SprintFiveAcceptanceTests: XCTestCase {
         )
         dismissAlert(app)
 
-        // 制限メッセージのあとも操作を続けられる（操作不能にならない）
-        editor.tap()
-        editor.typeText(answerBody)
-        if app.buttons["today.doneEditing"].exists { app.buttons["today.doneEditing"].tap() }
-        app.buttons["today.submit"].tap()
+        // 制限メッセージのあとも操作を続けられる（操作不能にならない）。開き直して確かめる。
+        app.terminate()
+        app.launch()
+        submitAnswer(app, body: answerBody)
         XCTAssertTrue(app.staticTexts["timeline.card.body"].waitForExistence(timeout: 8), "制限のあと通常の投稿ができない")
     }
 
