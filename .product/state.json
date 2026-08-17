@@ -1,13 +1,19 @@
 {
-  "currentSprint": "01",
-  "attempt": 1,
-  "status": "awaiting_eval",
+  "currentSprint": "02",
+  "attempt": 0,
+  "status": "passed",
   "history": [
     {
       "sprint": "01",
       "attempt": 1,
       "result": "awaiting_eval",
       "note": "SwiftUI雛形 + F01〜F07 実装。Supabaseはスキーマのみ（クラウド未接続）"
+    },
+    {
+      "sprint": "01",
+      "attempt": 1,
+      "result": "passed",
+      "note": "evaluator が iPhone 17 / iOS 26.5 シミュレータで実操作検証。受け入れ条件8/8、クラッシュ0、state.json の永続も一致。詳細は .product/sprints/01-core-experience/eval-1.md"
     }
   ]
 }

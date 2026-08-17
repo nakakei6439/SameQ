@@ -16,14 +16,18 @@
 | 開発ハーネス | planner → generator → evaluator |
 
 ## 現在の状態
-- **フェーズ**: スプリント01 評価待ち
-- **状態**: 実装完了・evaluator の検証待ち（attempt 1）
-- **次にやること**: evaluatorによる検証（受け入れ条件は `.product/spec.md` 107〜115行）。
+- **フェーズ**: スプリント01 完了（合格）→ スプリント02 実装待ち
+- **状態**: スプリント01 は evaluator の実機検証で **合格**（attempt 1）。受け入れ条件8/8、クラッシュ0、永続データも一致。
+- **次にやること**: **スプリント02（お題のライフサイクルと投稿の寿命 / F08・F09・F10）の実装**。受け入れ条件は `.product/spec.md` 126〜132行。
 - **再開に必要な情報**:
   - Xcodeプロジェクトは `SameQ.xcodeproj`（`project.yml` から XcodeGen で生成。生成物もコミット済みなので `open SameQ.xcodeproj` で即ビルドできる）。
-  - 実装内容と動かし方は [`.product/sprints/01-core-experience/self-review.md`](.product/sprints/01-core-experience/self-review.md) にまとめてある。
+  - 実装内容と動かし方は [`.product/sprints/01-core-experience/self-review.md`](.product/sprints/01-core-experience/self-review.md)、評価結果は [`.product/sprints/01-core-experience/eval-1.md`](.product/sprints/01-core-experience/eval-1.md)。
   - 受け入れ条件の自動確認は `xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'platform=iOS Simulator,name=iPhone 17' test`（UIテスト5本、全通過を確認済み）。
   - 初回設定からやり直すには、アプリを削除するか Debug ビルドに起動引数 `-SameQResetState` を付ける。
+- **スプリント02 に入る前に踏まえること（evaluator からの申し送り）**:
+  1. `Prompt` は id と本文しか持たず、`LocalBackend.timelinePosts` も期限を見ていない。開始/終了時刻の導入がスプリント02の起点になる。
+  2. タイムラインを閉じて開き直すと既読の回答が先頭から再び出る（既読管理はスプリント03の範囲。今回は不問）。
+  3. 合否には影響しない改善提案が3件ある（キーボードが「投稿する」を半分隠す／投稿ボタンが押せない理由が出ない／`state.json` 破損時にアカウントが黙って消える）。手が空いたときに拾うこと。詳細は eval-1.md。
 
 ---
 
@@ -37,7 +41,7 @@
 ### スプリント01: コア体験（設定→お題→投稿→世界タイムライン→いいね）
 含む機能: F01, F02, F03, F04, F05, F06, F07
 - [x] 実装（generator）— 2026-08-17
-- [ ] 評価（evaluator）— 受け入れ条件は `.product/spec.md` 107〜115行
+- [x] 評価（evaluator）— 2026-08-17 **合格**（attempt 1）。受け入れ条件8/8・クラッシュ0・データ整合性OK。[`eval-1.md`](.product/sprints/01-core-experience/eval-1.md)
 
 ### スプリント02: お題のライフサイクルと投稿の寿命
 含む機能: F08, F09, F10
@@ -120,3 +124,4 @@
 ## 変更履歴
 - 2026-08-17: `.product/spec.md` 作成（planner）。PROGRESS.md 初版作成。
 - 2026-08-17: スプリント01 実装（generator）。SwiftUI雛形＋F01〜F07、Supabaseスキーマ、UIテスト5本。
+- 2026-08-17: スプリント01 評価（evaluator）。iPhone 17 / iOS 26.5 シミュレータで実操作検証し **合格**。次はスプリント02の実装。
