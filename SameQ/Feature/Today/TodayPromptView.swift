@@ -32,6 +32,11 @@ struct TodayPromptView: View {
         }
         .background { Theme.canvas }
         .scrollDismissesKeyboard(.interactively)
+        .onChange(of: session.prompt?.id) { _, _ in
+            // お題が新しくなったら書きかけは持ち越さない（前のお題の言葉は消える）。
+            draft = ""
+            isEditorFocused = false
+        }
         .alert(
             "うまくいきませんでした",
             isPresented: Binding(

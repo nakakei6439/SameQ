@@ -29,6 +29,20 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "715E7D496C1F0566CB8CC816"
+               BuildableName = "SameQTests.xctest"
+               BlueprintName = "SameQTests"
+               ReferencedContainer = "container:SameQ.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "0EF1C37174603CA88C4AC01F"
                BuildableName = "SameQUITests.xctest"
                BlueprintName = "SameQUITests"
@@ -53,6 +67,17 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "715E7D496C1F0566CB8CC816"
+               BuildableName = "SameQTests.xctest"
+               BlueprintName = "SameQTests"
+               ReferencedContainer = "container:SameQ.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
          <TestableReference
             skipped = "NO"
             parallelizable = "NO">

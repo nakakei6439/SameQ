@@ -14,14 +14,15 @@ protocol Backend: Sendable {
     @discardableResult
     func createAnonymousUser(emoji: String, nickname: String?) async throws -> AppUser
 
-    // MARK: お題（F03）
+    // MARK: お題（F03 / F08 / F09）
 
-    /// 今日のお題。スプリント01では運用側が用意した固定の1件を返す。
-    func activePrompt() async throws -> Prompt
+    /// いま有効なお題の状態。有効期間外なら `.waiting`（お題待ち画面になる）。
+    func promptState() async throws -> PromptState
 
-    // MARK: 回答（F04 / F05）
+    // MARK: 回答（F04 / F05 / F10）
 
     /// そのお題への自分の回答。未回答なら nil。これが nil の間はタイムラインを開けない。
+    /// 表示期限を過ぎた回答は nil を返す（お題が変われば再び未回答になる）。
     func myPost(promptID: String) async throws -> Post?
 
     /// 回答を投稿する。1つのお題につき1回だけ。
@@ -30,7 +31,7 @@ protocol Backend: Sendable {
 
     // MARK: 世界タイムライン（F06）
 
-    /// そのお題への「自分以外」の回答。
+    /// そのお題への「自分以外」かつ「表示期限内」の回答。
     func timelinePosts(promptID: String) async throws -> [Post]
 
     // MARK: いいね（F07）
@@ -42,12 +43,27 @@ protocol Backend: Sendable {
     func setLike(postID: UUID, liked: Bool) async throws
 }
 
+/// お題の状態（F08 / F09）。有効なお題は常に多くても1つ（置いた前提3）。
+enum PromptState: Equatable, Sendable {
+    /// 有効期間中のお題がある。
+    case active(Prompt)
+    /// 有効なお題が無い時間帯。`nextStartsAt` は次のお題の開始時刻（予定が無ければ nil）。
+    /// 画面には出さない（「いつ来るか分からない」体験を壊さないため）。
+    case waiting(nextStartsAt: Date?)
+
+    var prompt: Prompt? {
+        if case .active(let prompt) = self { return prompt }
+        return nil
+    }
+}
+
 /// バックエンド操作で利用者に見せるエラー。
 enum BackendError: LocalizedError, Equatable {
     case notSignedIn
     case emptyBody
     case bodyTooLong(limit: Int)
     case alreadyAnswered
+    case promptNotActive
     case seedDataMissing
     case storageFailure(String)
 
@@ -61,6 +77,8 @@ enum BackendError: LocalizedError, Equatable {
             return "回答は\(limit)文字までです。"
         case .alreadyAnswered:
             return "このお題にはすでに回答しています。"
+        case .promptNotActive:
+            return "このお題の時間は終わりました。次のお題をお待ちください。"
         case .seedDataMissing:
             return "お題を読み込めませんでした。"
         case .storageFailure(let detail):

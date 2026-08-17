@@ -41,6 +41,19 @@ targets:
         CODE_SIGNING_REQUIRED: NO
         CODE_SIGNING_ALLOWED: NO
 
+  SameQTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: SameQTests
+    dependencies:
+      - target: SameQ
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nakakei6439.SameQTests
+        GENERATE_INFOPLIST_FILE: YES
+
   SameQUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -60,12 +73,14 @@ schemes:
     build:
       targets:
         SameQ: all
+        SameQTests: [test]
         SameQUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
+        - SameQTests
         - SameQUITests
     archive:
       config: Release

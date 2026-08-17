@@ -16,18 +16,18 @@
 | 開発ハーネス | planner → generator → evaluator |
 
 ## 現在の状態
-- **フェーズ**: スプリント01 完了（合格）→ スプリント02 実装待ち
-- **状態**: スプリント01 は evaluator の実機検証で **合格**（attempt 1）。受け入れ条件8/8、クラッシュ0、永続データも一致。
-- **次にやること**: **スプリント02（お題のライフサイクルと投稿の寿命 / F08・F09・F10）の実装**。受け入れ条件は `.product/spec.md` 126〜132行。
+- **フェーズ**: スプリント02 実装完了 → **評価待ち**
+- **状態**: スプリント02（お題のライフサイクルと投稿の寿命 / F08・F09・F10）を実装（attempt 1）。自己評価では受け入れ条件6/6を達成。ユニットテスト6本・UIテスト10本（スプリント01の5本を含む）が全通過。
+- **次にやること**: **evaluator による検証**。受け入れ条件は `.product/spec.md` 126〜132行。検証手順と起動引数は [`.product/sprints/02-prompt-lifecycle/self-review.md`](.product/sprints/02-prompt-lifecycle/self-review.md)。
 - **再開に必要な情報**:
   - Xcodeプロジェクトは `SameQ.xcodeproj`（`project.yml` から XcodeGen で生成。生成物もコミット済みなので `open SameQ.xcodeproj` で即ビルドできる）。
-  - 実装内容と動かし方は [`.product/sprints/01-core-experience/self-review.md`](.product/sprints/01-core-experience/self-review.md)、評価結果は [`.product/sprints/01-core-experience/eval-1.md`](.product/sprints/01-core-experience/eval-1.md)。
-  - 受け入れ条件の自動確認は `xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'platform=iOS Simulator,name=iPhone 17' test`（UIテスト5本、全通過を確認済み）。
+  - 自動確認は `xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'platform=iOS Simulator,name=iPhone 17' test`（`SameQTests` 6本 ＋ `SameQUITests` 10本）。
   - 初回設定からやり直すには、アプリを削除するか Debug ビルドに起動引数 `-SameQResetState` を付ける。
-- **スプリント02 に入る前に踏まえること（evaluator からの申し送り）**:
-  1. `Prompt` は id と本文しか持たず、`LocalBackend.timelinePosts` も期限を見ていない。開始/終了時刻の導入がスプリント02の起点になる。
-  2. タイムラインを閉じて開き直すと既読の回答が先頭から再び出る（既読管理はスプリント03の範囲。今回は不問）。
-  3. 合否には影響しない改善提案が3件ある（キーボードが「投稿する」を半分隠す／投稿ボタンが押せない理由が出ない／`state.json` 破損時にアカウントが黙って消える）。手が空いたときに拾うこと。詳細は eval-1.md。
+  - **お題の日程を切り替える起動引数（Debug 限定）**: `-SameQScenario live|expiring|expired|upcoming`、`-SameQExpirySeconds <秒>`、`-SameQGapSeconds <秒>`、`-SameQTimeOffsetMinutes <分>`、`-SameQDebugOverlay`。実時間で28時間待たずに切り替わりを確認するためのもの。詳細は README と self-review.md。
+- **スプリント03 に入るときに踏まえること**:
+  1. タイムラインを閉じて開き直すと既読の回答が先頭から再び出る（既読管理＝スプリント03の本題）。
+  2. スプリント01評価で挙がった改善提案3件（キーボードが「投稿する」を半分隠す／投稿ボタンが押せない理由が出ない／`state.json` 破損時にアカウントが黙って消える）は**まだ未対応**。詳細は eval-1.md。
+  3. お題の切り替え判定は端末時計 ＋ 1秒間隔のポーリング。サーバー時刻に合わせるのは Supabase 接続時の課題。
 
 ---
 
@@ -45,7 +45,7 @@
 
 ### スプリント02: お題のライフサイクルと投稿の寿命
 含む機能: F08, F09, F10
-- [ ] 実装（generator）
+- [x] 実装（generator）— 2026-08-17。お題待ち画面、開始/終了時刻による画面切り替え、投稿の表示期限、期限切れ回答の除外、履歴導線を作らないことの担保。[`plan.md`](.product/sprints/02-prompt-lifecycle/plan.md) / [`self-review.md`](.product/sprints/02-prompt-lifecycle/self-review.md)
 - [ ] 評価（evaluator）— 受け入れ条件は `.product/spec.md` 126〜132行
 
 ### スプリント03: タイムラインの取得ルールと既読管理
@@ -104,12 +104,10 @@
 
 ## ブロッカー
 
-### B01: Supabase クラウドプロジェクトが未作成（スプリント01時点で未解消）
-- **状況**: Supabase の プロジェクトURL / anon key を持っていない。推測で値を作ることはしないため、アプリは実サーバーに接続していない。
-- **代替**: データ層を `Backend` プロトコル1枚に集約し、端末内で完結する `LocalBackend`（Application Support 配下の JSON ＋ 同梱シード14件）で動かしている。UI層はプロトコルしか知らないので、差し替え箇所は `SameQ/Backend/BackendProvider.swift` の1関数だけ。
-- **先行して用意したもの**: `supabase/migrations/20260817000001_init.sql`（users / prompts / posts / likes / viewed_posts ＋ RLS ＋ `world_timeline` ビュー）と `supabase/seed.sql`。
-- **未検証**: 上記SQLは一度も適用していない。ローカル検証には Docker が必要だが、この環境に Docker が入っていないため `supabase db reset` も実行できていない。
-- **解消に必要なもの**: Supabase プロジェクトの作成と、URL / anon key の受け渡し。
+### B01: Supabase クラウドプロジェクト（2026-08-17 解消）
+- プロジェクト作成・マイグレーション適用は完了。認証情報は `.env.local`（gitignore対象）に保存済み
+- 未実施: アプリからの実際のSupabase接続（LocalBackend → SupabaseBackend への切り替え）。担当スプリント未定。次にこのタスクに着手する際は、まず `.env.local` の内容とdashboardを確認すること
+- 補足（スプリント02で追加）: `supabase/migrations/20260817000002_prompt_lifecycle.sql`（有効期間の重複禁止、有効なお題だけ読める RLS、`expires_at` を自動設定するトリガー）と更新版 `supabase/seed.sql` は**まだ適用していない**。適用時に検証が必要。
 
 ## 今回の判断（generator が自分で決めたこと）
 仕様に書かれておらず、ユーザーに確認できなかったため自分で決めた事項。覆してよい。
@@ -121,7 +119,17 @@
 6. **Debug限定の起動引数 `-SameQResetState`** を用意。UIテストと再検証で初期状態に戻すため（Releaseビルドには含まれない）。
 7. **デザイン**: 参考モックアップのトーン（白い角丸カード／緑のプライマリボタン／丸ゴシック）に寄せつつ、要望どおり装飾は控えめ（背景は淡いグラデーションのみ）。タイムラインの操作は ✕（次へ）と ♥（いいね）の2つ。モックアップにあった「いいね一覧」「他人の投稿のいいね数」「タブバー」は仕様と矛盾するため実装していない。
 
+### スプリント02で決めたこと
+8. **お題の日程は起動時に組み立てる**。Supabase 未接続のため、同梱シードのお題2件（`prompt_001` / `prompt_002`）に、シナリオごとの開始・終了時刻を起動時刻を基準に割り当てる（`SameQ/Backend/PromptSchedule.swift`）。有効期間は常に28時間・重なりなし。
+9. **検証用の起動引数はすべて Debug 限定**（`LaunchOptions`）。`-SameQScenario` / `-SameQExpirySeconds` / `-SameQGapSeconds` / `-SameQTimeOffsetMinutes` / `-SameQDebugOverlay`。Release ビルドでは既定値に固定される。
+10. **お題待ち画面に次のお題の開始時刻を出さない**。「いつ来るか分からない」というリズム（spec.md の中心体験）を壊さないため。時刻の確認は Debug オーバーレイでのみ可能。
+11. **有効期間の判定は1秒間隔のポーリング＋前面復帰時**。画面を開いたまま期限をまたいでも切り替わる。期限が切れたらタイムラインは自動で閉じる。
+12. **期限切れの自分の回答といいねは端末の保存から落とす**（`LocalBackend.pruneExpired`）。履歴を持たない方針（対象外「履歴」）をデータ側でも守るため。
+13. **有効期間外のお題には投稿できない**（`BackendError.promptNotActive`）。投稿直前に期限が切れた場合はお題待ちへ落とす。
+
 ## 変更履歴
 - 2026-08-17: `.product/spec.md` 作成（planner）。PROGRESS.md 初版作成。
 - 2026-08-17: スプリント01 実装（generator）。SwiftUI雛形＋F01〜F07、Supabaseスキーマ、UIテスト5本。
 - 2026-08-17: スプリント01 評価（evaluator）。iPhone 17 / iOS 26.5 シミュレータで実操作検証し **合格**。次はスプリント02の実装。
+- 2026-08-17: スプリント02 実装（generator）。F08・F09・F10。お題待ち画面、有効期間による画面切り替え、投稿の表示期限、検証用の起動引数、ユニットテスト6本＋UIテスト5本を追加。
+- 2026-08-17: ブロッカー B01 解消（Supabase プロジェクト作成・初期マイグレーション適用）。アプリからの接続切り替えは未着手。

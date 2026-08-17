@@ -3,46 +3,55 @@ import Observation
 
 /// 画面の出し分けとバックエンド呼び出しをまとめる、アプリで唯一の状態。
 ///
-/// タイムラインへ入れるかどうかの判定（F05）はここに集約する。
-/// `openTimeline()` は自分の回答が無い限り何もしないので、
-/// どの画面からもロックを迂回できない。
+/// タイムラインへ入れるかどうかの判定（F05）と、お題の有効期間による
+/// 画面の切り替え（F08 / F09 / F10）はここに集約する。
+/// `openTimeline()` は自分の回答が無い限り何もしないので、どの画面からもロックを迂回できない。
 @MainActor
 @Observable
 final class AppSession {
     enum Screen: Equatable {
         case loading
         case onboarding
+        /// 有効なお題が無い時間帯（F08）。入力欄もタイムライン導線も持たない。
+        case waiting
         case today
         case failure(String)
     }
 
     private let backend: Backend
+    private let clock: AppClock
 
     private(set) var screen: Screen = .loading
     private(set) var user: AppUser?
-    private(set) var prompt: Prompt?
+    private(set) var promptState: PromptState = .waiting(nextStartsAt: nil)
     /// 今日のお題への自分の回答。nil の間は世界タイムラインを開けない（F05）。
     private(set) var myPost: Post?
     private(set) var timelinePosts: [Post] = []
     private(set) var likedPostIDs: Set<UUID> = []
     private(set) var isTimelinePresented = false
+    /// アプリが認識している「今」。1秒ごとの `refresh()` で更新する。
+    private(set) var now: Date
 
     /// 投稿失敗などの一時的なメッセージ。表示したら nil に戻す。
     var alertMessage: String?
 
     var isSubmitting = false
 
-    init(backend: Backend = BackendProvider.make()) {
+    /// いま有効なお題。お題待ちのあいだは nil。
+    var prompt: Prompt? { promptState.prompt }
+
+    init(backend: Backend = BackendProvider.make(), clock: AppClock = AppClock()) {
         self.backend = backend
+        self.clock = clock
+        self.now = clock.now
     }
 
     /// 起動時の読み込み。アカウントが無ければ初回設定へ、
-    /// あれば今日のお題へ（回答済みならそのまま世界タイムラインを開く）。
+    /// あればお題の状態に応じてお題待ち／今日のお題／タイムラインへ。
     func start() async {
         screen = .loading
         do {
-            let loadedPrompt = try await backend.activePrompt()
-            prompt = loadedPrompt
+            promptState = try await backend.promptState()
             let loadedUser = try await backend.currentUser()
             user = loadedUser
 
@@ -52,15 +61,55 @@ final class AppSession {
                 return
             }
 
-            myPost = try await backend.myPost(promptID: loadedPrompt.id)
-            likedPostIDs = try await backend.likedPostIDs()
-            screen = .today
-
-            if myPost != nil {
-                await openTimeline()
-            }
+            try await applyPromptState(openTimelineIfAnswered: true)
         } catch {
             screen = .failure(error.localizedDescription)
+        }
+    }
+
+    /// お題の有効期間をまたいだかどうかを見直す。
+    /// 画面を開いたままでも切り替わるように、1秒ごと（`RootView`）と前面復帰時に呼ぶ。
+    func refresh() async {
+        now = clock.now
+        guard user != nil else { return }
+        switch screen {
+        case .loading, .onboarding, .failure:
+            return
+        case .waiting, .today:
+            break
+        }
+        do {
+            let latest = try await backend.promptState()
+            guard latest != promptState else { return }
+            promptState = latest
+            // お題が変わった／終わったので、開いているタイムラインは閉じる（古い回答を出し続けない）。
+            try await applyPromptState(openTimelineIfAnswered: false)
+        } catch {
+            alertMessage = error.localizedDescription
+        }
+    }
+
+    /// いまのお題の状態から画面と手元のデータを組み直す。
+    private func applyPromptState(openTimelineIfAnswered: Bool) async throws {
+        switch promptState {
+        case .waiting:
+            // お題待ちでは自分の回答も世界の回答も見せない（F08 / F10）。
+            isTimelinePresented = false
+            timelinePosts = []
+            myPost = nil
+            likedPostIDs = try await backend.likedPostIDs()
+            screen = .waiting
+        case .active(let prompt):
+            myPost = try await backend.myPost(promptID: prompt.id)
+            likedPostIDs = try await backend.likedPostIDs()
+            if !openTimelineIfAnswered || myPost == nil {
+                isTimelinePresented = false
+                timelinePosts = []
+            }
+            screen = .today
+            if openTimelineIfAnswered, myPost != nil {
+                await openTimeline()
+            }
         }
     }
 
@@ -70,11 +119,8 @@ final class AppSession {
     func completeOnboarding(emoji: String, nickname: String?) async {
         do {
             user = try await backend.createAnonymousUser(emoji: emoji, nickname: nickname)
-            if let prompt {
-                myPost = try await backend.myPost(promptID: prompt.id)
-            }
-            likedPostIDs = try await backend.likedPostIDs()
-            screen = .today
+            promptState = try await backend.promptState()
+            try await applyPromptState(openTimelineIfAnswered: false)
         } catch {
             alertMessage = error.localizedDescription
         }
@@ -92,12 +138,16 @@ final class AppSession {
             await openTimeline()
         } catch {
             alertMessage = error.localizedDescription
+            // 投稿しようとした瞬間にお題が終わっていた場合は、お題待ちへ落とす。
+            if let backendError = error as? BackendError, backendError == .promptNotActive {
+                await refresh()
+            }
         }
     }
 
     // MARK: 世界タイムライン（F06）
 
-    /// 自分の回答がある場合だけタイムラインを開く。無い場合は何も起きない。
+    /// 有効なお題があり、かつ自分の回答がある場合だけ開く。それ以外では何も起きない。
     func openTimeline() async {
         guard let prompt, myPost != nil else { return }
         do {
@@ -138,5 +188,26 @@ final class AppSession {
             }
             alertMessage = error.localizedDescription
         }
+    }
+
+    // MARK: 検証用（Debug オーバーレイ）
+
+    /// `-SameQDebugOverlay` を付けたときだけ画面下に出す1行。通常のビルドでは使わない。
+    var debugStatusLine: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        var parts = ["now \(formatter.string(from: now))", "scenario \(LaunchOptions.current.scenario.rawValue)"]
+        switch promptState {
+        case .active(let prompt):
+            parts.append("\(prompt.id) ends in \(Int(prompt.endsAt.timeIntervalSince(now)))s")
+        case .waiting(let nextStartsAt):
+            if let nextStartsAt {
+                parts.append("waiting / next in \(Int(nextStartsAt.timeIntervalSince(now)))s")
+            } else {
+                parts.append("waiting / no next prompt")
+            }
+        }
+        parts.append(myPost == nil ? "unanswered" : "answered")
+        return parts.joined(separator: " · ")
     }
 }
