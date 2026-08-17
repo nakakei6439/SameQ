@@ -16,9 +16,9 @@
 | 開発ハーネス | planner → generator → evaluator |
 
 ## 現在の状態
-- **フェーズ**: スプリント02 実装完了 → **評価待ち**
-- **状態**: スプリント02（お題のライフサイクルと投稿の寿命 / F08・F09・F10）を実装（attempt 1）。自己評価では受け入れ条件6/6を達成。ユニットテスト6本・UIテスト10本（スプリント01の5本を含む）が全通過。
-- **次にやること**: **evaluator による検証**。受け入れ条件は `.product/spec.md` 126〜132行。検証手順と起動引数は [`.product/sprints/02-prompt-lifecycle/self-review.md`](.product/sprints/02-prompt-lifecycle/self-review.md)。
+- **フェーズ**: スプリント02 評価完了（**合格**）→ **スプリント03 実装待ち**
+- **状態**: スプリント02（お題のライフサイクルと投稿の寿命 / F08・F09・F10）が evaluator 検証で合格（attempt 1）。iPhone 17 Pro / iOS 26.3 シミュレータで実操作検証。受け入れ条件6/6・クラッシュ0・データ整合性OK・スプリント01からの回帰5/5。詳細は [`eval-1.md`](.product/sprints/02-prompt-lifecycle/eval-1.md)。
+- **次にやること**: **スプリント03（タイムラインの取得ルールと既読管理 / F11・F12）の実装**。受け入れ条件は `.product/spec.md` 143〜149行。評価者への注記は151行（0件・1件・100件以上の3ケース、再起動後も既読が残ること）。
 - **再開に必要な情報**:
   - Xcodeプロジェクトは `SameQ.xcodeproj`（`project.yml` から XcodeGen で生成。生成物もコミット済みなので `open SameQ.xcodeproj` で即ビルドできる）。
   - 自動確認は `xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'platform=iOS Simulator,name=iPhone 17' test`（`SameQTests` 6本 ＋ `SameQUITests` 10本）。
@@ -26,8 +26,13 @@
   - **お題の日程を切り替える起動引数（Debug 限定）**: `-SameQScenario live|expiring|expired|upcoming`、`-SameQExpirySeconds <秒>`、`-SameQGapSeconds <秒>`、`-SameQTimeOffsetMinutes <分>`、`-SameQDebugOverlay`。実時間で28時間待たずに切り替わりを確認するためのもの。詳細は README と self-review.md。
 - **スプリント03 に入るときに踏まえること**:
   1. タイムラインを閉じて開き直すと既読の回答が先頭から再び出る（既読管理＝スプリント03の本題）。
-  2. スプリント01評価で挙がった改善提案3件（キーボードが「投稿する」を半分隠す／投稿ボタンが押せない理由が出ない／`state.json` 破損時にアカウントが黙って消える）は**まだ未対応**。詳細は eval-1.md。
-  3. お題の切り替え判定は端末時計 ＋ 1秒間隔のポーリング。サーバー時刻に合わせるのは Supabase 接続時の課題。
+  2. スプリント01評価の改善提案3件（キーボードが「投稿する」を半分隠す／投稿ボタンが押せない理由が出ない／`state.json` 破損時にアカウントが黙って消える）は**まだ未対応**。詳細は 01 の eval-1.md。
+  3. スプリント02評価で新たに挙がった改善提案3件も**未対応**（合否には影響しない）。詳細は 02 の [`eval-1.md`](.product/sprints/02-prompt-lifecycle/eval-1.md)。
+     - [A] 期限切れの瞬間にタイムラインが無言で閉じる（何が起きたか分からない）
+     - [B] 入力中に期限が切れると書きかけの文章が無言で消える
+     - [C] `-SameQDebugOverlay` が画面最下部のテキストに重なる
+  4. お題の切り替え判定は端末時計 ＋ 1秒間隔のポーリング。サーバー時刻に合わせるのは Supabase 接続時の課題。
+  5. 期限切れ投稿が「他ユーザーから見えない」ことは、`LocalBackend`（単一端末）のため UI では確認できていない。データ層（`expiresAt` ＝お題終了時刻、タイムライン0件、端末保存からの削除）とユニットテストで代替確認済み。Supabase 接続時に実端末2台で再確認すること。
 
 ---
 
@@ -46,7 +51,7 @@
 ### スプリント02: お題のライフサイクルと投稿の寿命
 含む機能: F08, F09, F10
 - [x] 実装（generator）— 2026-08-17。お題待ち画面、開始/終了時刻による画面切り替え、投稿の表示期限、期限切れ回答の除外、履歴導線を作らないことの担保。[`plan.md`](.product/sprints/02-prompt-lifecycle/plan.md) / [`self-review.md`](.product/sprints/02-prompt-lifecycle/self-review.md)
-- [ ] 評価（evaluator）— 受け入れ条件は `.product/spec.md` 126〜132行
+- [x] 評価（evaluator）— 2026-08-18 **合格**（attempt 1）。受け入れ条件6/6・クラッシュ0・データ整合性OK・回帰5/5・使用性4。[`eval-1.md`](.product/sprints/02-prompt-lifecycle/eval-1.md)
 
 ### スプリント03: タイムラインの取得ルールと既読管理
 含む機能: F11, F12
@@ -134,3 +139,4 @@
 - 2026-08-17: スプリント02 実装（generator）。F08・F09・F10。お題待ち画面、有効期間による画面切り替え、投稿の表示期限、検証用の起動引数、ユニットテスト6本＋UIテスト5本を追加。
 - 2026-08-17: ブロッカー B01 解消（Supabase プロジェクト作成・初期マイグレーション適用）。アプリからの接続切り替えは未着手。
 - 2026-08-17: スプリント02のマイグレーション `20260817000002_prompt_lifecycle.sql` を Supabase に適用済み。次はスプリント02の evaluator 検証。
+- 2026-08-18: スプリント02 評価（evaluator）。iPhone 17 Pro / iOS 26.3 シミュレータで独自 XCUITest 9本＋`simctl` 単体起動により実操作検証し **合格**。次はスプリント03の実装。
