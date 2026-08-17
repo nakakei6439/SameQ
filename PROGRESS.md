@@ -107,7 +107,7 @@
 ### B01: Supabase クラウドプロジェクト（2026-08-17 解消）
 - プロジェクト作成・マイグレーション適用は完了。認証情報は `.env.local`（gitignore対象）に保存済み
 - 未実施: アプリからの実際のSupabase接続（LocalBackend → SupabaseBackend への切り替え）。担当スプリント未定。次にこのタスクに着手する際は、まず `.env.local` の内容とdashboardを確認すること
-- 補足（スプリント02で追加）: `supabase/migrations/20260817000002_prompt_lifecycle.sql`（有効期間の重複禁止、有効なお題だけ読める RLS、`expires_at` を自動設定するトリガー）と更新版 `supabase/seed.sql` は**まだ適用していない**。適用時に検証が必要。
+- 追記（2026-08-17）: `20260817000002_prompt_lifecycle.sql` も `supabase db push` で適用済み（`prompts_no_overlap` 制約と `posts_set_expiry_trigger` は移行前のテーブルに無かったため `NOTICE ... skipping` が出たが、CREATE文自体は成功しており実害なし）。更新版 `supabase/seed.sql` は**まだ流し込んでいない**（アプリがまだLocalBackendで動いているため急ぎではない。SupabaseBackend実装時に一緒に流すこと）。
 
 ## 今回の判断（generator が自分で決めたこと）
 仕様に書かれておらず、ユーザーに確認できなかったため自分で決めた事項。覆してよい。
@@ -133,3 +133,4 @@
 - 2026-08-17: スプリント01 評価（evaluator）。iPhone 17 / iOS 26.5 シミュレータで実操作検証し **合格**。次はスプリント02の実装。
 - 2026-08-17: スプリント02 実装（generator）。F08・F09・F10。お題待ち画面、有効期間による画面切り替え、投稿の表示期限、検証用の起動引数、ユニットテスト6本＋UIテスト5本を追加。
 - 2026-08-17: ブロッカー B01 解消（Supabase プロジェクト作成・初期マイグレーション適用）。アプリからの接続切り替えは未着手。
+- 2026-08-17: スプリント02のマイグレーション `20260817000002_prompt_lifecycle.sql` を Supabase に適用済み。次はスプリント02の evaluator 検証。
