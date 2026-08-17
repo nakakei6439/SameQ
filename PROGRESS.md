@@ -16,10 +16,14 @@
 | 開発ハーネス | planner → generator → evaluator |
 
 ## 現在の状態
-- **フェーズ**: スプリント01 実装
-- **状態**: 進行中
-- **次にやること**: generator エージェントでスプリント01（コア体験）を実装する。
-- **再開に必要な情報**: リポジトリは https://github.com/nakakei6439/SameQ にpush済み（コミット `52c93f2`）。仕様書は `.product/spec.md` に確定済み（変更なし）。
+- **フェーズ**: スプリント01 評価待ち
+- **状態**: 実装完了・evaluator の検証待ち（attempt 1）
+- **次にやること**: evaluatorによる検証（受け入れ条件は `.product/spec.md` 107〜115行）。
+- **再開に必要な情報**:
+  - Xcodeプロジェクトは `SameQ.xcodeproj`（`project.yml` から XcodeGen で生成。生成物もコミット済みなので `open SameQ.xcodeproj` で即ビルドできる）。
+  - 実装内容と動かし方は [`.product/sprints/01-core-experience/self-review.md`](.product/sprints/01-core-experience/self-review.md) にまとめてある。
+  - 受け入れ条件の自動確認は `xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'platform=iOS Simulator,name=iPhone 17' test`（UIテスト5本、全通過を確認済み）。
+  - 初回設定からやり直すには、アプリを削除するか Debug ビルドに起動引数 `-SameQResetState` を付ける。
 
 ---
 
@@ -32,7 +36,7 @@
 
 ### スプリント01: コア体験（設定→お題→投稿→世界タイムライン→いいね）
 含む機能: F01, F02, F03, F04, F05, F06, F07
-- [ ] 実装（generator）
+- [x] 実装（generator）— 2026-08-17
 - [ ] 評価（evaluator）— 受け入れ条件は `.product/spec.md` 107〜115行
 
 ### スプリント02: お題のライフサイクルと投稿の寿命
@@ -94,5 +98,25 @@
 3. いいね数は自分の受信数のみ自分だけに表示
 4. 音写できないニックネームは絵文字のみ表示
 
+## ブロッカー
+
+### B01: Supabase クラウドプロジェクトが未作成（スプリント01時点で未解消）
+- **状況**: Supabase の プロジェクトURL / anon key を持っていない。推測で値を作ることはしないため、アプリは実サーバーに接続していない。
+- **代替**: データ層を `Backend` プロトコル1枚に集約し、端末内で完結する `LocalBackend`（Application Support 配下の JSON ＋ 同梱シード14件）で動かしている。UI層はプロトコルしか知らないので、差し替え箇所は `SameQ/Backend/BackendProvider.swift` の1関数だけ。
+- **先行して用意したもの**: `supabase/migrations/20260817000001_init.sql`（users / prompts / posts / likes / viewed_posts ＋ RLS ＋ `world_timeline` ビュー）と `supabase/seed.sql`。
+- **未検証**: 上記SQLは一度も適用していない。ローカル検証には Docker が必要だが、この環境に Docker が入っていないため `supabase db reset` も実行できていない。
+- **解消に必要なもの**: Supabase プロジェクトの作成と、URL / anon key の受け渡し。
+
+## 今回の判断（generator が自分で決めたこと）
+仕様に書かれておらず、ユーザーに確認できなかったため自分で決めた事項。覆してよい。
+1. **技術構成**: XcodeGen（`project.yml`）でプロジェクトを生成。外部パッケージ依存はゼロ。iOS 18.0 Deployment Target。
+2. **回答の文字数上限は140文字**（F04のカウンター表示に上限が必要なため。スプリント10の無料ユーザー上限に合わせた）。
+3. **お題は `prompt_001` 固定**、本文「今日、思わず笑ってしまったことは何ですか？」。世界の回答は14件（10言語、うち5件はニックネーム未設定）を同梱。
+4. **アカウントは初回設定の最終ステップで一括作成**。途中終了しても何も保存しない（中途半端なアカウントを作らないため）。
+5. **オンボーディングに「戻る」を用意**。規約や絵文字を選び直せるようにするため。
+6. **Debug限定の起動引数 `-SameQResetState`** を用意。UIテストと再検証で初期状態に戻すため（Releaseビルドには含まれない）。
+7. **デザイン**: 参考モックアップのトーン（白い角丸カード／緑のプライマリボタン／丸ゴシック）に寄せつつ、要望どおり装飾は控えめ（背景は淡いグラデーションのみ）。タイムラインの操作は ✕（次へ）と ♥（いいね）の2つ。モックアップにあった「いいね一覧」「他人の投稿のいいね数」「タブバー」は仕様と矛盾するため実装していない。
+
 ## 変更履歴
 - 2026-08-17: `.product/spec.md` 作成（planner）。PROGRESS.md 初版作成。
+- 2026-08-17: スプリント01 実装（generator）。SwiftUI雛形＋F01〜F07、Supabaseスキーマ、UIテスト5本。

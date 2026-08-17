@@ -1,0 +1,13 @@
+{
+  "currentSprint": "01",
+  "attempt": 1,
+  "status": "awaiting_eval",
+  "history": [
+    {
+      "sprint": "01",
+      "attempt": 1,
+      "result": "awaiting_eval",
+      "note": "SwiftUI雛形 + F01〜F07 実装。Supabaseはスキーマのみ（クラウド未接続）"
+    }
+  ]
+}

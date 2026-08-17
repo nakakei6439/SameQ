@@ -9,6 +9,37 @@
 フォローも検索もランキングも会話もない。その日の言葉は消え、
 「世界のどこかの知らない誰かも、こんなことを考えているんや」という感覚だけが残る。
 
+## 現在の状態
+
+スプリント01（コア体験）の実装まで完了。初回設定 → 今日のお題 → 回答投稿 → 世界タイムライン → いいね が動く。
+翻訳・通知配信・お題の自動生成・課金は後続スプリント。
+
+### 動かす
+
+```bash
+open SameQ.xcodeproj      # 外部パッケージ依存なし。そのままビルド・実行できる
+
+# 受け入れ条件の自動確認（UIテスト5本）
+xcodebuild -project SameQ.xcodeproj -scheme SameQ \
+  -destination 'platform=iOS Simulator,name=iPhone 17' test
+```
+
+初回設定からやり直したいときは、アプリを削除するか、Debug ビルドに起動引数 `-SameQResetState` を付ける。
+
+### 構成
+
+| パス | 中身 |
+|---|---|
+| `project.yml` | XcodeGen のプロジェクト定義（`SameQ.xcodeproj` は生成物だがコミットしてある） |
+| `SameQ/Backend/` | データ層。`Backend` プロトコルと端末内実装 `LocalBackend` |
+| `SameQ/Feature/` | 画面（Onboarding / Today / Timeline） |
+| `SameQ/Resources/SeedData.json` | 固定のお題1件と、世界の回答14件（10言語） |
+| `SameQUITests/` | 受け入れ条件をなぞる UI テスト |
+| `supabase/migrations/` | users / prompts / posts / likes / viewed_posts と RLS の定義 |
+
+**注意**: Supabase のクラウドプロジェクトは未作成のため、アプリはまだサーバーに接続していない。
+スキーマは先行して書いてあるが未適用・未検証。詳細は [`PROGRESS.md`](PROGRESS.md) のブロッカー B01 を参照。
+
 ## ドキュメント
 
 - 製品仕様書: [`.product/spec.md`](.product/spec.md)（機能一覧・対象外・スプリント計画・受け入れ条件）

@@ -1,0 +1,134 @@
+{
+  "prompt": {
+    "id": "prompt_001",
+    "text": "今日、思わず笑ってしまったことは何ですか？"
+  },
+  "posts": [
+    {
+      "id": "A27331CF-683D-46E7-84FE-00FD8A513A16",
+      "authorID": "F71DC8ED-6519-4F76-9CBD-0ED21889C3C5",
+      "authorEmoji": "🌙",
+      "authorNickname": "みずき",
+      "body": "電車で寝てる人が、急にはっきりした声で「それは違うと思います」って言った。誰と話してたんやろ。",
+      "bodyLanguage": "ja",
+      "minutesAgo": 18
+    },
+    {
+      "id": "A08195C4-4A4C-40BD-91BE-159E77C57C7A",
+      "authorID": "1E56339E-92A5-481A-923D-72C2048CF18C",
+      "authorEmoji": "🐢",
+      "authorNickname": null,
+      "body": "My cat tried to jump onto the table, missed completely, and then walked away like nothing had happened.",
+      "bodyLanguage": "en",
+      "minutesAgo": 34
+    },
+    {
+      "id": "2735683A-A8DB-4324-ADAD-2DC7C452EA41",
+      "authorID": "D1F6A20F-3CCA-48EF-B1A1-7EE9EC475569",
+      "authorEmoji": "🌵",
+      "authorNickname": "Lucía",
+      "body": "Mi abuela me llamó para preguntarme cómo se apaga la televisión. Estaba usando el mando del aire acondicionado.",
+      "bodyLanguage": "es",
+      "minutesAgo": 51
+    },
+    {
+      "id": "9CCC14F0-732F-43F5-AE71-D050A5C23277",
+      "authorID": "DEB10675-152C-4EA7-B9F6-1684C5E49CA0",
+      "authorEmoji": "🍞",
+      "authorNickname": "지훈",
+      "body": "출근길에 신발을 짝짝이로 신고 온 걸 회사에 도착해서야 알았다.",
+      "bodyLanguage": "ko",
+      "minutesAgo": 72
+    },
+    {
+      "id": "E2525BE9-953E-423B-951C-FFF1BA154FD1",
+      "authorID": "EC0C5044-8484-4369-BA3C-6FAB0E3D1543",
+      "authorEmoji": "🎈",
+      "authorNickname": null,
+      "body": "Mon voisin chante faux tous les matins sous la douche. Aujourd'hui il a oublié les paroles.",
+      "bodyLanguage": "fr",
+      "minutesAgo": 96
+    },
+    {
+      "id": "9546FA31-6696-4814-8504-BC82D4D7B43D",
+      "authorID": "95E0E393-C330-4639-889E-DDBC686DAAD3",
+      "authorEmoji": "🐳",
+      "authorNickname": "Tom",
+      "body": "I said \"you too\" to the waiter who told me to enjoy my meal. Every single time.",
+      "bodyLanguage": "en",
+      "minutesAgo": 110
+    },
+    {
+      "id": "39A70445-7D02-4EAC-BAD6-76A1FCF46CEE",
+      "authorID": "408AB191-43F1-4F41-9845-818F89524F68",
+      "authorEmoji": "☕️",
+      "authorNickname": null,
+      "body": "自販機で買ったつもりのコーヒーが、全然違うボタンのやつだった。まあ美味しかったからよし。",
+      "bodyLanguage": "ja",
+      "minutesAgo": 133
+    },
+    {
+      "id": "163D8D7F-C874-45DD-B512-4F75201243D8",
+      "authorID": "2F41AE07-4030-47A2-BCE8-110E70798E01",
+      "authorEmoji": "🌻",
+      "authorNickname": "Ana",
+      "body": "Meu filho de três anos me apresentou o seu \"melhor amigo\": uma pedra.",
+      "bodyLanguage": "pt",
+      "minutesAgo": 158
+    },
+    {
+      "id": "1BB1C854-3541-45D7-841D-EBD5202663E7",
+      "authorID": "76755DE6-E6BF-4DCC-BE5D-804276B60AF0",
+      "authorEmoji": "🛴",
+      "authorNickname": "Jonas",
+      "body": "Ich habe zehn Minuten lang meine Brille gesucht. Sie war die ganze Zeit auf meinem Kopf.",
+      "bodyLanguage": "de",
+      "minutesAgo": 181
+    },
+    {
+      "id": "A972D1B0-E8A3-4A09-8DDC-4B7A0E9A2384",
+      "authorID": "FDCBC9EE-01C9-4599-B004-2D7F934B060C",
+      "authorEmoji": "🍊",
+      "authorNickname": null,
+      "body": "同事把「辛苦了」打成了「幸福了」，整个群突然安静，然后大家都笑了。",
+      "bodyLanguage": "zh",
+      "minutesAgo": 204
+    },
+    {
+      "id": "396EE953-5D2D-4030-8BC3-F4E8A57835FE",
+      "authorID": "B01B1C76-66B1-476B-B073-984FD13A8E1D",
+      "authorEmoji": "🪐",
+      "authorNickname": "Noor",
+      "body": "حاولت أن أفتح باب المتجر وأنا أدفعه ثلاث مرات، وكان مكتوباً عليه بخط كبير: اسحب.",
+      "bodyLanguage": "ar",
+      "minutesAgo": 227
+    },
+    {
+      "id": "D867EBF2-BB8B-449F-81DB-767DF6D2D2FC",
+      "authorID": "E9F93D4F-6A9F-45E3-9553-D242D147CD6D",
+      "authorEmoji": "🐧",
+      "authorNickname": "さとる",
+      "body": "犬が自分のしっぽに驚いてた。毎日同じことしてるのに、毎日はじめてみたいな顔をする。",
+      "bodyLanguage": "ja",
+      "minutesAgo": 249
+    },
+    {
+      "id": "8D4774DE-5140-47AE-8CBA-CA7FC03B8995",
+      "authorID": "6EC6D09C-ECAC-4098-AB8B-69A467BF112A",
+      "authorEmoji": "🎧",
+      "authorNickname": "Marek",
+      "body": "Pomyliłem szampon z żelem pod prysznic. Włosy pachną cytryną, ale wyglądają dobrze.",
+      "bodyLanguage": "pl",
+      "minutesAgo": 271
+    },
+    {
+      "id": "27D12B43-097B-417E-AFD9-8BF33ADE17FA",
+      "authorID": "735F5078-2552-4844-AD91-B3B6D8753E9A",
+      "authorEmoji": "🍄",
+      "authorNickname": null,
+      "body": "My grandpa found out what a meme is today. He now sends me one every hour, and none of them make sense.",
+      "bodyLanguage": "en",
+      "minutesAgo": 294
+    }
+  ]
+}

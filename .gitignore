@@ -15,8 +15,7 @@ xcuserdata/
 *.moved-aside
 *.xcuserstate
 *.xcscmblueprint
-*.xcscheme
-!default.xcscheme
+
 
 # Swift Package Manager
 #
@@ -24,9 +23,15 @@ xcuserdata/
 Packages/
 Package.pins
 Package.resolved
-*.xcodeproj
-!default.xcodeproj
 .swiftpm/
+
+# Xcode project
+#
+# SameQ.xcodeproj は XcodeGen（project.yml）で生成するが、
+# 誰でも `open SameQ.xcodeproj` でビルドできるようコミットする。
+# ユーザー固有の設定だけ除外する。
+SameQ.xcodeproj/xcuserdata/
+SameQ.xcodeproj/project.xcworkspace/xcuserdata/
 
 # CocoaPods
 #
