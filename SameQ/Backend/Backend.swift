@@ -29,10 +29,22 @@ protocol Backend: Sendable {
     @discardableResult
     func submitPost(promptID: String, body: String) async throws -> Post
 
-    // MARK: 世界タイムライン（F06）
+    // MARK: 世界タイムライン（F06 / F11 / F12）
 
-    /// そのお題への「自分以外」かつ「表示期限内」の回答。
+    /// そのお題への「自分以外」かつ「表示期限内」の回答（既読も含む候補の全件）。
+    /// 画面はこれを直接使わない。件数の把握とテストのために残している。
     func timelinePosts(promptID: String) async throws -> [Post]
+
+    /// タイムラインに次に出す回答を1件だけ引く（F11）。
+    ///
+    /// 候補は「同一お題／自分以外／表示期限内」で、そのうち**未読だけ**からランダムに1件選ぶ。
+    /// 返した回答はその場で既読として記録・永続化する（F12）ので、同じ回答は
+    /// アプリを再起動しても二度と出てこない。未読が尽きたら `.exhausted`、
+    /// 候補が最初から1件も無ければ `.empty` を返す。
+    func nextTimelinePost(promptID: String) async throws -> TimelineDraw
+
+    /// 既読として記録済みの投稿ID（検証・デバッグ表示用）。
+    func viewedPostIDs() async throws -> Set<UUID>
 
     // MARK: いいね（F07）
 
@@ -41,6 +53,18 @@ protocol Backend: Sendable {
 
     /// いいねを付ける／外す。
     func setLike(postID: UUID, liked: Bool) async throws
+}
+
+/// タイムラインから引いた1件の結果（F11 / F12）。
+///
+/// 「まだ誰も答えていない」と「自分が読み尽くした」は利用者にとって意味が違うので分ける。
+enum TimelineDraw: Equatable, Sendable {
+    /// 次に見せる回答。引いた時点で既読になっている。
+    case post(Post)
+    /// 表示できる回答が最初から1件も無い（自分の回答しか存在しない場合を含む）。
+    case empty
+    /// 候補はあるが、すべて既読になっている。
+    case exhausted
 }
 
 /// お題の状態（F08 / F09）。有効なお題は常に多くても1つ（置いた前提3）。

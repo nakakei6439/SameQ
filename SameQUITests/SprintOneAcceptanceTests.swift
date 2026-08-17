@@ -90,6 +90,9 @@ final class SprintOneAcceptanceTests: XCTestCase {
 
     // MARK: 受け入れ条件 8（いいねの押下状態が開き直しても残る）
 
+    /// スプリント03（F12 既読管理）以降、一度出した回答は既読になり二度と出てこない。
+    /// そのため「開き直して同じ回答を探す」手順は、既読だけを消す `-SameQResetViewed` を挟んで行う。
+    /// いいねが保存されていること自体は `TimelineSelectionTests` でも確認している。
     func test03_likePersistsAcrossReopeningTimeline() {
         let app = launchFresh()
         completeOnboarding(app, nickname: nickname, allowNotifications: false)
@@ -103,18 +106,21 @@ final class SprintOneAcceptanceTests: XCTestCase {
         like.tap()
         XCTAssertTrue(like.isSelected, "押すと押下状態になる")
 
-        // 別の投稿へ進んでから、タイムラインを閉じて開き直す
+        // 別の投稿へ進んでから、タイムラインを閉じる
         app.buttons["timeline.next"].tap()
         XCTAssertTrue(waitForBodyToChange(app, from: likedBody))
         app.buttons["timeline.close"].tap()
-
         XCTAssertTrue(app.buttons["today.openTimeline"].waitForExistence(timeout: 5))
-        app.buttons["today.openTimeline"].tap()
-        XCTAssertTrue(app.staticTexts["timeline.card.body"].waitForExistence(timeout: 8))
+
+        // 既読だけを消して起動し直し、いいねした回答をもう一度出せる状態にする
+        app.terminate()
+        app.launchArguments = ["-SameQResetViewed"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["timeline.card.body"].waitForExistence(timeout: 12))
 
         // 並び順は毎回変わるので、いいねした回答が出てくるまで送る
         var found = false
-        for _ in 0..<30 {
+        for _ in 0..<40 {
             guard app.staticTexts["timeline.card.body"].exists else { break }
             if app.staticTexts["timeline.card.body"].label == likedBody {
                 found = true

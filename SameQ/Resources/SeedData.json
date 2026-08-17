@@ -129,6 +129,78 @@
           "body": "My grandpa found out what a meme is today. He now sends me one every hour, and none of them make sense.",
           "bodyLanguage": "en",
           "minutesAgo": 294
+        },
+        {
+          "id": "3F1B2C5A-9D14-4E77-8B21-0A5C6D7E8F90",
+          "authorID": "B8F0C2D3-4E56-4A78-9B0C-1D2E3F405162",
+          "authorEmoji": "🧦",
+          "authorNickname": "Elif",
+          "body": "Otobüste yanımdaki adam uyurken benim omzuma yaslandı ve uyanınca bana teşekkür etti.",
+          "bodyLanguage": "tr",
+          "minutesAgo": 312
+        },
+        {
+          "id": "4A2C3D6B-0E25-4F88-9C32-1B6D7E8F9001",
+          "authorID": "C9E1D3E4-5F67-4B89-8C1D-2E3F40516273",
+          "authorEmoji": "🫖",
+          "authorNickname": null,
+          "body": "Ho salutato con la mano una persona che salutava qualcuno dietro di me. Poi ho fatto finta di sistemarmi i capelli.",
+          "bodyLanguage": "it",
+          "minutesAgo": 329
+        },
+        {
+          "id": "5B3D4E7C-1F36-4099-8D43-2C7E8F900112",
+          "authorID": "D0F2E4F5-6078-4C90-9D2E-3F4051627384",
+          "authorEmoji": "🌿",
+          "authorNickname": "Sanne",
+          "body": "Mijn hond blafte tien minuten naar een tas die ik zelf had neergezet.",
+          "bodyLanguage": "nl",
+          "minutesAgo": 347
+        },
+        {
+          "id": "6C4E5F8D-2047-41AA-9E54-3D8F90011223",
+          "authorID": "E1030506-7189-4D01-8E3F-405162738495",
+          "authorEmoji": "🪁",
+          "authorNickname": "дима",
+          "body": "Сегодня я три раза сказал «алло» в микроволновку, потому что она пищала как телефон.",
+          "bodyLanguage": "ru",
+          "minutesAgo": 365
+        },
+        {
+          "id": "7D5F6091-3158-42BB-8F65-4E9001122334",
+          "authorID": "F2140617-8290-4E12-9F40-5162738495A6",
+          "authorEmoji": "🍋",
+          "authorNickname": "Kanya",
+          "body": "วันนี้ฉันเรียกครูว่า “แม่” หน้าห้องเรียน ทุกคนหัวเราะ แล้วครูก็หัวเราะด้วย",
+          "bodyLanguage": "th",
+          "minutesAgo": 384
+        },
+        {
+          "id": "8E607102-4269-43CC-9076-5F0112233445",
+          "authorID": "03251728-93A1-4F23-8051-62738495A6B7",
+          "authorEmoji": "🐝",
+          "authorNickname": "Mateo",
+          "body": "Le pedí un café al camarero y le dije “gracias, mamá”. Nadie dijo nada, pero todos lo oyeron.",
+          "bodyLanguage": "es",
+          "minutesAgo": 402
+        },
+        {
+          "id": "9F718213-537A-44DD-8187-601223344556",
+          "authorID": "14362839-A4B2-4034-9162-738495A6B7C8",
+          "authorEmoji": "🌙",
+          "authorNickname": null,
+          "body": "엘리베이터에서 혼자인 줄 알고 노래를 불렀는데 거울 뒤에 사람이 있었다.",
+          "bodyLanguage": "ko",
+          "minutesAgo": 421
+        },
+        {
+          "id": "A0829324-648B-45EE-9298-712334455667",
+          "authorID": "2547394A-B5C3-4145-8273-8495A6B7C8D9",
+          "authorEmoji": "🐢",
+          "authorNickname": "はると",
+          "body": "子どもが「パパの頭、月みたい」って言ってきた。悪気がないから何も言い返せへんかった。",
+          "bodyLanguage": "ja",
+          "minutesAgo": 439
         }
       ]
     },

@@ -1,9 +1,10 @@
--- SameQ シードデータ（スプリント02時点）
+-- SameQ シードデータ（スプリント03時点）
 --
 -- アプリに同梱している SameQ/Resources/SeedData.json と同じ内容。
 -- お題の有効期間は28時間・常に1つだけ有効（置いた前提2・3）。
 -- 投稿の表示期限（expires_at）は所属するお題の終了時刻に揃える（F10）。
--- 世界タイムラインの検証には自分以外の回答が最低10件必要なので、prompt_001 には14件用意している。
+-- 世界タイムラインの検証には「20件あるとき20回スワイプして重複しない」ことの確認が要るので、
+-- prompt_001 には22件用意している（F11 / F12）。
 --
 -- 注意: このファイルは生成物ではなく手書き相当だが、SeedData.json と1対1で対応させること。
 
@@ -38,7 +39,15 @@ insert into public.users (id, emoji, nickname, created_at) values
     ('C712DA6A-92DC-474A-970A-A79E7FE6224D', '🌙', 'Layla', now() - interval '452 minutes'),
     ('A51AB2CE-A716-4D27-96CA-B9F1DFB4B9C7', '🍅', 'Giulia', now() - interval '469 minutes'),
     ('63DA91C8-F2C6-4EA3-80DA-0E8F81F3976B', '🛶', null, now() - interval '486 minutes'),
-    ('0B679032-24AC-47EE-A5C0-1475AC49291F', '📚', 'Sam', now() - interval '503 minutes')
+    ('0B679032-24AC-47EE-A5C0-1475AC49291F', '📚', 'Sam', now() - interval '503 minutes'),
+    ('B8F0C2D3-4E56-4A78-9B0C-1D2E3F405162', '🧦', 'Elif', now() - interval '503 minutes'),
+    ('C9E1D3E4-5F67-4B89-8C1D-2E3F40516273', '🫖', null, now() - interval '520 minutes'),
+    ('D0F2E4F5-6078-4C90-9D2E-3F4051627384', '🌿', 'Sanne', now() - interval '537 minutes'),
+    ('E1030506-7189-4D01-8E3F-405162738495', '🪁', 'дима', now() - interval '554 minutes'),
+    ('F2140617-8290-4E12-9F40-5162738495A6', '🍋', 'Kanya', now() - interval '571 minutes'),
+    ('03251728-93A1-4F23-8051-62738495A6B7', '🐝', 'Mateo', now() - interval '588 minutes'),
+    ('14362839-A4B2-4034-9162-738495A6B7C8', '🌙', null, now() - interval '605 minutes'),
+    ('2547394A-B5C3-4145-8273-8495A6B7C8D9', '🐢', 'はると', now() - interval '622 minutes')
 on conflict (id) do nothing;
 
 insert into public.posts (id, prompt_id, author_id, body, body_language, created_at, expires_at) values
@@ -67,5 +76,13 @@ insert into public.posts (id, prompt_id, author_id, body, body_language, created
     ('CB9B9255-683E-4E0B-830C-E224EB434D21', 'prompt_002', 'C712DA6A-92DC-474A-970A-A79E7FE6224D', 'قال لي صديقي: "وجودك يريحني". لم أعرف بماذا أرد.', 'ar', now() + interval '26 hours' + interval '205 minutes', now() + interval '54 hours'),
     ('A6F50034-4E24-4DBD-853D-C6E82C7150E0', 'prompt_002', 'A51AB2CE-A716-4D27-96CA-B9F1DFB4B9C7', 'Un cliente mi ha detto che il mio pane sa di casa sua. Lavoro da vent''anni per una frase così.', 'it', now() + interval '26 hours' + interval '228 minutes', now() + interval '54 hours'),
     ('0B0CA53F-D3F0-42AA-8B5F-1F854DB2752B', 'prompt_002', '63DA91C8-F2C6-4EA3-80DA-0E8F81F3976B', 'Kata guru saya: "kamu boleh pelan, yang penting jangan berhenti".', 'id', now() + interval '26 hours' + interval '251 minutes', now() + interval '54 hours'),
-    ('69866C9E-076F-46B7-81A4-9D4AE0F67592', 'prompt_002', '0B679032-24AC-47EE-A5C0-1475AC49291F', 'My roommate said the flat feels quieter when I am away. Nobody had ever missed me out loud before.', 'en', now() + interval '26 hours' + interval '274 minutes', now() + interval '54 hours')
+    ('69866C9E-076F-46B7-81A4-9D4AE0F67592', 'prompt_002', '0B679032-24AC-47EE-A5C0-1475AC49291F', 'My roommate said the flat feels quieter when I am away. Nobody had ever missed me out loud before.', 'en', now() + interval '26 hours' + interval '274 minutes', now() + interval '54 hours'),
+    ('3F1B2C5A-9D14-4E77-8B21-0A5C6D7E8F90', 'prompt_001', 'B8F0C2D3-4E56-4A78-9B0C-1D2E3F405162', 'Otobüste yanımdaki adam uyurken benim omzuma yaslandı ve uyanınca bana teşekkür etti.', 'tr', now() - interval '2 hours' + interval '312 minutes', now() + interval '26 hours'),
+    ('4A2C3D6B-0E25-4F88-9C32-1B6D7E8F9001', 'prompt_001', 'C9E1D3E4-5F67-4B89-8C1D-2E3F40516273', 'Ho salutato con la mano una persona che salutava qualcuno dietro di me. Poi ho fatto finta di sistemarmi i capelli.', 'it', now() - interval '2 hours' + interval '329 minutes', now() + interval '26 hours'),
+    ('5B3D4E7C-1F36-4099-8D43-2C7E8F900112', 'prompt_001', 'D0F2E4F5-6078-4C90-9D2E-3F4051627384', 'Mijn hond blafte tien minuten naar een tas die ik zelf had neergezet.', 'nl', now() - interval '2 hours' + interval '347 minutes', now() + interval '26 hours'),
+    ('6C4E5F8D-2047-41AA-9E54-3D8F90011223', 'prompt_001', 'E1030506-7189-4D01-8E3F-405162738495', 'Сегодня я три раза сказал «алло» в микроволновку, потому что она пищала как телефон.', 'ru', now() - interval '2 hours' + interval '365 minutes', now() + interval '26 hours'),
+    ('7D5F6091-3158-42BB-8F65-4E9001122334', 'prompt_001', 'F2140617-8290-4E12-9F40-5162738495A6', 'วันนี้ฉันเรียกครูว่า “แม่” หน้าห้องเรียน ทุกคนหัวเราะ แล้วครูก็หัวเราะด้วย', 'th', now() - interval '2 hours' + interval '384 minutes', now() + interval '26 hours'),
+    ('8E607102-4269-43CC-9076-5F0112233445', 'prompt_001', '03251728-93A1-4F23-8051-62738495A6B7', 'Le pedí un café al camarero y le dije “gracias, mamá”. Nadie dijo nada, pero todos lo oyeron.', 'es', now() - interval '2 hours' + interval '402 minutes', now() + interval '26 hours'),
+    ('9F718213-537A-44DD-8187-601223344556', 'prompt_001', '14362839-A4B2-4034-9162-738495A6B7C8', '엘리베이터에서 혼자인 줄 알고 노래를 불렀는데 거울 뒤에 사람이 있었다.', 'ko', now() - interval '2 hours' + interval '421 minutes', now() + interval '26 hours'),
+    ('A0829324-648B-45EE-9298-712334455667', 'prompt_001', '2547394A-B5C3-4145-8273-8495A6B7C8D9', '子どもが「パパの頭、月みたい」って言ってきた。悪気がないから何も言い返せへんかった。', 'ja', now() - interval '2 hours' + interval '439 minutes', now() + interval '26 hours')
 on conflict (id) do nothing;

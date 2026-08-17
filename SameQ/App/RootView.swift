@@ -30,7 +30,7 @@ struct RootView: View {
         }
         .fontDesign(.rounded)
         .environment(session)
-        .overlay(alignment: .bottom) { debugOverlay }
+        .safeAreaInset(edge: .bottom, spacing: 0) { debugOverlay }
         .task {
             await session.start()
             while !Task.isCancelled {
@@ -53,7 +53,7 @@ struct RootView: View {
             TimelineView()
                 .fontDesign(.rounded)
                 .environment(session)
-                .overlay(alignment: .bottom) { debugOverlay }
+                .safeAreaInset(edge: .bottom, spacing: 0) { debugOverlay }
         }
     }
 
@@ -87,16 +87,19 @@ struct RootView: View {
     }
 
     /// 検証用の状態表示。`-SameQDebugOverlay` を付けた Debug ビルドでだけ出る。
+    ///
+    /// `overlay` ではなく `safeAreaInset` に置いて、画面の一番下のボタンや文言に
+    /// 重ならないようにしている（重なると評価時に何も読めなくなるため）。
     @ViewBuilder
     private var debugOverlay: some View {
         if LaunchOptions.current.showsDebugOverlay {
             Text(session.debugStatusLine)
                 .font(.system(size: 10, weight: .medium, design: .monospaced))
                 .foregroundStyle(Color.white)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(Color.black.opacity(0.7)))
-                .padding(.bottom, 4)
+                .padding(.vertical, 5)
+                .background(Color.black.opacity(0.78))
                 .allowsHitTesting(false)
                 .accessibilityIdentifier("debug.status")
         }

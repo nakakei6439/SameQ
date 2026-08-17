@@ -1,28 +1,41 @@
 import SwiftUI
 
-/// 世界タイムライン（F06）。
+/// 世界タイムライン（F06 / F11 / F12）。
 ///
-/// 回答を1件ずつ表示し、スワイプで次へ進む。前の回答へは戻れない。
-/// 表示するのは `AppSession.timelinePosts`（自分以外の回答）だけ。
+/// 表示するのは常に1件だけ。次の1件は `AppSession.advanceTimeline()` が
+/// 「同一お題／自分以外／期限内／未読」からランダムに引いてくる。
+/// 手元に配列を持たないので、前の回答へ戻る操作は原理的に作れない（置いた前提5）。
 struct TimelineView: View {
     @Environment(AppSession.self) private var session
 
-    @State private var index = 0
     @State private var dragOffset: CGSize = .zero
     @State private var isAdvancing = false
-
-    private var posts: [Post] { session.timelinePosts }
-    private var currentPost: Post? { index < posts.count ? posts[index] : nil }
 
     var body: some View {
         VStack(spacing: 0) {
             topBar
 
-            if let post = currentPost {
+            switch session.timelineContent {
+            case .loading:
+                loadingState
+            case .post(let post):
                 cardStack(post: post)
                 actionBar(post: post)
-            } else {
-                endState
+            case .empty:
+                endState(
+                    symbol: "🫧",
+                    title: "まだ誰も答えていません",
+                    detail: "世界の誰かが答えると、ここに1件ずつ出てきます。",
+                    identifier: "timeline.empty"
+                )
+            case .exhausted:
+                endState(
+                    // 🌫️ はシミュレータのフォントで欠け表示になるので使わない
+                    symbol: "☁️",
+                    title: "今は新しい回答がありません",
+                    detail: "このお題の回答はすべて読みました。読んだ言葉は、しばらくすると消えます。",
+                    identifier: "timeline.exhausted"
+                )
             }
         }
         .background { Theme.canvas }
@@ -65,6 +78,17 @@ struct TimelineView: View {
         .padding(.bottom, 12)
     }
 
+    private var loadingState: some View {
+        VStack {
+            Spacer()
+            ProgressView()
+                .tint(Theme.inkSecondary)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityIdentifier("timeline.loading")
+    }
+
     private func cardStack(post: Post) -> some View {
         ZStack {
             AnswerCardView(post: post)
@@ -95,7 +119,7 @@ struct TimelineView: View {
     }
 
     /// カードの下の操作。スキップ（次の人へ）といいねの2つだけ。
-    /// 通報はスプリント04で足す。
+    /// 「前へ」は置かない（置いた前提5）。通報はスプリント04で足す。
     private func actionBar(post: Post) -> some View {
         let isLiked = session.isLiked(post.id)
         return VStack(spacing: 14) {
@@ -156,17 +180,28 @@ struct TimelineView: View {
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
-    private var endState: some View {
+    /// 読み切ったとき／1件も無いときの明示表示。
+    /// どちらも `timeline.end` を持たせ、内訳は `identifier` で見分ける。
+    private func endState(
+        symbol: String,
+        title: String,
+        detail: String,
+        identifier: String
+    ) -> some View {
         VStack(spacing: 14) {
             Spacer()
-            Text("🌫️")
+            Text(symbol)
                 .font(.system(size: 40))
-            Text(posts.isEmpty ? "まだ誰も答えていません" : "今日はここまで")
+            Text(title)
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(Theme.ink)
-            Text("読んだ言葉は、しばらくすると消えます。")
+                .accessibilityIdentifier(identifier)
+            Text(detail)
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.inkTertiary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 32)
             Spacer()
             Button("閉じる") { session.closeTimeline() }
                 .buttonStyle(PrimaryButtonStyle())
@@ -174,6 +209,9 @@ struct TimelineView: View {
                 .padding(.bottom, 28)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // 空振りのスワイプでも壊れないよう、ここでもジェスチャを受けて何もしない。
+        .contentShape(Rectangle())
+        .gesture(DragGesture().onEnded { _ in })
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("timeline.end")
     }
@@ -181,7 +219,7 @@ struct TimelineView: View {
     // MARK: 遷移（進むのみ）
 
     private func advance(towards translation: CGSize) {
-        guard !isAdvancing, index < posts.count else { return }
+        guard !isAdvancing, session.timelineContent.post != nil else { return }
         isAdvancing = true
         let horizontal: CGFloat = translation.width >= 0 ? 700 : -700
         let vertical = translation.height * 2
@@ -190,7 +228,7 @@ struct TimelineView: View {
         }
         Task {
             try? await Task.sleep(for: .milliseconds(180))
-            index += 1
+            await session.advanceTimeline()
             dragOffset = .zero
             isAdvancing = false
         }

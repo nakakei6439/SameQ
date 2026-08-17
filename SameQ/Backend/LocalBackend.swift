@@ -37,7 +37,14 @@ actor LocalBackend: Backend {
             self.state = .empty
             return
         }
-        self.state = store.load()
+        var loaded = store.load()
+        if options.resetsViewed {
+            // 起動引数 `-SameQResetViewed`（Debug のみ）。
+            // アカウント・自分の回答・いいねは残したまま、既読だけを消して読み直せるようにする。
+            loaded.viewedPostIDs = []
+            try? store.save(loaded)
+        }
+        self.state = loaded
     }
 
     // MARK: アカウント
@@ -124,6 +131,37 @@ actor LocalBackend: Backend {
     func timelinePosts(promptID: String) async throws -> [Post] {
         let now = clock.now
         pruneExpired(at: now)
+        return candidates(promptID: promptID, at: now)
+    }
+
+    func nextTimelinePost(promptID: String) async throws -> TimelineDraw {
+        let now = clock.now
+        pruneExpired(at: now)
+        let all = candidates(promptID: promptID, at: now)
+        guard !all.isEmpty else { return .empty }
+
+        let viewed = Set(state.viewedPostIDs)
+        let unread = all.filter { !viewed.contains($0.id) }
+        // 未読からランダムに1件（F11）。順番を持たないので「次に誰が出るか」は毎回変わる。
+        guard let picked = unread.randomElement() else { return .exhausted }
+
+        // 出したその場で既読にする（F12）。保存に失敗しても表示は続ける。
+        var next = state
+        next.viewedPostIDs.append(picked.id)
+        try? store.save(next)
+        state = next
+        return .post(picked)
+    }
+
+    func viewedPostIDs() async throws -> Set<UUID> {
+        pruneExpired(at: clock.now)
+        return Set(state.viewedPostIDs)
+    }
+
+    /// タイムラインに出しうる回答（既読を含む）。
+    /// 同一お題・自分以外・表示期限内という3条件だけをここで満たす（F11）。
+    /// ブロック外・BAN外はスプリント04／05でここに足す。
+    private func candidates(promptID: String, at now: Date) -> [Post] {
         // 期限切れの回答は誰にも見せない（F10）。有効期間外のお題なら 0 件。
         guard let prompt = schedule.prompt(id: promptID), prompt.isActive(at: now) else { return [] }
         let myAuthorID = state.user?.id
@@ -151,23 +189,33 @@ actor LocalBackend: Backend {
 
     // MARK: 期限切れの掃除（F10）
 
-    /// 表示期限を過ぎた自分の回答と、そこに紐づくいいねを保存から落とす。
+    /// 表示期限を過ぎた自分の回答と、そこに紐づくいいね・既読を保存から落とす。
     ///
-    /// 「その日の言葉は消える」ため履歴は持たない。消えた投稿への いいね も残さない。
+    /// 「その日の言葉は消える」ため履歴は持たない。消えた投稿への いいね も既読も残さない。
     /// 保存内容が変わったときだけ書き込む。
+    ///
+    /// 既読だけは「期限切れと**確認できた**投稿」に限って落とす。
+    /// 検証用の起動引数で回答の顔ぶれが変わったときに、既読が黙って消えないようにするため。
     private func pruneExpired(at now: Date) {
         let liveMyPosts = state.myPosts.filter { $0.isVisible(at: now) }
         let livePostIDs = Set(liveMyPosts.map(\.id)).union(
             schedule.posts.filter { $0.isVisible(at: now) }.map(\.id)
         )
+        let expiredPostIDs = Set(state.myPosts.filter { !$0.isVisible(at: now) }.map(\.id)).union(
+            schedule.posts.filter { !$0.isVisible(at: now) }.map(\.id)
+        )
         let liveLikes = state.likedPostIDs.filter { livePostIDs.contains($0) }
+        let liveViewed = state.viewedPostIDs.filter { !expiredPostIDs.contains($0) }
 
-        guard liveMyPosts.count != state.myPosts.count || liveLikes.count != state.likedPostIDs.count else {
+        guard liveMyPosts.count != state.myPosts.count
+            || liveLikes.count != state.likedPostIDs.count
+            || liveViewed.count != state.viewedPostIDs.count else {
             return
         }
         var next = state
         next.myPosts = liveMyPosts
         next.likedPostIDs = liveLikes
+        next.viewedPostIDs = liveViewed
         try? store.save(next)
         state = next
     }

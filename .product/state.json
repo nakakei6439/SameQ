@@ -1,5 +1,5 @@
 {
-  "currentSprint": "02",
+  "currentSprint": "03",
   "attempt": 1,
   "status": "awaiting_eval",
   "history": [
@@ -20,6 +20,18 @@
       "attempt": 1,
       "result": "awaiting_eval",
       "note": "F08/F09/F10 実装。お題待ち画面、28時間の有効期間、投稿の表示期限、期限またぎの自動切り替え。検証用の起動引数 -SameQScenario / -SameQExpirySeconds / -SameQGapSeconds / -SameQTimeOffsetMinutes / -SameQDebugOverlay を用意。ユニット6本+UI10本すべて通過"
+    },
+    {
+      "sprint": "02",
+      "attempt": 1,
+      "result": "passed",
+      "note": "evaluator が iPhone 17 Pro / iOS 26.3 シミュレータで実操作検証。受け入れ条件6/6、クラッシュ0、回帰5/5。詳細は .product/sprints/02-prompt-lifecycle/eval-1.md"
+    },
+    {
+      "sprint": "03",
+      "attempt": 1,
+      "result": "awaiting_eval",
+      "note": "F11/F12 実装。未読優先のランダム1件取得、既読の永続（viewedPostIDs / schemaVersion 2）、読み切り(timeline.exhausted)と0件(timeline.empty)の明示表示、前へ戻る操作を持たない構造。検証用の起動引数 -SameQAnswerCount <0|1|120> / -SameQResetViewed を追加。同梱シードの prompt_001 を22件へ増量。ユニット16本+UI17本すべて通過。スプリント01の受け入れ条件8の検証手順のみ -SameQResetViewed を挟む形に変更（self-review.md に理由を記載）"
     }
   ]
 }

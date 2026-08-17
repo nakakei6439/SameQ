@@ -8,16 +8,21 @@ import Foundation
 ///
 /// 使える引数:
 /// - `-SameQResetState`               保存済みの状態を捨てて初回設定からやり直す
+/// - `-SameQResetViewed`              既読の記録だけを消す（アカウント・回答・いいねは残す）
 /// - `-SameQScenario <名前>`          お題の日程シナリオ（`live` / `expiring` / `expired` / `upcoming`）
 /// - `-SameQExpirySeconds <秒>`       `expiring` で現在のお題が終了するまでの秒数（既定 180）
 /// - `-SameQGapSeconds <秒>`          `expiring` で終了から次のお題開始までの秒数（既定 180）
+/// - `-SameQAnswerCount <件数>`       各お題の「自分以外の回答」を指定件数に固定する（0 / 1 / 120 など）
 /// - `-SameQTimeOffsetMinutes <分>`   アプリが認識する「今」を前後にずらす（負値も可）
-/// - `-SameQDebugOverlay`             画面下に現在時刻・お題ID・残り秒数を出す
+/// - `-SameQDebugOverlay`             画面下に現在時刻・お題ID・残り秒数・未読/既読件数を出す
 struct LaunchOptions: Sendable {
     var resetsState: Bool = false
+    var resetsViewed: Bool = false
     var scenario: PromptScenario = .live
     var expirySeconds: TimeInterval = 180
     var gapSeconds: TimeInterval = 180
+    /// 各お題に用意する「自分以外の回答」の件数。nil なら同梱シードのまま。
+    var answerCount: Int?
     var timeOffset: TimeInterval = 0
     var showsDebugOverlay: Bool = false
 
@@ -33,7 +38,11 @@ struct LaunchOptions: Sendable {
         }
 
         options.resetsState = arguments.contains("-SameQResetState")
+        options.resetsViewed = arguments.contains("-SameQResetViewed")
         options.showsDebugOverlay = arguments.contains("-SameQDebugOverlay")
+        if let count = value(after: "-SameQAnswerCount").flatMap(Int.init) {
+            options.answerCount = max(0, count)
+        }
         if let name = value(after: "-SameQScenario"), let scenario = PromptScenario(rawValue: name) {
             options.scenario = scenario
         }

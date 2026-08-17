@@ -18,6 +18,20 @@ final class AppSession {
         case failure(String)
     }
 
+    /// 世界タイムラインの表示内容（F11 / F12）。
+    /// 「まだ誰も答えていない」と「自分が読み尽くした」は別の文言で出す。
+    enum TimelineContent: Equatable {
+        case loading
+        case post(Post)
+        case empty
+        case exhausted
+
+        var post: Post? {
+            if case .post(let post) = self { return post }
+            return nil
+        }
+    }
+
     private let backend: Backend
     private let clock: AppClock
 
@@ -26,11 +40,15 @@ final class AppSession {
     private(set) var promptState: PromptState = .waiting(nextStartsAt: nil)
     /// 今日のお題への自分の回答。nil の間は世界タイムラインを開けない（F05）。
     private(set) var myPost: Post?
-    private(set) var timelinePosts: [Post] = []
+    /// タイムラインにいま出しているもの（F11 / F12）。回答は常に1件だけ持ち、配列で先読みしない。
+    private(set) var timelineContent: TimelineContent = .loading
     private(set) var likedPostIDs: Set<UUID> = []
     private(set) var isTimelinePresented = false
     /// アプリが認識している「今」。1秒ごとの `refresh()` で更新する。
     private(set) var now: Date
+    /// Debug オーバーレイ用。いまのお題で表示しうる回答の総数と、既読の件数。
+    private(set) var timelineCandidateCount = 0
+    private(set) var timelineViewedCount = 0
 
     /// 投稿失敗などの一時的なメッセージ。表示したら nil に戻す。
     var alertMessage: String?
@@ -95,16 +113,18 @@ final class AppSession {
         case .waiting:
             // お題待ちでは自分の回答も世界の回答も見せない（F08 / F10）。
             isTimelinePresented = false
-            timelinePosts = []
+            timelineContent = .loading
             myPost = nil
             likedPostIDs = try await backend.likedPostIDs()
             screen = .waiting
         case .active(let prompt):
             myPost = try await backend.myPost(promptID: prompt.id)
             likedPostIDs = try await backend.likedPostIDs()
+            timelineCandidateCount = try await backend.timelinePosts(promptID: prompt.id).count
+            timelineViewedCount = try await backend.viewedPostIDs().count
             if !openTimelineIfAnswered || myPost == nil {
                 isTimelinePresented = false
-                timelinePosts = []
+                timelineContent = .loading
             }
             screen = .today
             if openTimelineIfAnswered, myPost != nil {
@@ -145,17 +165,48 @@ final class AppSession {
         }
     }
 
-    // MARK: 世界タイムライン（F06）
+    // MARK: 世界タイムライン（F06 / F11 / F12）
 
     /// 有効なお題があり、かつ自分の回答がある場合だけ開く。それ以外では何も起きない。
+    /// 開いた時点で1件目を引く。既読は端末に残っているので、開き直しても続きから出る。
     func openTimeline() async {
         guard let prompt, myPost != nil else { return }
+        timelineContent = .loading
+        isTimelinePresented = true
         do {
-            timelinePosts = try await backend.timelinePosts(promptID: prompt.id).shuffled()
             likedPostIDs = try await backend.likedPostIDs()
-            isTimelinePresented = true
         } catch {
             alertMessage = error.localizedDescription
+        }
+        await drawNextPost()
+    }
+
+    /// 次の1件へ進む。前へ戻る操作は用意しない（置いた前提5）。
+    func advanceTimeline() async {
+        guard isTimelinePresented else { return }
+        await drawNextPost()
+    }
+
+    private func drawNextPost() async {
+        guard let prompt else {
+            timelineContent = .empty
+            return
+        }
+        do {
+            switch try await backend.nextTimelinePost(promptID: prompt.id) {
+            case .post(let post):
+                timelineContent = .post(post)
+            case .empty:
+                timelineContent = .empty
+            case .exhausted:
+                timelineContent = .exhausted
+            }
+            timelineCandidateCount = try await backend.timelinePosts(promptID: prompt.id).count
+            timelineViewedCount = try await backend.viewedPostIDs().count
+        } catch {
+            // 読めなかったときも無限ローディングにはせず、読み切りと同じ明示状態に落とす。
+            alertMessage = error.localizedDescription
+            timelineContent = .exhausted
         }
     }
 
@@ -208,6 +259,10 @@ final class AppSession {
             }
         }
         parts.append(myPost == nil ? "unanswered" : "answered")
+        // 未読優先と既読の永続を目で確かめられるようにする（F11 / F12）。
+        parts.append("answers \(timelineCandidateCount)")
+        parts.append("viewed \(timelineViewedCount)")
+        parts.append("liked \(likedPostIDs.count)")
         return parts.joined(separator: " · ")
     }
 }

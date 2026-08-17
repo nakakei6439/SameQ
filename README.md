@@ -11,18 +11,23 @@
 
 ## 現在の状態
 
-スプリント02（お題のライフサイクルと投稿の寿命）まで実装済み。
-初回設定 → 今日のお題 → 回答投稿 → 世界タイムライン → いいね に加えて、
+スプリント03（タイムラインの取得ルールと既読管理）まで実装済み。
+初回設定 → 今日のお題 → 回答投稿 → 世界タイムライン → いいね が動き、
 お題の有効期間（28時間・常に1つだけ有効）、有効なお題が無い時間帯の**お題待ち画面**、
-投稿の表示期限（お題の終了時刻に揃える）が動く。期限を過ぎると回答はタイムラインから消え、
-新しいお題が始まると再び未回答状態に戻る。翻訳・通知配信・お題の自動生成・課金は後続スプリント。
+投稿の表示期限（お題の終了時刻に揃える）が効く。
+
+世界タイムラインは「同一お題／自分以外／表示期限内」の回答から**未読だけをランダムに1件**引く。
+出した回答はその場で既読として端末に記録するので、スワイプし続けても、アプリを再起動しても
+同じ回答は二度と出てこない。読み尽くしたら「今は新しい回答がありません」、
+自分の回答しか無ければ「まだ誰も答えていません」を表示する。前の回答へ戻る操作は無い。
+翻訳・通知配信・お題の自動生成・課金は後続スプリント。
 
 ### 動かす
 
 ```bash
 open SameQ.xcodeproj      # 外部パッケージ依存なし。そのままビルド・実行できる
 
-# 受け入れ条件の自動確認（ユニット6本 + UIテスト10本）
+# 受け入れ条件の自動確認（ユニット16本 + UIテスト17本）
 xcodebuild -project SameQ.xcodeproj -scheme SameQ \
   -destination 'platform=iOS Simulator,name=iPhone 17' test
 ```
@@ -42,7 +47,19 @@ xcodebuild -project SameQ.xcodeproj -scheme SameQ \
 | `-SameQExpirySeconds 120` | `expiring` で終了までの秒数（既定 180） |
 | `-SameQGapSeconds 60` | `expiring` で終了から次の開始までの秒数（既定 180） |
 | `-SameQTimeOffsetMinutes 90` | アプリが認識する「今」を前後にずらす |
-| `-SameQDebugOverlay` | 画面下に現在時刻・お題ID・残り秒数を表示 |
+| `-SameQDebugOverlay` | 画面下に現在時刻・お題ID・残り秒数・回答/既読/いいねの件数を表示 |
+
+### タイムラインの取得ルールと既読を検証する（Debug ビルド限定の起動引数）
+
+| 引数 | 意味 |
+|---|---|
+| `-SameQAnswerCount 0` | 自分以外の回答を0件にする（＝自分の1件しか無い状態。空状態の確認用） |
+| `-SameQAnswerCount 1` | 自分以外の回答を1件にする |
+| `-SameQAnswerCount 120` | 自分以外の回答を120件にする（大量ケース。本文に `#1-76` のような通し番号が入る） |
+| `-SameQResetViewed` | 既読の記録だけを消す。アカウント・自分の回答・いいねは残る |
+
+引数を付けない場合は同梱シードのまま（`prompt_001` に22件、`prompt_002` に12件）なので、
+20回スワイプして重複が無いことはそのままでも確認できる。
 
 ### 構成
 
@@ -51,14 +68,13 @@ xcodebuild -project SameQ.xcodeproj -scheme SameQ \
 | `project.yml` | XcodeGen のプロジェクト定義（`SameQ.xcodeproj` は生成物だがコミットしてある） |
 | `SameQ/Backend/` | データ層。`Backend` プロトコル、端末内実装 `LocalBackend`、お題の日程（`PromptSchedule` / `SeedCatalog`）、検証用の起動引数（`LaunchOptions`） |
 | `SameQ/Feature/` | 画面（Onboarding / Waiting / Today / Timeline） |
-| `SameQ/Resources/SeedData.json` | お題2件と、それぞれへの世界の回答（14件 / 12件、13言語） |
-| `SameQTests/` | お題の有効期間と投稿の表示期限のユニットテスト |
+| `SameQ/Resources/SeedData.json` | お題2件と、それぞれへの世界の回答（22件 / 12件、18言語） |
+| `SameQTests/` | お題の有効期間・投稿の表示期限・タイムラインの取得ルールと既読のユニットテスト |
 | `SameQUITests/` | 受け入れ条件をなぞる UI テスト |
 | `supabase/migrations/` | users / prompts / posts / likes / viewed_posts と RLS の定義 |
 
 **注意**: Supabase のクラウドプロジェクトは作成済み・初期マイグレーション適用済みだが、
 アプリはまだ `LocalBackend`（端末内）で動いており、サーバーには接続していない。
-スプリント02で追加したマイグレーション（`20260817000002_prompt_lifecycle.sql`）は未適用。
 詳細は [`PROGRESS.md`](PROGRESS.md) のブロッカー B01 を参照。
 
 ## ドキュメント

@@ -1,21 +1,50 @@
 import Foundation
 
-/// 端末に永続化する内容。アカウント・自分の回答・自分のいいねだけを持つ。
+/// 端末に永続化する内容。アカウント・自分の回答・自分のいいね・既読の記録だけを持つ。
 /// 他人の回答は同梱シード（`SeedCatalog`）側にあるので保存しない。
 struct PersistedState: Codable, Sendable {
     var schemaVersion: Int
     var user: AppUser?
     var myPosts: [Post]
     var likedPostIDs: [UUID]
+    /// 一度タイムラインに出した回答の ID（F12）。再起動しても同じ回答を出さないために残す。
+    var viewedPostIDs: [UUID]
 
-    static let currentSchemaVersion = 1
+    /// 2 で `viewedPostIDs` を追加した。
+    static let currentSchemaVersion = 2
 
     static let empty = PersistedState(
         schemaVersion: currentSchemaVersion,
         user: nil,
         myPosts: [],
-        likedPostIDs: []
+        likedPostIDs: [],
+        viewedPostIDs: []
     )
+
+    init(
+        schemaVersion: Int,
+        user: AppUser?,
+        myPosts: [Post],
+        likedPostIDs: [UUID],
+        viewedPostIDs: [UUID]
+    ) {
+        self.schemaVersion = schemaVersion
+        self.user = user
+        self.myPosts = myPosts
+        self.likedPostIDs = likedPostIDs
+        self.viewedPostIDs = viewedPostIDs
+    }
+
+    /// 旧バージョン（schemaVersion 1）の保存ファイルにはキーが無いので、
+    /// 欠けている項目は空として読む。アカウントを消さずに移行するため。
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        user = try container.decodeIfPresent(AppUser.self, forKey: .user)
+        myPosts = try container.decodeIfPresent([Post].self, forKey: .myPosts) ?? []
+        likedPostIDs = try container.decodeIfPresent([UUID].self, forKey: .likedPostIDs) ?? []
+        viewedPostIDs = try container.decodeIfPresent([UUID].self, forKey: .viewedPostIDs) ?? []
+    }
 }
 
 /// `PersistedState` を JSON 1ファイルとして読み書きする。

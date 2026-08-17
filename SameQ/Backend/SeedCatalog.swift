@@ -61,7 +61,8 @@ enum SeedCatalog {
             let startsAt = starts[index]
             let endsAt = startsAt.addingTimeInterval(Prompt.defaultDuration)
             prompts.append(Prompt(id: seedPrompt.id, text: seedPrompt.text, startsAt: startsAt, endsAt: endsAt))
-            posts.append(contentsOf: seedPrompt.posts.map { seed in
+
+            var promptPosts = seedPrompt.posts.map { seed in
                 // 投稿時刻は画面に出さないので、お題の期間内に収まっていれば十分。
                 let createdAt = min(startsAt.addingTimeInterval(Double(seed.minutesAgo) * 60), endsAt)
                 return Post(
@@ -75,10 +76,84 @@ enum SeedCatalog {
                     createdAt: createdAt,
                     expiresAt: endsAt
                 )
-            })
+            }
+            if let requested = options.answerCount {
+                promptPosts = resize(
+                    promptPosts,
+                    to: requested,
+                    promptSlot: index,
+                    promptID: seedPrompt.id,
+                    startsAt: startsAt,
+                    endsAt: endsAt
+                )
+            }
+            posts.append(contentsOf: promptPosts)
         }
         return PromptSchedule(prompts: prompts, posts: posts)
     }
+
+    // MARK: 検証用の件数調整（`-SameQAnswerCount`）
+
+    /// 各お題の回答を指定件数ちょうどに揃える。
+    ///
+    /// 足りないぶんは機械的に作る。ID は起動ごとに変わらない決め打ちなので、
+    /// アプリを再起動しても「同じ回答」として既読の判定ができる（F12 の検証に必要）。
+    /// 本文には通し番号を入れてあり、同じ回答が2回出ていないかを目視で追える。
+    private static func resize(
+        _ seeded: [Post],
+        to count: Int,
+        promptSlot: Int,
+        promptID: String,
+        startsAt: Date,
+        endsAt: Date
+    ) -> [Post] {
+        if count <= seeded.count { return Array(seeded.prefix(count)) }
+        var posts = seeded
+        let span = endsAt.timeIntervalSince(startsAt)
+        for number in (seeded.count + 1)...count {
+            let sentence = generatedSentences[(promptSlot + number) % generatedSentences.count]
+            let emoji = generatedEmojis[number % generatedEmojis.count]
+            // 4件に1件はニックネーム未設定（絵文字のみ表示のレイアウト確認用）。
+            let nickname = number % 4 == 0 ? nil : "\(generatedNicknames[number % generatedNicknames.count])\(number)"
+            posts.append(
+                Post(
+                    id: deterministicID(prefix: 0xA0, promptSlot: promptSlot, number: number),
+                    promptID: promptID,
+                    authorID: deterministicID(prefix: 0xB0, promptSlot: promptSlot, number: number),
+                    authorEmoji: emoji,
+                    authorNickname: nickname,
+                    body: "\(sentence)（#\(promptSlot + 1)-\(number)）",
+                    bodyLanguage: "ja",
+                    createdAt: startsAt.addingTimeInterval(span * Double(number % 100) / 200),
+                    expiresAt: endsAt
+                )
+            )
+        }
+        return posts
+    }
+
+    /// 起動をまたいで同じ値になる UUID。乱数もハッシュも使わない（Swift の Hasher は毎起動で変わるため）。
+    private static func deterministicID(prefix: Int, promptSlot: Int, number: Int) -> UUID {
+        let string = String(format: "%02X%06X-0000-4000-8000-%012X", prefix, promptSlot, number)
+        return UUID(uuidString: string) ?? UUID()
+    }
+
+    private static let generatedSentences = [
+        "朝の電車で、知らない人が席を譲っていた",
+        "コーヒーをこぼしたけど、誰も見ていなかった",
+        "犬が信号をちゃんと待っていた",
+        "母からの短いメッセージで少し泣いた",
+        "夜中に食べたアイスがやたらおいしかった",
+        "同僚の口癖がうつっていることに気づいた",
+        "洗濯物がよく乾いた日だった",
+        "階段を1段飛ばしで上がれた",
+        "рядом сидящий человек тихо напевал",
+        "The rain stopped exactly when I stepped outside"
+    ]
+
+    private static let generatedEmojis = ["🌙", "🐢", "🌵", "🍋", "🧦", "🌿", "🐧", "🫖", "🪐", "🍞"]
+
+    private static let generatedNicknames = ["Mina", "Kai", "ふゆ", "Noor", "Sora", "Leo", "하늘", "Aya"]
 
     /// 各お題の開始時刻。期間が重ならないよう、2件目以降は前のお題の終了時刻以降に置く。
     private static func startDates(
