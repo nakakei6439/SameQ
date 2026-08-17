@@ -1,7 +1,7 @@
 {
-  "currentSprint": "04",
+  "currentSprint": "05",
   "attempt": 1,
-  "status": "passed",
+  "status": "awaiting_eval",
   "history": [
     {
       "sprint": "01",
@@ -50,6 +50,12 @@
       "attempt": 1,
       "result": "passed",
       "note": "evaluator が iPhone 17 シミュレータ2台で実操作検証。独自 XCUITest 10本（E01〜E10）＋ simctl 単体起動。受け入れ条件6/6、評価者への注記2件（ブロック一覧の情報漏れ無し・最後の1件をブロックしても exhausted へ正しく落ちる）も確認。クラッシュ0、データ整合性OK（state.json の reports / blockedAuthors を直接確認・schemaVersion 3）、回帰5/5、使用性4。詳細は .product/sprints/04-report-block/eval-1.md"
+    },
+    {
+      "sprint": "05",
+      "attempt": 1,
+      "result": "awaiting_eval",
+      "note": "F16/F17 実装。1お題1投稿の担保確認、直近投稿と同一本文の連投拒否（lastPostBody / schemaVersion 4）、空白・改行のみ／同一文字の過剰な繰り返しの拒否（PostValidator）、いいね・通報の連打制限（RateLimiter、Debug限定 -SameQRateLimitTestMode）、BAN状態のアカウント締め出し（Debug限定 -SameQBanned → BannedView）、BANされた投稿者の回答の非表示化（SeedData.json の bannedAuthorIDs → LocalBackend.visibleOthers）。制限メッセージは日本語・英語を併記。実装中に TodayPromptView と TimelineView の二重アラート競合でタイムラインが閉じる不具合を発見・修正。ユニット12本+UIテスト7本を追加（合計37+31、スプリント01〜04の回帰も全通過）"
     }
   ]
 }
