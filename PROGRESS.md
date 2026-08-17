@@ -16,19 +16,19 @@
 | 開発ハーネス | planner → generator → evaluator |
 
 ## 現在の状態
-- **フェーズ**: リポジトリ初期化
+- **フェーズ**: スプリント01 実装
 - **状態**: 進行中
-- **次にやること**: `git init` → 初回コミット → `gh repo create nakakei6439/SameQ --private` → push。完了後、スプリント01の実装に generator エージェントで着手する。
-- **再開に必要な情報**: 仕様書は `.product/spec.md` に確定済み（変更なし）。まだ generator エージェントは1度も呼んでいない。
+- **次にやること**: generator エージェントでスプリント01（コア体験）を実装する。
+- **再開に必要な情報**: リポジトリは https://github.com/nakakei6439/SameQ にpush済み（コミット `52c93f2`）。仕様書は `.product/spec.md` に確定済み（変更なし）。
 
 ---
 
 ## 作業単位チェックリスト
 
 ### 0. リポジトリ初期化
-- [ ] `git init` / `.gitignore`・`README.md` 作成
-- [ ] 初回コミット（`.product/spec.md`, `PROGRESS.md`, `README.md`, `.gitignore`）
-- [ ] GitHub Private リポジトリ `nakakei6439/SameQ` 作成・push
+- [x] `git init` / `.gitignore`・`README.md` 作成
+- [x] 初回コミット（`.product/spec.md`, `PROGRESS.md`, `README.md`, `.gitignore`）— commit `52c93f2`
+- [x] GitHub Private リポジトリ `nakakei6439/SameQ` 作成・push — https://github.com/nakakei6439/SameQ
 
 ### スプリント01: コア体験（設定→お題→投稿→世界タイムライン→いいね）
 含む機能: F01, F02, F03, F04, F05, F06, F07
