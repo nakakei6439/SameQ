@@ -16,9 +16,13 @@
 | 開発ハーネス | planner → generator → evaluator |
 
 ## 現在の状態
-- **フェーズ**: スプリント03 実装完了 → **スプリント03 評価待ち**
-- **状態**: スプリント03（タイムラインの取得ルールと既読管理 / F11・F12）を実装（attempt 1）。未読優先のランダム1件取得、既読の永続、読み切り／0件の明示表示、検証用の起動引数 `-SameQAnswerCount` / `-SameQResetViewed` を追加。ユニット16本 ＋ UIテスト17本すべて通過。詳細は [`plan.md`](.product/sprints/03-timeline-rules/plan.md) / [`self-review.md`](.product/sprints/03-timeline-rules/self-review.md)。
-- **次にやること**: **evaluator によるスプリント03の検証**。受け入れ条件は `.product/spec.md` 143〜149行。評価者への注記は151行（0件・1件・100件以上の3ケース、再起動後も既読が残ること）。
+- **フェーズ**: スプリント03 **合格** → **スプリント04（通報とブロック）実装待ち**
+- **状態**: スプリント03（タイムラインの取得ルールと既読管理 / F11・F12）は **evaluator の実機検証で合格**（attempt 1、2026-08-18）。iPhone 17 シミュレータ2台で、evaluator 独自の XCUITest 10本 ＋ `simctl launch` による素の起動・`state.json` の直接確認を実施。受け入れ条件6/6、0件・1件・120件の3ケース、再起動後の既読残存、いいねの永続（既読と独立）まで確認済み。クラッシュ0。詳細は [`eval-1.md`](.product/sprints/03-timeline-rules/eval-1.md)。
+- **次にやること**: **スプリント04（通報とブロック / F13・F14・F15）の実装**（generator）。受け入れ条件は `.product/spec.md` 160〜166行、評価者への注記は168行。通報導線と理由選択・通報後の即時非表示・ブロックと永続化・設定内のブロック一覧と解除を作る。取得条件の追加先は `LocalBackend.candidates(promptID:at:)`。
+  - 評価で挙がった改善提案（合否には影響しないが、着手前に planner が判断すること）:
+    - **[A] いいねが押した直後以外はユーザーから見えなくなった**（F12 で既読の回答は再表示されないため）。スプリント01の受け入れ条件8は通常操作では検証不能。仕様側で「いいねは誰にも見えない」ことを明記するか、いいねの意味づけを決める。
+    - **[B] `state.json` の `schemaVersion` が移行後も 1 のまま**（保存時に `currentSchemaVersion` へ揃えていない）。将来の移行分岐で誤判定する。
+    - **[C] 読み切り画面に「引き直す」導線が無い**（閉じて開き直せば引けるが説明が無い）。
 - **再開に必要な情報**:
   - Xcodeプロジェクトは `SameQ.xcodeproj`（`project.yml` から XcodeGen で生成。生成物もコミット済みなので `open SameQ.xcodeproj` で即ビルドできる）。
   - 自動確認は `xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'platform=iOS Simulator,name=iPhone 17' test`（`SameQTests` 16本 ＋ `SameQUITests` 17本）。
@@ -57,7 +61,7 @@
 ### スプリント03: タイムラインの取得ルールと既読管理
 含む機能: F11, F12
 - [x] 実装（generator）— 2026-08-18。未読優先のランダム1件取得、既読の記録と永続、読み切り／0件の明示表示、前へ戻る操作を持たないことの担保、検証用の起動引数（`-SameQAnswerCount` / `-SameQResetViewed`）。[`plan.md`](.product/sprints/03-timeline-rules/plan.md) / [`self-review.md`](.product/sprints/03-timeline-rules/self-review.md)
-- [ ] 評価（evaluator）— 受け入れ条件は `.product/spec.md` 143〜149行
+- [x] 評価（evaluator）— 2026-08-18 **合格**（attempt 1）。受け入れ条件6/6・0件/1件/120件の3ケース確認・再起動後も既読が残る・クラッシュ0・データ整合性OK（旧 schemaVersion 1 からの移行も確認）・回帰8/8・使用性4。[`eval-1.md`](.product/sprints/03-timeline-rules/eval-1.md)
 
 ### スプリント04: 通報とブロック
 含む機能: F13, F14, F15
