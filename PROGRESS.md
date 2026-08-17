@@ -16,10 +16,10 @@
 | 開発ハーネス | planner → generator → evaluator |
 
 ## 現在の状態
-- **フェーズ**: スプリント04（通報とブロック）**評価合格 → スプリント05の実装へ**
-- **状態**: スプリント04（F13・F14・F15）を実装（attempt 1、2026-08-18）。タイムライン右上 ⋯ からの通報（理由7種の選択→送信→完了表示）とブロック（確認→完了表示）、設定画面のブロック一覧と解除、`LocalBackend.candidates()` への「通報済み除外／ブロック中の相手を除外」の追加、schemaVersion 3 への移行を実装。ユニット25本＋UIテスト24本が通過（スプリント01〜03の回帰も全通過）。詳細は [`plan.md`](.product/sprints/04-report-block/plan.md) / [`self-review.md`](.product/sprints/04-report-block/self-review.md)。
+- **フェーズ**: スプリント05（BAN・投稿頻度制限・スパム対策）実装済み → **スプリント05 評価待ち**
+- **状態**: スプリント05（F16・F17）を実装（attempt 1、2026-08-18）。1お題1投稿の担保（既存実装の確認のみ）、直近投稿と同一本文の連投拒否（`PersistedState.lastPostBody`）、空白・改行のみ／同一文字の過剰な繰り返しの拒否（`PostValidator`）、いいね・通報の連打制限（`RateLimiter`、Debug限定 `-SameQRateLimitTestMode` で短縮可）、BAN状態のアカウント締め出し（Debug限定 `-SameQBanned` → `BannedView`）、BANされた投稿者の回答の非表示化（`SeedData.json` の `bannedAuthorIDs` → `LocalBackend.visibleOthers`）を実装。制限メッセージは日本語・英語を併記。実装中に見つけた不具合（`TodayPromptView` と `TimelineView` が同じ `alertMessage` に二重に `.alert` を出し、競合してタイムラインごと閉じる）も修正。ユニット12本＋UIテスト7本を追加（合計 37 ＋ 31、スプリント01〜04の回帰も全通過）。詳細は [`plan.md`](.product/sprints/05-ban-spam/plan.md) / [`self-review.md`](.product/sprints/05-ban-spam/self-review.md)。
 - **評価結果（2026-08-18）**: スプリント04は **合格**（attempt 1）。受け入れ条件6/6・評価者への注記2件も確認・クラッシュ0・データ整合性OK・回帰5/5・使用性4。詳細は [`eval-1.md`](.product/sprints/04-report-block/eval-1.md)。
-- **次にやること**: **スプリント05（BAN・投稿頻度制限・スパム対策 / F16・F17）の実装**。受け入れ条件は `.product/spec.md` 177〜183行、評価者への注記は185行。
+- **次にやること**: **evaluatorによる検証**（スプリント05）。受け入れ条件は `.product/spec.md` 177〜183行、評価者への注記は185行。動かし方は [`self-review.md`](.product/sprints/05-ban-spam/self-review.md) の「動かし方（evaluator向け）」を参照。
   - スプリント04の評価で挙がった改善提案（合否には影響しないが、着手時に踏まえる）:
     - **[1] 読み切り・0件の状態でも ⋯ ボタンがアクセシビリティツリーに残る**（見た目は非表示・タップ不可だがラベルが読み上げられる）。`.accessibilityHidden(true)` か条件付き生成に。
     - **[2] ブロック解除で「以前読んだ回答」も未読に戻る**。ブロック時に既読を消すのではなく、ブロック中は既読判定から外す形にすると副作用が消える。
@@ -32,15 +32,18 @@
     - **[C] 読み切り画面に「引き直す」導線が無い** — 未対応（スプリント03で「再表示の導線は作らない」と決めたため）。
 - **再開に必要な情報**:
   - Xcodeプロジェクトは `SameQ.xcodeproj`（`project.yml` から XcodeGen で生成。生成物もコミット済みなので `open SameQ.xcodeproj` で即ビルドできる）。
-  - 自動確認は `xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'platform=iOS Simulator,name=iPhone 17' test`（`SameQTests` 25本 ＋ `SameQUITests` 24本）。
+  - 自動確認は `xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'platform=iOS Simulator,name=iPhone 17' test`（`SameQTests` 37本 ＋ `SameQUITests` 31本）。
   - 初回設定からやり直すには、アプリを削除するか Debug ビルドに起動引数 `-SameQResetState` を付ける。
   - **お題の日程を切り替える起動引数（Debug 限定）**: `-SameQScenario live|expiring|expired|upcoming`、`-SameQExpirySeconds <秒>`、`-SameQGapSeconds <秒>`、`-SameQTimeOffsetMinutes <分>`、`-SameQDebugOverlay`。実時間で28時間待たずに切り替わりを確認するためのもの。
   - **タイムラインの取得ルールと既読を検証する起動引数（Debug 限定・スプリント03で追加）**: `-SameQAnswerCount <件数>`（自分以外の回答を 0 / 1 / 120 件などに固定）、`-SameQResetViewed`（既読の記録だけ消す）。詳細は README と 03 の self-review.md。
   - **Debug オーバーレイに `reported` / `blocked` を追加**（スプリント04）。`-SameQDebugOverlay` で通報数・ブロック中の人数が数字で追える。
-- **スプリント05 に入るときに踏まえること**:
-  1. タイムラインの候補の絞り込みは `LocalBackend.candidates(promptID:at:)`（ブロック・通報を適用）と `visibleOthers(promptID:at:)`（適用前）に分かれている。スプリント05の「BAN外」は `visibleOthers` 側（誰にも見せない条件）に足すこと。
-  2. `.empty`（自分以外の回答が0件）と `.exhausted`（読み切り／ブロック・通報で出せない）の切り分けは `nextTimelinePost` の冒頭にある。BAN を足すときも「まだ誰も答えていない」と混同しないこと。
-  3. 通報・ブロックの連打制限（F17）はスプリント05。いまは同じ回答を二重に通報しても記録が1件になるだけで、回数制限は無い。
+  - **BAN・連打制限を検証する起動引数（Debug 限定・スプリント05で追加）**: `-SameQBanned`（自分のアカウントをBAN状態にして起動）、`-SameQRateLimitTestMode`（いいね・通報の連打制限の閾値を短時間で確認できる値に縮める）。詳細は 05 の self-review.md。
+- **スプリント05で踏まえたこと**:
+  1. タイムラインの候補の絞り込みは `LocalBackend.candidates(promptID:at:)`（ブロック・通報を適用）と `visibleOthers(promptID:at:)`（適用前）に分かれている。BAN外の条件は `visibleOthers` 側に足した（`.empty`/`.exhausted` の判定にも自動的に効く）。
+  2. いいね・通報の連打制限はプロセス内メモリだけ（`PersistedState` に永続化していない）。再起動すればリセットされる。詳細と判断理由は 05 の self-review.md「自分で見つけた弱点」。
+  3. `TodayPromptView` と `TimelineView` はどちらも同じ `session.alertMessage` を見ているが、`fullScreenCover` 使用時は両方が同時にマウントされているため、`isTimelinePresented` でどちらか一方だけがアラートを出すようにゲートしてある。今後アラートを追加する画面がある場合はこの点に注意すること（同じ `alertMessage` を複数の `.alert` で同時に `isPresented: true` にすると、片方の提示に巻き込まれてもう片方の `fullScreenCover`/`sheet` ごと閉じることがある）。
+  4. BANの判定は起動引数 `-SameQBanned` のみで、実データには紐づいていない（置いた前提10のとおり、本来はサーバー側の状態）。Supabase接続時に `users.status` を見る形へ差し替えること。
+  5. BANされた投稿者の同梱シード拠出は、既存の22件の**後ろ**に1件追加する形にした（`-SameQAnswerCount` を使う既存テストの件数に影響しないため）。大量件数の検証用に機械生成する回答（`SeedCatalog.resize`）にはBANを混ぜていない。
 - **スプリント04 で踏まえたこと（引き続き有効）**:
   1. タイムラインの候補の絞り込みは `LocalBackend.candidates(promptID:at:)` に集約してある。スプリント04の「ブロック外／通報済み以外」はここに条件を足した。
   2. スプリント03で **スプリント01の受け入れ条件8（いいねの押下状態が開き直しても残る）の検証手順を変更した**。F12（既読）を入れると一度出した回答は再表示されないため、`-SameQResetViewed` を挟んで同じ回答を出し直す手順にしている。いいねの永続そのものは維持（ユニットテスト `testLikesSurviveRelaunchIndependentlyOfViewedRecords` でも担保）。
@@ -82,7 +85,7 @@
 
 ### スプリント05: BAN・投稿頻度制限・スパム対策
 含む機能: F16, F17
-- [ ] 実装（generator）
+- [x] 実装（generator）— 2026-08-18。1お題1投稿の担保確認、直近投稿と同一本文の連投拒否、空白・改行のみ／同一文字の過剰な繰り返しの拒否、いいね・通報の連打制限、BAN状態のアカウント締め出し（Debug限定 `-SameQBanned`）、BANされた投稿者の回答の非表示化。制限メッセージは日英併記。[`plan.md`](.product/sprints/05-ban-spam/plan.md) / [`self-review.md`](.product/sprints/05-ban-spam/self-review.md)
 - [ ] 評価（evaluator）— 受け入れ条件は `.product/spec.md` 177〜183行
 
 ### スプリント06: 投稿本文とお題の自動翻訳
@@ -171,6 +174,15 @@
 29. **`-SameQAnswerCount` で機械生成する回答の投稿者を、お題をまたいで同一人物にした**（1お題1投稿は維持）。「ブロックした人が次のお題にも出てこない」を検証できるようにするため。
 30. **`LocalStore.save` で `schemaVersion` を現在値に揃えるようにした**（スプリント03評価の改善提案[B]）。schemaVersion 3 を足すにあたり、揃えないと移行判定を誤るため今回対応した。
 
+### スプリント05で決めたこと
+31. **BANは Debug限定の起動引数 `-SameQBanned` で模擬する**。「置いた前提10」（BANは運営がサーバー側で切り替える運用・アプリ内に運営用画面は作らない）のとおり、アプリ内にBAN切り替えUIは作らない。`AppSession.start()` の冒頭でこの引数を見て `.banned` 画面に固定するので、今日のお題・タイムラインへ到達する経路は存在しない。
+32. **BANされた投稿者の非表示は同梱シードに1件焼き込んで検証する**。`SeedData.json` に `bannedAuthorIDs`（トップレベル配列）を追加し、`PromptSchedule.bannedAuthorIDs` として保持、`LocalBackend.visibleOthers` で除外する。既存の22件（prompt_001）の**後ろ**に追加したので、`-SameQAnswerCount` を使う既存テスト（スプリント03・04）の件数には影響しない。
+33. **同一文面の連投拒否は「直近の1投稿」とのみ比較する**。`PersistedState.lastPostBody` を新設し、`myPosts`（期限切れで掃除される）とは別に、お題をまたいで残す。比較は前後の空白・改行を除いたうえでの完全一致。
+34. **無意味な文字列の判定は「最頻出1文字が70%以上・対象文字数4文字以上」の単純な閾値にした**。多言語の短い正常回答（「はい」「OK」など）を誤って弾かないための下限と、実際に「あああ」のような繰り返しを確実に拾うための上限を両立させる値として決めた。
+35. **いいね・通報の連打制限は `PersistedState` に永続化しない**（プロセス内メモリのみ、再起動でリセット）。「短時間の連打」を防ぐのが目的であり、悪質ユーザーの継続対策はBAN（サーバー側）が担う想定のため。
+36. **制限メッセージは日本語行＋英語行を同じ文字列に入れて常時両方表示する**（`BackendError.errorDescription` の該当ケースと `BannedView`）。アプリ全体の多言語対応の基盤（Localizable.strings 等）がまだ無いため、範囲をスプリント05で追加・変更したメッセージ（`emptyBody` / `bodyTooLong` / `duplicateBody` / `meaninglessBody` / `rateLimited` / BAN画面）に絞った。
+37. **`TimelineView` に `.alert` を新設した**（スプリント04の改善提案[4]の一部を解消）。いいね・通報の制限メッセージがタイムライン上で発生するため、表示先が必要になった。実装したところ、裏で生き続ける `TodayPromptView` の `.alert` と同時に `isPresented` になり `fullScreenCover` ごと閉じる不具合が見つかったため、`isTimelinePresented` でどちらか一方だけが有効になるようゲートした。
+
 ## 変更履歴
 - 2026-08-17: `.product/spec.md` 作成（planner）。PROGRESS.md 初版作成。
 - 2026-08-17: スプリント01 実装（generator）。SwiftUI雛形＋F01〜F07、Supabaseスキーマ、UIテスト5本。
@@ -182,3 +194,4 @@
 - 2026-08-18: スプリント03 実装（generator）。F11・F12。未読優先のランダム1件取得、既読の永続（`viewedPostIDs` / schemaVersion 2）、読み切り／0件の明示表示、検証用の起動引数 `-SameQAnswerCount` / `-SameQResetViewed`、同梱シードを22件へ増量。ユニットテスト10本＋UIテスト7本を追加（合計 16 ＋ 17）。次はスプリント03の evaluator 検証。
 - 2026-08-18: スプリント04 実装（generator）。F13・F14・F15。通報（理由7種・完了表示・即時非表示・永続）、ブロック（確認・完了表示・お題をまたいだ持続）、設定画面のブロック一覧と解除、`state.json` schemaVersion 3、Supabase マイグレーション `20260818000003_report_block.sql` を作成・**適用済み**（reports / blocks テーブル、world_timeline の絞り込み追加、blocked_authors ビュー）。ユニット9本＋UIテスト7本を追加。次はスプリント04の evaluator 検証。
 - 2026-08-18: スプリント04 評価（evaluator）。iPhone 17（iOS 26.5 / 26.3）シミュレータ2台で独自 XCUITest 10本＋`simctl` 単体起動により実操作検証し **合格**。通報・ブロック・ブロック一覧と解除・お題をまたいだ持続・最後の1件をブロックしたときの空状態を確認。次はスプリント05の実装。
+- 2026-08-18: スプリント05 実装（generator）。F16・F17。1お題1投稿の担保確認、直近投稿と同一本文の連投拒否（`lastPostBody`）、空白・改行のみ／同一文字の過剰な繰り返しの拒否（`PostValidator`）、いいね・通報の連打制限（`RateLimiter`、Debug限定 `-SameQRateLimitTestMode`）、BAN状態のアカウント締め出し（Debug限定 `-SameQBanned` → `BannedView`）、BANされた投稿者の回答の非表示化（`SeedData.json` の `bannedAuthorIDs`）、制限メッセージの日英併記、`state.json` schemaVersion 4。実装中に `TodayPromptView`/`TimelineView` の二重アラート競合でタイムラインが閉じる不具合を発見・修正。ユニット12本＋UIテスト7本を追加（合計 37 ＋ 31、スプリント01〜04の回帰も全通過）。次はスプリント05の evaluator 検証。

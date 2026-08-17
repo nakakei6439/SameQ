@@ -37,7 +37,7 @@ protocol Backend: Sendable {
 
     /// タイムラインに次に出す回答を1件だけ引く（F11）。
     ///
-    /// 候補は「同一お題／自分以外／表示期限内／ブロック外／通報していない」で、
+    /// 候補は「同一お題／自分以外／表示期限内／BAN外／ブロック外／通報していない」で、
     /// そのうち**未読だけ**からランダムに1件選ぶ。
     /// 返した回答はその場で既読として記録・永続化する（F12）ので、同じ回答は
     /// アプリを再起動しても二度と出てこない。未読が尽きたら `.exhausted`、
@@ -103,7 +103,19 @@ enum PromptState: Equatable, Sendable {
     }
 }
 
+/// いいね・通報のうち、連打制限に引っかかった操作の種類（F17）。
+enum RateLimitedAction: Sendable, Equatable {
+    case like
+    case report
+}
+
 /// バックエンド操作で利用者に見せるエラー。
+///
+/// `duplicateBody` / `meaninglessBody` / `rateLimited` はスプリント05（F17）で追加した。
+/// これらと、既存のうち投稿フォームで実際にユーザーへ見せる可能性がある
+/// `emptyBody` / `bodyTooLong` は、評価者への注記（日本語・英語どちらの端末でも読めるか）に
+/// 対応するため、1つの文字列に日本語行と英語行の両方を入れて返す
+/// （アプリ全体の多言語対応の基盤はまだ無いため、範囲をスプリント05で追加した制限メッセージに絞った）。
 enum BackendError: LocalizedError, Equatable {
     case notSignedIn
     case emptyBody
@@ -112,15 +124,27 @@ enum BackendError: LocalizedError, Equatable {
     case promptNotActive
     case seedDataMissing
     case storageFailure(String)
+    /// 直近の自分の投稿と本文が完全一致（F17）。
+    case duplicateBody
+    /// 空白のみ、または同一文字の過剰な繰り返し（F17）。
+    case meaninglessBody
+    /// いいね・通報の連打制限（F17）。`retryAfterSeconds` は解除までの目安秒数。
+    case rateLimited(action: RateLimitedAction, retryAfterSeconds: Int)
 
     var errorDescription: String? {
         switch self {
         case .notSignedIn:
             return "アカウントが見つかりませんでした。アプリを起動し直してください。"
         case .emptyBody:
-            return "回答を入力してください。"
+            return Self.bilingual(
+                ja: "空白や改行だけの回答は投稿できません。",
+                en: "You can't post a reply that's only blank space or line breaks."
+            )
         case .bodyTooLong(let limit):
-            return "回答は\(limit)文字までです。"
+            return Self.bilingual(
+                ja: "回答は\(limit)文字までです。",
+                en: "Replies can be at most \(limit) characters."
+            )
         case .alreadyAnswered:
             return "このお題にはすでに回答しています。"
         case .promptNotActive:
@@ -129,6 +153,28 @@ enum BackendError: LocalizedError, Equatable {
             return "お題を読み込めませんでした。"
         case .storageFailure(let detail):
             return "保存に失敗しました（\(detail)）。"
+        case .duplicateBody:
+            return Self.bilingual(
+                ja: "直前の自分の投稿と同じ内容です。別の言葉に変えて投稿してください。",
+                en: "This is identical to your previous post. Please try different wording."
+            )
+        case .meaninglessBody:
+            return Self.bilingual(
+                ja: "同じ文字を並べただけの投稿はできません。",
+                en: "A post made of the same character repeated isn't allowed."
+            )
+        case .rateLimited(let action, let retryAfterSeconds):
+            let ja = action == .like ? "いいね" : "通報"
+            let en = action == .like ? "Likes" : "Reports"
+            return Self.bilingual(
+                ja: "\(ja)が短時間に多すぎます。\(retryAfterSeconds)秒待ってからもう一度お試しください。",
+                en: "\(en) too fast. Please wait \(retryAfterSeconds)s and try again."
+            )
         }
+    }
+
+    /// 日本語行と英語行を1つの文字列にまとめる（両言語の端末で読めるようにするため）。
+    private static func bilingual(ja: String, en: String) -> String {
+        "\(ja)\n\(en)"
     }
 }

@@ -37,10 +37,14 @@ struct TodayPromptView: View {
             draft = ""
             isEditorFocused = false
         }
+        // タイムラインは `fullScreenCover` で重ねているだけで、この画面は裏で生き続けている。
+        // タイムライン表示中は `TimelineView` 側の `.alert` にだけ出す
+        // （両方が同時に `isPresented` になると、片方の提示がもう片方の提示を巻き込んで
+        // タイムラインごと閉じてしまうことがあるため、必ずどちらか一方だけにする）。
         .alert(
-            "うまくいきませんでした",
+            "うまくいきませんでした / Something went wrong",
             isPresented: Binding(
-                get: { session.alertMessage != nil },
+                get: { session.alertMessage != nil && !session.isTimelinePresented },
                 set: { if !$0 { session.alertMessage = nil } }
             )
         ) {

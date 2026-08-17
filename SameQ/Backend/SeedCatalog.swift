@@ -22,6 +22,8 @@ enum SeedCatalog {
             let posts: [SeedPost]
         }
         let prompts: [SeedPrompt]
+        /// BAN状態の投稿者（F16）。同梱シードの誰がBANされているかをここに書く。
+        let bannedAuthorIDs: [UUID]
     }
 
     /// バンドルの SeedData.json を読み、シナリオに沿った日程を割り当てる。
@@ -89,7 +91,7 @@ enum SeedCatalog {
             }
             posts.append(contentsOf: promptPosts)
         }
-        return PromptSchedule(prompts: prompts, posts: posts)
+        return PromptSchedule(prompts: prompts, posts: posts, bannedAuthorIDs: Set(file.bannedAuthorIDs))
     }
 
     // MARK: 検証用の件数調整（`-SameQAnswerCount`）

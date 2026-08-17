@@ -25,6 +25,11 @@ struct PromptSchedule: Sendable {
     let prompts: [Prompt]
     /// 全お題ぶんの回答。`expiresAt` は所属するお題の終了時刻。
     let posts: [Post]
+    /// BAN状態の投稿者（F16）。誰のタイムラインにも表示しない。
+    /// 既定は空集合なので、既存の呼び出し箇所は変更不要。
+    /// （`var` にしているのは、`let` だとメンバーワイズイニシャライザの引数から
+    /// 除外され、既定値付きの引数として渡せなくなるため。実際には変更しない。）
+    var bannedAuthorIDs: Set<UUID> = []
 
     /// その時刻に有効なお題。無ければ nil（お題待ち）。
     func activePrompt(at date: Date) -> Prompt? {

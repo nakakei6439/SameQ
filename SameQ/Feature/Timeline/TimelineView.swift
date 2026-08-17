@@ -46,6 +46,22 @@ struct TimelineView: View {
                 .fontDesign(.rounded)
                 .environment(session)
         }
+        // いいね・通報の連打制限（F17）など、タイムライン上の操作で起きたエラーをここに出す。
+        // 閉じてもタイムラインの位置はそのまま（操作不能にならない）。
+        // `TodayPromptView` も裏で生きていて同じ `alertMessage` を見ているので、
+        // タイムライン表示中はこちらだけが `isPresented` になるようにする
+        // （両方が同時に立つと、提示の競合でタイムラインごと閉じてしまうことがある）。
+        .alert(
+            "うまくいきませんでした / Something went wrong",
+            isPresented: Binding(
+                get: { session.alertMessage != nil && session.isTimelinePresented },
+                set: { if !$0 { session.alertMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { session.alertMessage = nil }
+        } message: {
+            Text(session.alertMessage ?? "")
+        }
     }
 
     // MARK: パーツ

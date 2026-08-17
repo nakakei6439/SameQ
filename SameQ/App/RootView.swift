@@ -24,6 +24,8 @@ struct RootView: View {
                 WaitingPromptView()
             case .today:
                 TodayPromptView()
+            case .banned:
+                BannedView()
             case .failure(let message):
                 failureView(message: message)
             }

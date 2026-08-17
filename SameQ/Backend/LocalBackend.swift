@@ -16,6 +16,9 @@ actor LocalBackend: Backend {
     private let clock: AppClock
     private let schedule: PromptSchedule
     private var state: PersistedState
+    /// いいね・通報の連打制限（F17）。プロセス内だけの状態（再起動でリセットされる）。
+    private var likeLimiter: RateLimiter
+    private var reportLimiter: RateLimiter
 
     init(
         store: LocalStore = LocalStore(),
@@ -30,6 +33,8 @@ actor LocalBackend: Backend {
             scenario: options.scenario,
             options: options
         )) ?? PromptSchedule(prompts: [], posts: []))
+        self.likeLimiter = options.likeRateLimit.makeLimiter()
+        self.reportLimiter = options.reportRateLimit.makeLimiter()
 
         if options.resetsState {
             // 起動引数 `-SameQResetState`（Debug のみ）。UI テストと評価者の再検証用。
@@ -99,12 +104,22 @@ actor LocalBackend: Backend {
             throw BackendError.promptNotActive
         }
         let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 空白・改行のみ（F17）。
         guard !trimmed.isEmpty else { throw BackendError.emptyBody }
         guard trimmed.count <= Self.bodyCharacterLimit else {
             throw BackendError.bodyTooLong(limit: Self.bodyCharacterLimit)
         }
+        // 同一文字の過剰な繰り返し（F17）。
+        guard !PostValidator.isMeaninglessRepetition(trimmed) else {
+            throw BackendError.meaninglessBody
+        }
         guard !state.myPosts.contains(where: { $0.promptID == promptID }) else {
             throw BackendError.alreadyAnswered
+        }
+        // 直近の自分の投稿と同一の本文（F17）。`myPosts` は期限切れで掃除されるが、
+        // `lastPostBody` はお題をまたいで残すのでここで検出できる。
+        if let lastBody = state.lastPostBody, lastBody == trimmed {
+            throw BackendError.duplicateBody
         }
 
         let post = Post(
@@ -121,6 +136,7 @@ actor LocalBackend: Backend {
         )
         var next = state
         next.myPosts.append(post)
+        next.lastPostBody = trimmed
         try store.save(next)
         state = next
         return post
@@ -161,8 +177,8 @@ actor LocalBackend: Backend {
     }
 
     /// タイムラインに出しうる回答（既読を含む）。
-    /// 同一お題・自分以外・表示期限内・ブロック外・通報していない、をここで満たす（F11 / F13 / F14）。
-    /// BAN 外はスプリント05でここに足す。
+    /// 同一お題・自分以外・表示期限内・BAN外・ブロック外・通報していない、をここで満たす
+    /// （F11 / F13 / F14 / F16）。BAN外は `visibleOthers` 側で満たしている。
     private func candidates(promptID: String, at now: Date) -> [Post] {
         let blocked = Set(state.blockedAuthors.map(\.id))
         let reported = Set(state.reports.map(\.postID))
@@ -174,13 +190,19 @@ actor LocalBackend: Backend {
         }
     }
 
-    /// 「同一お題・自分以外・表示期限内」までの回答。
+    /// 「同一お題・自分以外・表示期限内・BAN外」までの回答。
     /// ブロックと通報を**適用する前**の集合なので、`.empty`（誰も答えていない）の判定に使う。
+    ///
+    /// BAN状態の投稿者（F16）はここで除外する。運営のBAN切り替えはサーバー側の想定運用で、
+    /// アプリ内にBAN管理UIは無いため、除外対象は `schedule.bannedAuthorIDs`
+    /// （同梱シードの `bannedAuthorIDs`、または検証用に生成した投稿者）が持つ。
     private func visibleOthers(promptID: String, at now: Date) -> [Post] {
         // 期限切れの回答は誰にも見せない（F10）。有効期間外のお題なら 0 件。
         guard let prompt = schedule.prompt(id: promptID), prompt.isActive(at: now) else { return [] }
         let myAuthorID = state.user?.id
-        return schedule.visiblePosts(promptID: prompt.id, at: now).filter { $0.authorID != myAuthorID }
+        return schedule.visiblePosts(promptID: prompt.id, at: now).filter {
+            $0.authorID != myAuthorID && !schedule.bannedAuthorIDs.contains($0.authorID)
+        }
     }
 
     // MARK: いいね
@@ -191,6 +213,10 @@ actor LocalBackend: Backend {
     }
 
     func setLike(postID: UUID, liked: Bool) async throws {
+        // 短時間の連打制限（F17）。押す／外すのどちらも1回の操作として数える。
+        if let retryAfter = likeLimiter.attempt(at: clock.now) {
+            throw BackendError.rateLimited(action: .like, retryAfterSeconds: retryAfter)
+        }
         var next = state
         if liked {
             guard !next.likedPostIDs.contains(postID) else { return }
@@ -206,6 +232,10 @@ actor LocalBackend: Backend {
 
     func reportPost(postID: UUID, reason: ReportReason) async throws {
         guard state.user != nil else { throw BackendError.notSignedIn }
+        // 短時間の連打制限（F17）。同じ回答への二重送信の試みも1回として数える。
+        if let retryAfter = reportLimiter.attempt(at: clock.now) {
+            throw BackendError.rateLimited(action: .report, retryAfterSeconds: retryAfter)
+        }
         var next = state
         // 同じ回答を二重に通報しても記録は1件だけ（表示対象から外れるのは同じ）。
         guard !next.reports.contains(where: { $0.postID == postID }) else { return }

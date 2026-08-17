@@ -15,6 +15,9 @@ import Foundation
 /// - `-SameQAnswerCount <件数>`       各お題の「自分以外の回答」を指定件数に固定する（0 / 1 / 120 など）
 /// - `-SameQTimeOffsetMinutes <分>`   アプリが認識する「今」を前後にずらす（負値も可）
 /// - `-SameQDebugOverlay`             画面下に現在時刻・お題ID・残り秒数・未読/既読件数を出す
+/// - `-SameQBanned`                   自分のアカウントがBAN状態であるかのように起動する（F16）。
+///                                    運営がサーバー側でBANを切り替える運用のため、アプリ内にBAN操作UIは無い。
+/// - `-SameQRateLimitTestMode`        いいね・通報の連打制限の閾値を短時間で確認できる値に縮める（F17）
 struct LaunchOptions: Sendable {
     var resetsState: Bool = false
     var resetsViewed: Bool = false
@@ -25,6 +28,12 @@ struct LaunchOptions: Sendable {
     var answerCount: Int?
     var timeOffset: TimeInterval = 0
     var showsDebugOverlay: Bool = false
+    /// `-SameQBanned`（Debug限定）。true の間は起動直後にBAN画面へ固定し、今日のお題・タイムラインへ入れない（F16）。
+    var isBanned: Bool = false
+    /// いいねの連打制限（F17）。既定は15秒間に8回まで、超えたら15秒制限。
+    var likeRateLimit = RateLimitSettings(maxActions: 8, windowSeconds: 15, cooldownSeconds: 15)
+    /// 通報の連打制限（F17）。既定は30秒間に4回まで、超えたら20秒制限。
+    var reportRateLimit = RateLimitSettings(maxActions: 4, windowSeconds: 30, cooldownSeconds: 20)
 
     /// このプロセスの設定。起動時に1度だけ解釈する。
     static let current = parse(ProcessInfo.processInfo.arguments)
@@ -40,6 +49,15 @@ struct LaunchOptions: Sendable {
         options.resetsState = arguments.contains("-SameQResetState")
         options.resetsViewed = arguments.contains("-SameQResetViewed")
         options.showsDebugOverlay = arguments.contains("-SameQDebugOverlay")
+        options.isBanned = arguments.contains("-SameQBanned")
+        if arguments.contains("-SameQRateLimitTestMode") {
+            // 手動検証・UIテストで実時間を長く待たなくて済むように回数を減らす。
+            // ウィンドウは「操作を数回繰り返す」のに十分な長さを残す
+            // （タップ間隔が空く実機・UIテスト環境でも、古い記録がウィンドウから外れて
+            // カウントが増えなくなることがないように）。
+            options.likeRateLimit = RateLimitSettings(maxActions: 3, windowSeconds: 30, cooldownSeconds: 8)
+            options.reportRateLimit = RateLimitSettings(maxActions: 2, windowSeconds: 40, cooldownSeconds: 8)
+        }
         if let count = value(after: "-SameQAnswerCount").flatMap(Int.init) {
             options.answerCount = max(0, count)
         }

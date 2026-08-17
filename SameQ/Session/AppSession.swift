@@ -15,6 +15,9 @@ final class AppSession {
         /// 有効なお題が無い時間帯（F08）。入力欄もタイムライン導線も持たない。
         case waiting
         case today
+        /// BAN状態のアカウント（F16）。今日のお題にもタイムラインにも入れない。
+        /// 運営がサーバー側でBANを切り替える運用のため、ここから解除する導線は作らない。
+        case banned
         case failure(String)
     }
 
@@ -73,6 +76,13 @@ final class AppSession {
     /// あればお題の状態に応じてお題待ち／今日のお題／タイムラインへ。
     func start() async {
         screen = .loading
+        // BAN状態のアカウントは、今日のお題にもタイムラインにも入れない（F16）。
+        // 運営がサーバー側でBANを切り替える運用のため、アプリ内に解除UIは無く、
+        // Debug限定の起動引数 `-SameQBanned` でこの状態を模擬する。
+        if LaunchOptions.current.isBanned {
+            screen = .banned
+            return
+        }
         do {
             promptState = try await backend.promptState()
             let loadedUser = try await backend.currentUser()
@@ -96,7 +106,7 @@ final class AppSession {
         now = clock.now
         guard user != nil else { return }
         switch screen {
-        case .loading, .onboarding, .failure:
+        case .loading, .onboarding, .failure, .banned:
             return
         case .waiting, .today:
             break

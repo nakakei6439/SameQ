@@ -13,9 +13,12 @@ struct PersistedState: Codable, Sendable {
     var reports: [Report]
     /// ブロック中の相手（F14 / F15）。解除するまで残る。
     var blockedAuthors: [BlockedAuthor]
+    /// 直近に投稿した本文（F17: 同一文面の連投拒否）。
+    /// `myPosts` は投稿の表示期限が切れると掃除されるが、こちらはお題をまたいで残す。
+    var lastPostBody: String?
 
-    /// 2 で `viewedPostIDs`、3 で `reports` / `blockedAuthors` を追加した。
-    static let currentSchemaVersion = 3
+    /// 2 で `viewedPostIDs`、3 で `reports` / `blockedAuthors`、4 で `lastPostBody` を追加した。
+    static let currentSchemaVersion = 4
 
     static let empty = PersistedState(
         schemaVersion: currentSchemaVersion,
@@ -24,7 +27,8 @@ struct PersistedState: Codable, Sendable {
         likedPostIDs: [],
         viewedPostIDs: [],
         reports: [],
-        blockedAuthors: []
+        blockedAuthors: [],
+        lastPostBody: nil
     )
 
     init(
@@ -34,7 +38,8 @@ struct PersistedState: Codable, Sendable {
         likedPostIDs: [UUID],
         viewedPostIDs: [UUID],
         reports: [Report] = [],
-        blockedAuthors: [BlockedAuthor] = []
+        blockedAuthors: [BlockedAuthor] = [],
+        lastPostBody: String? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.user = user
@@ -43,9 +48,10 @@ struct PersistedState: Codable, Sendable {
         self.viewedPostIDs = viewedPostIDs
         self.reports = reports
         self.blockedAuthors = blockedAuthors
+        self.lastPostBody = lastPostBody
     }
 
-    /// 旧バージョン（schemaVersion 1 / 2）の保存ファイルにはキーが無いので、
+    /// 旧バージョン（schemaVersion 1〜3）の保存ファイルにはキーが無いので、
     /// 欠けている項目は空として読む。アカウントを消さずに移行するため。
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -56,6 +62,7 @@ struct PersistedState: Codable, Sendable {
         viewedPostIDs = try container.decodeIfPresent([UUID].self, forKey: .viewedPostIDs) ?? []
         reports = try container.decodeIfPresent([Report].self, forKey: .reports) ?? []
         blockedAuthors = try container.decodeIfPresent([BlockedAuthor].self, forKey: .blockedAuthors) ?? []
+        lastPostBody = try container.decodeIfPresent(String.self, forKey: .lastPostBody)
     }
 }
 
