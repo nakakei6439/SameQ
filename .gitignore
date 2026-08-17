@@ -1,0 +1,62 @@
+# Xcode
+#
+build/
+DerivedData/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+*.xcscmblueprint
+*.xcscheme
+!default.xcscheme
+
+# Swift Package Manager
+#
+.build/
+Packages/
+Package.pins
+Package.resolved
+*.xcodeproj
+!default.xcodeproj
+.swiftpm/
+
+# CocoaPods
+#
+Pods/
+
+# Carthage
+#
+Carthage/Build/
+
+# fastlane
+#
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Secrets / local config
+#
+.env
+.env.local
+*.xcconfig.local
+GoogleService-Info.plist
+Secrets.swift
+
+# macOS
+#
+.DS_Store
+
+# Supabase local
+#
+.branches
+.temp
+supabase/.temp
