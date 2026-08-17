@@ -37,7 +37,8 @@ protocol Backend: Sendable {
 
     /// タイムラインに次に出す回答を1件だけ引く（F11）。
     ///
-    /// 候補は「同一お題／自分以外／表示期限内」で、そのうち**未読だけ**からランダムに1件選ぶ。
+    /// 候補は「同一お題／自分以外／表示期限内／ブロック外／通報していない」で、
+    /// そのうち**未読だけ**からランダムに1件選ぶ。
     /// 返した回答はその場で既読として記録・永続化する（F12）ので、同じ回答は
     /// アプリを再起動しても二度と出てこない。未読が尽きたら `.exhausted`、
     /// 候補が最初から1件も無ければ `.empty` を返す。
@@ -53,6 +54,27 @@ protocol Backend: Sendable {
 
     /// いいねを付ける／外す。
     func setLike(postID: UUID, liked: Bool) async throws
+
+    // MARK: 通報（F13）
+
+    /// 回答を理由付きで通報する。通報した回答は以後、自分の表示対象に入らない。
+    /// 相手に伝わるものは何も作らない（通知も、相手側の表示も無い）。
+    func reportPost(postID: UUID, reason: ReportReason) async throws
+
+    /// 自分が通報済みの投稿ID（検証・デバッグ表示用）。
+    func reportedPostIDs() async throws -> Set<UUID>
+
+    // MARK: ブロック（F14 / F15）
+
+    /// その回答の投稿者をブロックする。以後、その人の回答は1件も表示しない。
+    /// 一覧に出すための見た目（絵文字・ニックネーム）は、この回答から写し取る。
+    func blockAuthor(of post: Post) async throws
+
+    /// ブロック解除。解除するとその人の回答は再び表示対象に戻る。
+    func unblockAuthor(id: UUID) async throws
+
+    /// ブロック中の相手の一覧（新しい順）。設定画面で使う（F15）。
+    func blockedAuthors() async throws -> [BlockedAuthor]
 }
 
 /// タイムラインから引いた1件の結果（F11 / F12）。
@@ -61,9 +83,9 @@ protocol Backend: Sendable {
 enum TimelineDraw: Equatable, Sendable {
     /// 次に見せる回答。引いた時点で既読になっている。
     case post(Post)
-    /// 表示できる回答が最初から1件も無い（自分の回答しか存在しない場合を含む）。
+    /// 自分以外の回答がそもそも1件も無い（自分の回答しか存在しない場合を含む）。
     case empty
-    /// 候補はあるが、すべて既読になっている。
+    /// 自分以外の回答はあるが、すべて既読・ブロック・通報で出せない。
     case exhausted
 }
 

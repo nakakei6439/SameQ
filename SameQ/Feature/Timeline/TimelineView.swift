@@ -10,6 +10,8 @@ struct TimelineView: View {
 
     @State private var dragOffset: CGSize = .zero
     @State private var isAdvancing = false
+    /// 通報・ブロックの操作シートに渡す回答（F13 / F14）。nil のあいだシートは出ない。
+    @State private var safetyTarget: Post?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -39,6 +41,11 @@ struct TimelineView: View {
             }
         }
         .background { Theme.canvas }
+        .sheet(item: $safetyTarget) { post in
+            SafetySheetView(post: post)
+                .fontDesign(.rounded)
+                .environment(session)
+        }
     }
 
     // MARK: パーツ
@@ -65,13 +72,22 @@ struct TimelineView: View {
 
             Spacer()
 
-            // 左右の重みを揃えるためのダミー
-            HStack(spacing: 4) {
-                Image(systemName: "chevron.down")
-                Text("閉じる")
+            // 通報・ブロック（F13 / F14）。回答が出ているときだけ押せる。
+            // 出ていないときも同じ幅を占めて、中央の見出しがずれないようにする。
+            Button {
+                safetyTarget = session.timelineContent.post
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 19, weight: .medium))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .frame(width: 64, height: 32, alignment: .trailing)
+                    .contentShape(Rectangle())
             }
-            .font(.system(size: 15, weight: .medium))
-            .opacity(0)
+            .buttonStyle(.plain)
+            .opacity(session.timelineContent.post == nil ? 0 : 1)
+            .disabled(session.timelineContent.post == nil)
+            .accessibilityIdentifier("timeline.more")
+            .accessibilityLabel(Text("この回答を通報またはブロック"))
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
@@ -119,7 +135,7 @@ struct TimelineView: View {
     }
 
     /// カードの下の操作。スキップ（次の人へ）といいねの2つだけ。
-    /// 「前へ」は置かない（置いた前提5）。通報はスプリント04で足す。
+    /// 「前へ」は置かない（置いた前提5）。通報・ブロックは上部の ⋯ から。
     private func actionBar(post: Post) -> some View {
         let isLiked = session.isLiked(post.id)
         return VStack(spacing: 14) {

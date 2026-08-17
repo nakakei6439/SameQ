@@ -16,7 +16,7 @@ struct TodayPromptView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                identityRow
+                headerRow
                 promptCard
 
                 if let myPost = session.myPost {
@@ -63,6 +63,15 @@ struct TodayPromptView: View {
             Spacer()
         }
         .accessibilityIdentifier("today.identity")
+    }
+
+    /// 自分の絵文字・ニックネームと、設定への入り口（F15 のブロック管理はここから）。
+    /// 設定ボタンは `today.identity` の外に置く。中に入れると識別子が上書きされてしまう。
+    private var headerRow: some View {
+        HStack(spacing: 0) {
+            identityRow
+            SettingsEntryButton()
+        }
     }
 
     private var promptCard: some View {

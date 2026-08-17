@@ -119,7 +119,9 @@ enum SeedCatalog {
                 Post(
                     id: deterministicID(prefix: 0xA0, promptSlot: promptSlot, number: number),
                     promptID: promptID,
-                    authorID: deterministicID(prefix: 0xB0, promptSlot: promptSlot, number: number),
+                    // 投稿は お題ごとに別物だが、投稿者は お題をまたいで同じ人にする
+                    // （1お題1投稿は保ったまま、「ブロックした人が次のお題にも出てこない」を確認できる）。
+                    authorID: deterministicID(prefix: 0xB0, promptSlot: 0, number: number),
                     authorEmoji: emoji,
                     authorNickname: nickname,
                     body: "\(sentence)（#\(promptSlot + 1)-\(number)）",

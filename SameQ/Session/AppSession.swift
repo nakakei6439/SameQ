@@ -43,12 +43,17 @@ final class AppSession {
     /// タイムラインにいま出しているもの（F11 / F12）。回答は常に1件だけ持ち、配列で先読みしない。
     private(set) var timelineContent: TimelineContent = .loading
     private(set) var likedPostIDs: Set<UUID> = []
+    /// ブロック中の相手（F15）。設定画面の一覧はこれだけを見る。
+    private(set) var blockedAuthors: [BlockedAuthor] = []
     private(set) var isTimelinePresented = false
+    /// 設定（今回はブロック管理のみ）。タイムラインの裏側にある画面から開く。
+    var isSettingsPresented = false
     /// アプリが認識している「今」。1秒ごとの `refresh()` で更新する。
     private(set) var now: Date
     /// Debug オーバーレイ用。いまのお題で表示しうる回答の総数と、既読の件数。
     private(set) var timelineCandidateCount = 0
     private(set) var timelineViewedCount = 0
+    private(set) var reportedCount = 0
 
     /// 投稿失敗などの一時的なメッセージ。表示したら nil に戻す。
     var alertMessage: String?
@@ -109,6 +114,7 @@ final class AppSession {
 
     /// いまのお題の状態から画面と手元のデータを組み直す。
     private func applyPromptState(openTimelineIfAnswered: Bool) async throws {
+        blockedAuthors = try await backend.blockedAuthors()
         switch promptState {
         case .waiting:
             // お題待ちでは自分の回答も世界の回答も見せない（F08 / F10）。
@@ -120,8 +126,7 @@ final class AppSession {
         case .active(let prompt):
             myPost = try await backend.myPost(promptID: prompt.id)
             likedPostIDs = try await backend.likedPostIDs()
-            timelineCandidateCount = try await backend.timelinePosts(promptID: prompt.id).count
-            timelineViewedCount = try await backend.viewedPostIDs().count
+            try await refreshTimelineCounts(promptID: prompt.id)
             if !openTimelineIfAnswered || myPost == nil {
                 isTimelinePresented = false
                 timelineContent = .loading
@@ -201,13 +206,19 @@ final class AppSession {
             case .exhausted:
                 timelineContent = .exhausted
             }
-            timelineCandidateCount = try await backend.timelinePosts(promptID: prompt.id).count
-            timelineViewedCount = try await backend.viewedPostIDs().count
+            try await refreshTimelineCounts(promptID: prompt.id)
         } catch {
             // 読めなかったときも無限ローディングにはせず、読み切りと同じ明示状態に落とす。
             alertMessage = error.localizedDescription
             timelineContent = .exhausted
         }
+    }
+
+    /// Debug オーバーレイに出す件数をまとめて取り直す。
+    private func refreshTimelineCounts(promptID: String) async throws {
+        timelineCandidateCount = try await backend.timelinePosts(promptID: promptID).count
+        timelineViewedCount = try await backend.viewedPostIDs().count
+        reportedCount = try await backend.reportedPostIDs().count
     }
 
     func closeTimeline() {
@@ -241,6 +252,48 @@ final class AppSession {
         }
     }
 
+    // MARK: 通報とブロック（F13 / F14 / F15）
+
+    /// 回答を理由付きで通報する。
+    /// 送信できたらその場で次の1件を引くので、シートを閉じたときには通報した回答は消えている。
+    /// 相手には何も伝わらない（通知も、相手側の表示も作らない）。
+    func report(postID: UUID, reason: ReportReason) async -> Bool {
+        do {
+            try await backend.reportPost(postID: postID, reason: reason)
+            await drawNextPost()
+            return true
+        } catch {
+            alertMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    /// その回答の投稿者をブロックする。以後その人の回答は1件も出てこない。
+    func block(post: Post) async -> Bool {
+        do {
+            try await backend.blockAuthor(of: post)
+            blockedAuthors = try await backend.blockedAuthors()
+            await drawNextPost()
+            return true
+        } catch {
+            alertMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    /// ブロックを解除する。解除するとその人の回答は再び表示対象に戻る（F15）。
+    func unblock(authorID: UUID) async {
+        do {
+            try await backend.unblockAuthor(id: authorID)
+            blockedAuthors = try await backend.blockedAuthors()
+            if let prompt {
+                try await refreshTimelineCounts(promptID: prompt.id)
+            }
+        } catch {
+            alertMessage = error.localizedDescription
+        }
+    }
+
     // MARK: 検証用（Debug オーバーレイ）
 
     /// `-SameQDebugOverlay` を付けたときだけ画面下に出す1行。通常のビルドでは使わない。
@@ -263,6 +316,9 @@ final class AppSession {
         parts.append("answers \(timelineCandidateCount)")
         parts.append("viewed \(timelineViewedCount)")
         parts.append("liked \(likedPostIDs.count)")
+        // 通報・ブロックの効き方を目で確かめられるようにする（F13 / F14）。
+        parts.append("reported \(reportedCount)")
+        parts.append("blocked \(blockedAuthors.count)")
         return parts.joined(separator: " · ")
     }
 }

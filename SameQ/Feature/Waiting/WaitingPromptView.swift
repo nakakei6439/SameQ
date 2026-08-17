@@ -13,9 +13,13 @@ struct WaitingPromptView: View {
             Theme.canvas
 
             VStack(spacing: 0) {
-                identityRow
-                    .padding(.horizontal, 24)
-                    .padding(.top, 16)
+                // 設定ボタンは `waiting.identity` の外に置く（中に入れると識別子が上書きされる）。
+                HStack(spacing: 0) {
+                    identityRow
+                    SettingsEntryButton()
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
 
                 Spacer()
 

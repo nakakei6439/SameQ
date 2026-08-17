@@ -137,8 +137,10 @@ actor LocalBackend: Backend {
     func nextTimelinePost(promptID: String) async throws -> TimelineDraw {
         let now = clock.now
         pruneExpired(at: now)
+        // 「そもそも誰も答えていない」と「ブロック・通報で出せるものが無くなった」を混同しない。
+        guard !visibleOthers(promptID: promptID, at: now).isEmpty else { return .empty }
         let all = candidates(promptID: promptID, at: now)
-        guard !all.isEmpty else { return .empty }
+        guard !all.isEmpty else { return .exhausted }
 
         let viewed = Set(state.viewedPostIDs)
         let unread = all.filter { !viewed.contains($0.id) }
@@ -159,9 +161,22 @@ actor LocalBackend: Backend {
     }
 
     /// タイムラインに出しうる回答（既読を含む）。
-    /// 同一お題・自分以外・表示期限内という3条件だけをここで満たす（F11）。
-    /// ブロック外・BAN外はスプリント04／05でここに足す。
+    /// 同一お題・自分以外・表示期限内・ブロック外・通報していない、をここで満たす（F11 / F13 / F14）。
+    /// BAN 外はスプリント05でここに足す。
     private func candidates(promptID: String, at now: Date) -> [Post] {
+        let blocked = Set(state.blockedAuthors.map(\.id))
+        let reported = Set(state.reports.map(\.postID))
+        guard !blocked.isEmpty || !reported.isEmpty else {
+            return visibleOthers(promptID: promptID, at: now)
+        }
+        return visibleOthers(promptID: promptID, at: now).filter {
+            !blocked.contains($0.authorID) && !reported.contains($0.id)
+        }
+    }
+
+    /// 「同一お題・自分以外・表示期限内」までの回答。
+    /// ブロックと通報を**適用する前**の集合なので、`.empty`（誰も答えていない）の判定に使う。
+    private func visibleOthers(promptID: String, at now: Date) -> [Post] {
         // 期限切れの回答は誰にも見せない（F10）。有効期間外のお題なら 0 件。
         guard let prompt = schedule.prompt(id: promptID), prompt.isActive(at: now) else { return [] }
         let myAuthorID = state.user?.id
@@ -187,6 +202,64 @@ actor LocalBackend: Backend {
         state = next
     }
 
+    // MARK: 通報（F13）
+
+    func reportPost(postID: UUID, reason: ReportReason) async throws {
+        guard state.user != nil else { throw BackendError.notSignedIn }
+        var next = state
+        // 同じ回答を二重に通報しても記録は1件だけ（表示対象から外れるのは同じ）。
+        guard !next.reports.contains(where: { $0.postID == postID }) else { return }
+        next.reports.append(
+            Report(id: UUID(), postID: postID, reason: reason, createdAt: clock.now)
+        )
+        try store.save(next)
+        state = next
+    }
+
+    func reportedPostIDs() async throws -> Set<UUID> {
+        pruneExpired(at: clock.now)
+        return Set(state.reports.map(\.postID))
+    }
+
+    // MARK: ブロック（F14 / F15）
+
+    func blockAuthor(of post: Post) async throws {
+        guard let user = state.user else { throw BackendError.notSignedIn }
+        // 自分をブロックさせない（起こらないはずだが、起きると自分の回答が消える）。
+        guard post.authorID != user.id else { return }
+        var next = state
+        guard !next.blockedAuthors.contains(where: { $0.id == post.authorID }) else { return }
+        next.blockedAuthors.append(
+            BlockedAuthor(
+                id: post.authorID,
+                emoji: post.authorEmoji,
+                nickname: post.displayNickname,
+                blockedAt: clock.now
+            )
+        )
+        // ブロックした相手の回答は「読んだ」ことにしない。
+        // 解除したときに再び表示対象へ戻す（受け入れ条件4）ため。
+        let authorPostIDs = Set(
+            schedule.posts.filter { $0.authorID == post.authorID }.map(\.id)
+        ).union([post.id])
+        next.viewedPostIDs.removeAll { authorPostIDs.contains($0) }
+        try store.save(next)
+        state = next
+    }
+
+    func unblockAuthor(id: UUID) async throws {
+        var next = state
+        guard next.blockedAuthors.contains(where: { $0.id == id }) else { return }
+        next.blockedAuthors.removeAll { $0.id == id }
+        try store.save(next)
+        state = next
+    }
+
+    func blockedAuthors() async throws -> [BlockedAuthor] {
+        // 新しくブロックした人を上に。表示するのは絵文字とニックネームだけ（F15）。
+        state.blockedAuthors.sorted { $0.blockedAt > $1.blockedAt }
+    }
+
     // MARK: 期限切れの掃除（F10）
 
     /// 表示期限を過ぎた自分の回答と、そこに紐づくいいね・既読を保存から落とす。
@@ -194,8 +267,10 @@ actor LocalBackend: Backend {
     /// 「その日の言葉は消える」ため履歴は持たない。消えた投稿への いいね も既読も残さない。
     /// 保存内容が変わったときだけ書き込む。
     ///
-    /// 既読だけは「期限切れと**確認できた**投稿」に限って落とす。
+    /// 既読と通報だけは「期限切れと**確認できた**投稿」に限って落とす。
     /// 検証用の起動引数で回答の顔ぶれが変わったときに、既読が黙って消えないようにするため。
+    ///
+    /// ブロックは投稿ではなく相手に対するものなので、ここでは消さない（解除するまで残る）。
     private func pruneExpired(at now: Date) {
         let liveMyPosts = state.myPosts.filter { $0.isVisible(at: now) }
         let livePostIDs = Set(liveMyPosts.map(\.id)).union(
@@ -206,16 +281,19 @@ actor LocalBackend: Backend {
         )
         let liveLikes = state.likedPostIDs.filter { livePostIDs.contains($0) }
         let liveViewed = state.viewedPostIDs.filter { !expiredPostIDs.contains($0) }
+        let liveReports = state.reports.filter { !expiredPostIDs.contains($0.postID) }
 
         guard liveMyPosts.count != state.myPosts.count
             || liveLikes.count != state.likedPostIDs.count
-            || liveViewed.count != state.viewedPostIDs.count else {
+            || liveViewed.count != state.viewedPostIDs.count
+            || liveReports.count != state.reports.count else {
             return
         }
         var next = state
         next.myPosts = liveMyPosts
         next.likedPostIDs = liveLikes
         next.viewedPostIDs = liveViewed
+        next.reports = liveReports
         try? store.save(next)
         state = next
     }

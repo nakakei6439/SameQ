@@ -16,21 +16,26 @@
 | 開発ハーネス | planner → generator → evaluator |
 
 ## 現在の状態
-- **フェーズ**: スプリント03 **合格** → **スプリント04（通報とブロック）実装待ち**
-- **状態**: スプリント03（タイムラインの取得ルールと既読管理 / F11・F12）は **evaluator の実機検証で合格**（attempt 1、2026-08-18）。iPhone 17 シミュレータ2台で、evaluator 独自の XCUITest 10本 ＋ `simctl launch` による素の起動・`state.json` の直接確認を実施。受け入れ条件6/6、0件・1件・120件の3ケース、再起動後の既読残存、いいねの永続（既読と独立）まで確認済み。クラッシュ0。詳細は [`eval-1.md`](.product/sprints/03-timeline-rules/eval-1.md)。
-- **次にやること**: **スプリント04（通報とブロック / F13・F14・F15）の実装**（generator）。受け入れ条件は `.product/spec.md` 160〜166行、評価者への注記は168行。通報導線と理由選択・通報後の即時非表示・ブロックと永続化・設定内のブロック一覧と解除を作る。取得条件の追加先は `LocalBackend.candidates(promptID:at:)`。
-  - 評価で挙がった改善提案（合否には影響しないが、着手前に planner が判断すること）:
-    - **[A] いいねが押した直後以外はユーザーから見えなくなった**（F12 で既読の回答は再表示されないため）。スプリント01の受け入れ条件8は通常操作では検証不能。仕様側で「いいねは誰にも見えない」ことを明記するか、いいねの意味づけを決める。
-    - **[B] `state.json` の `schemaVersion` が移行後も 1 のまま**（保存時に `currentSchemaVersion` へ揃えていない）。将来の移行分岐で誤判定する。
-    - **[C] 読み切り画面に「引き直す」導線が無い**（閉じて開き直せば引けるが説明が無い）。
+- **フェーズ**: スプリント04（通報とブロック）**実装完了 → 評価待ち**
+- **状態**: スプリント04（F13・F14・F15）を実装（attempt 1、2026-08-18）。タイムライン右上 ⋯ からの通報（理由7種の選択→送信→完了表示）とブロック（確認→完了表示）、設定画面のブロック一覧と解除、`LocalBackend.candidates()` への「通報済み除外／ブロック中の相手を除外」の追加、schemaVersion 3 への移行を実装。ユニット25本＋UIテスト24本が通過（スプリント01〜03の回帰も全通過）。詳細は [`plan.md`](.product/sprints/04-report-block/plan.md) / [`self-review.md`](.product/sprints/04-report-block/self-review.md)。
+- **次にやること**: **evaluator によるスプリント04の検証**。受け入れ条件は `.product/spec.md` 160〜166行、評価者への注記は168行。動かし方と識別子の一覧は self-review.md の「動かし方」節。
+  - スプリント03の評価で挙がった改善提案の扱い:
+    - **[A] いいねが押した直後以外はユーザーから見えなくなった** — 未対応（仕様側の判断待ち。planner 案件）。
+    - **[B] `state.json` の `schemaVersion` が移行後も 1 のまま** — **今回対応**。schemaVersion 3 を足す都合で保存時に `currentSchemaVersion` へ揃えるようにした（`LocalStore.save`）。
+    - **[C] 読み切り画面に「引き直す」導線が無い** — 未対応（スプリント03で「再表示の導線は作らない」と決めたため）。
 - **再開に必要な情報**:
   - Xcodeプロジェクトは `SameQ.xcodeproj`（`project.yml` から XcodeGen で生成。生成物もコミット済みなので `open SameQ.xcodeproj` で即ビルドできる）。
-  - 自動確認は `xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'platform=iOS Simulator,name=iPhone 17' test`（`SameQTests` 16本 ＋ `SameQUITests` 17本）。
+  - 自動確認は `xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'platform=iOS Simulator,name=iPhone 17' test`（`SameQTests` 25本 ＋ `SameQUITests` 24本）。
   - 初回設定からやり直すには、アプリを削除するか Debug ビルドに起動引数 `-SameQResetState` を付ける。
   - **お題の日程を切り替える起動引数（Debug 限定）**: `-SameQScenario live|expiring|expired|upcoming`、`-SameQExpirySeconds <秒>`、`-SameQGapSeconds <秒>`、`-SameQTimeOffsetMinutes <分>`、`-SameQDebugOverlay`。実時間で28時間待たずに切り替わりを確認するためのもの。
   - **タイムラインの取得ルールと既読を検証する起動引数（Debug 限定・スプリント03で追加）**: `-SameQAnswerCount <件数>`（自分以外の回答を 0 / 1 / 120 件などに固定）、`-SameQResetViewed`（既読の記録だけ消す）。詳細は README と 03 の self-review.md。
-- **スプリント04 に入るときに踏まえること**:
-  1. タイムラインの候補の絞り込みは `LocalBackend.candidates(promptID:at:)` に集約してある。スプリント04の「ブロック外／通報済み以外」はここに条件を足す。
+  - **Debug オーバーレイに `reported` / `blocked` を追加**（スプリント04）。`-SameQDebugOverlay` で通報数・ブロック中の人数が数字で追える。
+- **スプリント05 に入るときに踏まえること**:
+  1. タイムラインの候補の絞り込みは `LocalBackend.candidates(promptID:at:)`（ブロック・通報を適用）と `visibleOthers(promptID:at:)`（適用前）に分かれている。スプリント05の「BAN外」は `visibleOthers` 側（誰にも見せない条件）に足すこと。
+  2. `.empty`（自分以外の回答が0件）と `.exhausted`（読み切り／ブロック・通報で出せない）の切り分けは `nextTimelinePost` の冒頭にある。BAN を足すときも「まだ誰も答えていない」と混同しないこと。
+  3. 通報・ブロックの連打制限（F17）はスプリント05。いまは同じ回答を二重に通報しても記録が1件になるだけで、回数制限は無い。
+- **スプリント04 で踏まえたこと（引き続き有効）**:
+  1. タイムラインの候補の絞り込みは `LocalBackend.candidates(promptID:at:)` に集約してある。スプリント04の「ブロック外／通報済み以外」はここに条件を足した。
   2. スプリント03で **スプリント01の受け入れ条件8（いいねの押下状態が開き直しても残る）の検証手順を変更した**。F12（既読）を入れると一度出した回答は再表示されないため、`-SameQResetViewed` を挟んで同じ回答を出し直す手順にしている。いいねの永続そのものは維持（ユニットテスト `testLikesSurviveRelaunchIndependentlyOfViewedRecords` でも担保）。
   3. 既読は「画面に出した瞬間」に記録する（読み終えてからではない）。閉じて開き直すと必ず別の回答が出る。
   4. スプリント01評価の改善提案3件（キーボードが「投稿する」を半分隠す／投稿ボタンが押せない理由が出ない／`state.json` 破損時にアカウントが黙って消える）は**まだ未対応**。詳細は 01 の eval-1.md。
@@ -65,7 +70,7 @@
 
 ### スプリント04: 通報とブロック
 含む機能: F13, F14, F15
-- [ ] 実装（generator）
+- [x] 実装（generator）— 2026-08-18。タイムライン ⋯ からの通報（理由7種→送信→完了表示）とブロック（確認→完了表示）、通報後の即時非表示と永続、ブロックの永続とお題をまたいだ持続、設定画面のブロック一覧と解除、`candidates()` への条件追加、schemaVersion 3、Debug オーバーレイに `reported` / `blocked` を追加。ユニット9本＋UIテスト7本を追加（合計 25 ＋ 24）。[`plan.md`](.product/sprints/04-report-block/plan.md) / [`self-review.md`](.product/sprints/04-report-block/self-review.md)
 - [ ] 評価（evaluator）— 受け入れ条件は `.product/spec.md` 160〜166行
 
 ### スプリント05: BAN・投稿頻度制限・スパム対策
@@ -117,6 +122,7 @@
 ### B01: Supabase クラウドプロジェクト（2026-08-17 解消）
 - プロジェクト作成・マイグレーション適用は完了。認証情報は `.env.local`（gitignore対象）に保存済み
 - 未実施: アプリからの実際のSupabase接続（LocalBackend → SupabaseBackend への切り替え）。担当スプリント未定。次にこのタスクに着手する際は、まず `.env.local` の内容とdashboardを確認すること
+- 追記（2026-08-18）: スプリント04の `20260818000003_report_block.sql`（reports / blocks / world_timeline 更新 / blocked_authors ビュー）も `supabase db push` で適用済み。アプリからは未使用（LocalBackend のまま）。
 - 追記（2026-08-17）: `20260817000002_prompt_lifecycle.sql` も `supabase db push` で適用済み（`prompts_no_overlap` 制約と `posts_set_expiry_trigger` は移行前のテーブルに無かったため `NOTICE ... skipping` が出たが、CREATE文自体は成功しており実害なし）。更新版 `supabase/seed.sql` は**まだ流し込んでいない**（アプリがまだLocalBackendで動いているため急ぎではない。SupabaseBackend実装時に一緒に流すこと）。
 
 ## 今回の判断（generator が自分で決めたこと）
@@ -146,6 +152,18 @@
 19. **同梱シードの `prompt_001` を14件→22件に増やした**（`supabase/seed.sql` も同期）。「20件あるとき20回スワイプして重複しない」を引数なしでも確認できるようにするため。
 20. **Debug オーバーレイを `overlay` から `safeAreaInset` に変えた**。スプリント02評価の指摘[C]（最下部のテキストに重なる）を解消。今回オーバーレイが検証の主要な手段になるため。
 
+### スプリント04で決めたこと
+21. **通報の理由は7種**（政治的な対立／宗教的な対立／差別・ヘイト／性的な内容／犯罪をすすめている／個人情報／その他）。spec.md 6節（お題の安全条件）に挙がっている観点に揃えた。自由記述欄は作らない。
+22. **通報・ブロックの導線はタイムライン上部の ⋯**（`timeline.more`）。カード下の操作は「次へ」と「いいね」の2つのままにして、指が届く位置に破壊的な操作を置かないため。
+23. **完了表示はシートの中の1ステップにする**（トーストにしない）。「完了表示が出て」という受け入れ条件を、見逃せない形で満たすため。送信・ブロックの確定と同時に裏で次の1件を引くので、閉じた時点では次の回答になっている。
+24. **ブロックした相手の回答は既読から外す**。解除したときに「再び表示対象に戻る」（受け入れ条件4）を成立させるため。読んだのではなくブロックした、という扱い。
+25. **ブロック・通報で候補が尽きた場合は `.empty` ではなく `.exhausted`**（「今は新しい回答がありません」）に落とす。誰も答えていないわけではないので、「まだ誰も答えていません」は嘘になる。判定は `nextTimelinePost` 冒頭の `visibleOthers`（ブロック・通報を適用する前の集合）で行う。
+26. **ブロック一覧に出すのは絵文字とニックネームだけ**。`BlockedAuthor` は国・言語・本文・投稿時刻を持たない。`blockedAt` は並び順にだけ使い、画面には出さない。
+27. **設定画面は今回ブロック管理のみ**。本格的な設定（絵文字・ニックネーム変更／規約／購入復元）はスプリント11。入り口は今日のお題とお題待ちの右上の歯車。
+28. **通報の記録はお題の終了で端末から落とす**（既読と同じ扱い・履歴を持たない方針）。ブロックは相手に対するものなので解除するまで残す。サーバー側の安全ログ30日保持は F34（スプリント11）。
+29. **`-SameQAnswerCount` で機械生成する回答の投稿者を、お題をまたいで同一人物にした**（1お題1投稿は維持）。「ブロックした人が次のお題にも出てこない」を検証できるようにするため。
+30. **`LocalStore.save` で `schemaVersion` を現在値に揃えるようにした**（スプリント03評価の改善提案[B]）。schemaVersion 3 を足すにあたり、揃えないと移行判定を誤るため今回対応した。
+
 ## 変更履歴
 - 2026-08-17: `.product/spec.md` 作成（planner）。PROGRESS.md 初版作成。
 - 2026-08-17: スプリント01 実装（generator）。SwiftUI雛形＋F01〜F07、Supabaseスキーマ、UIテスト5本。
@@ -155,3 +173,4 @@
 - 2026-08-17: スプリント02のマイグレーション `20260817000002_prompt_lifecycle.sql` を Supabase に適用済み。次はスプリント02の evaluator 検証。
 - 2026-08-18: スプリント02 評価（evaluator）。iPhone 17 Pro / iOS 26.3 シミュレータで独自 XCUITest 9本＋`simctl` 単体起動により実操作検証し **合格**。次はスプリント03の実装。
 - 2026-08-18: スプリント03 実装（generator）。F11・F12。未読優先のランダム1件取得、既読の永続（`viewedPostIDs` / schemaVersion 2）、読み切り／0件の明示表示、検証用の起動引数 `-SameQAnswerCount` / `-SameQResetViewed`、同梱シードを22件へ増量。ユニットテスト10本＋UIテスト7本を追加（合計 16 ＋ 17）。次はスプリント03の evaluator 検証。
+- 2026-08-18: スプリント04 実装（generator）。F13・F14・F15。通報（理由7種・完了表示・即時非表示・永続）、ブロック（確認・完了表示・お題をまたいだ持続）、設定画面のブロック一覧と解除、`state.json` schemaVersion 3、Supabase マイグレーション `20260818000003_report_block.sql` を作成・**適用済み**（reports / blocks テーブル、world_timeline の絞り込み追加、blocked_authors ビュー）。ユニット9本＋UIテスト7本を追加。次はスプリント04の evaluator 検証。

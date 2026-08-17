@@ -11,7 +11,7 @@
 
 ## 現在の状態
 
-スプリント03（タイムラインの取得ルールと既読管理）まで実装済み。
+スプリント04（通報とブロック）まで実装済み。
 初回設定 → 今日のお題 → 回答投稿 → 世界タイムライン → いいね が動き、
 お題の有効期間（28時間・常に1つだけ有効）、有効なお題が無い時間帯の**お題待ち画面**、
 投稿の表示期限（お題の終了時刻に揃える）が効く。
@@ -20,6 +20,11 @@
 出した回答はその場で既読として端末に記録するので、スワイプし続けても、アプリを再起動しても
 同じ回答は二度と出てこない。読み尽くしたら「今は新しい回答がありません」、
 自分の回答しか無ければ「まだ誰も答えていません」を表示する。前の回答へ戻る操作は無い。
+
+不快な回答は、タイムライン右上の ⋯ から **通報**（理由を選んで送信）と **ブロック** ができる。
+通報した回答は即座に自分の表示対象から消え、ブロックした人の回答は以後1件も出てこない。
+どちらも相手には何も伝わらない。ブロックは設定（右上の歯車）の一覧からいつでも解除でき、
+解除するとその人の回答は再び表示対象に戻る。
 翻訳・通知配信・お題の自動生成・課金は後続スプリント。
 
 ### 動かす
@@ -27,7 +32,7 @@
 ```bash
 open SameQ.xcodeproj      # 外部パッケージ依存なし。そのままビルド・実行できる
 
-# 受け入れ条件の自動確認（ユニット16本 + UIテスト17本）
+# 受け入れ条件の自動確認（ユニット25本 + UIテスト24本）
 xcodebuild -project SameQ.xcodeproj -scheme SameQ \
   -destination 'platform=iOS Simulator,name=iPhone 17' test
 ```
@@ -61,17 +66,24 @@ xcodebuild -project SameQ.xcodeproj -scheme SameQ \
 引数を付けない場合は同梱シードのまま（`prompt_001` に22件、`prompt_002` に12件）なので、
 20回スワイプして重複が無いことはそのままでも確認できる。
 
+`-SameQDebugOverlay` を付けると、画面下に `answers`（いま表示しうる回答の数）・`viewed`（既読）・
+`liked`・`reported`（通報した数）・`blocked`（ブロック中の人数）が出る。
+通報・ブロックの効き方はここで数字としても追える。
+
+`-SameQAnswerCount` で機械的に作る回答は、**お題をまたいで同じ投稿者**になる
+（1つのお題には1人1件のまま）。ブロックした人が次のお題にも出てこないことを確認できる。
+
 ### 構成
 
 | パス | 中身 |
 |---|---|
 | `project.yml` | XcodeGen のプロジェクト定義（`SameQ.xcodeproj` は生成物だがコミットしてある） |
 | `SameQ/Backend/` | データ層。`Backend` プロトコル、端末内実装 `LocalBackend`、お題の日程（`PromptSchedule` / `SeedCatalog`）、検証用の起動引数（`LaunchOptions`） |
-| `SameQ/Feature/` | 画面（Onboarding / Waiting / Today / Timeline） |
+| `SameQ/Feature/` | 画面（Onboarding / Waiting / Today / Timeline / Settings） |
 | `SameQ/Resources/SeedData.json` | お題2件と、それぞれへの世界の回答（22件 / 12件、18言語） |
-| `SameQTests/` | お題の有効期間・投稿の表示期限・タイムラインの取得ルールと既読のユニットテスト |
+| `SameQTests/` | お題の有効期間・投稿の表示期限・タイムラインの取得ルールと既読・通報とブロックのユニットテスト |
 | `SameQUITests/` | 受け入れ条件をなぞる UI テスト |
-| `supabase/migrations/` | users / prompts / posts / likes / viewed_posts と RLS の定義 |
+| `supabase/migrations/` | users / prompts / posts / likes / viewed_posts / reports / blocks と RLS の定義 |
 
 **注意**: Supabase のクラウドプロジェクトは作成済み・初期マイグレーション適用済みだが、
 アプリはまだ `LocalBackend`（端末内）で動いており、サーバーには接続していない。

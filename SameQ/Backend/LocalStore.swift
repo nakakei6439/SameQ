@@ -1,6 +1,6 @@
 import Foundation
 
-/// 端末に永続化する内容。アカウント・自分の回答・自分のいいね・既読の記録だけを持つ。
+/// 端末に永続化する内容。アカウント・自分の回答・自分のいいね・既読・通報・ブロックだけを持つ。
 /// 他人の回答は同梱シード（`SeedCatalog`）側にあるので保存しない。
 struct PersistedState: Codable, Sendable {
     var schemaVersion: Int
@@ -9,16 +9,22 @@ struct PersistedState: Codable, Sendable {
     var likedPostIDs: [UUID]
     /// 一度タイムラインに出した回答の ID（F12）。再起動しても同じ回答を出さないために残す。
     var viewedPostIDs: [UUID]
+    /// 自分が出した通報（F13）。再起動しても通報した回答を出さないために残す。
+    var reports: [Report]
+    /// ブロック中の相手（F14 / F15）。解除するまで残る。
+    var blockedAuthors: [BlockedAuthor]
 
-    /// 2 で `viewedPostIDs` を追加した。
-    static let currentSchemaVersion = 2
+    /// 2 で `viewedPostIDs`、3 で `reports` / `blockedAuthors` を追加した。
+    static let currentSchemaVersion = 3
 
     static let empty = PersistedState(
         schemaVersion: currentSchemaVersion,
         user: nil,
         myPosts: [],
         likedPostIDs: [],
-        viewedPostIDs: []
+        viewedPostIDs: [],
+        reports: [],
+        blockedAuthors: []
     )
 
     init(
@@ -26,16 +32,20 @@ struct PersistedState: Codable, Sendable {
         user: AppUser?,
         myPosts: [Post],
         likedPostIDs: [UUID],
-        viewedPostIDs: [UUID]
+        viewedPostIDs: [UUID],
+        reports: [Report] = [],
+        blockedAuthors: [BlockedAuthor] = []
     ) {
         self.schemaVersion = schemaVersion
         self.user = user
         self.myPosts = myPosts
         self.likedPostIDs = likedPostIDs
         self.viewedPostIDs = viewedPostIDs
+        self.reports = reports
+        self.blockedAuthors = blockedAuthors
     }
 
-    /// 旧バージョン（schemaVersion 1）の保存ファイルにはキーが無いので、
+    /// 旧バージョン（schemaVersion 1 / 2）の保存ファイルにはキーが無いので、
     /// 欠けている項目は空として読む。アカウントを消さずに移行するため。
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -44,6 +54,8 @@ struct PersistedState: Codable, Sendable {
         myPosts = try container.decodeIfPresent([Post].self, forKey: .myPosts) ?? []
         likedPostIDs = try container.decodeIfPresent([UUID].self, forKey: .likedPostIDs) ?? []
         viewedPostIDs = try container.decodeIfPresent([UUID].self, forKey: .viewedPostIDs) ?? []
+        reports = try container.decodeIfPresent([Report].self, forKey: .reports) ?? []
+        blockedAuthors = try container.decodeIfPresent([BlockedAuthor].self, forKey: .blockedAuthors) ?? []
     }
 }
 
@@ -79,6 +91,10 @@ struct LocalStore: Sendable {
 
     func save(_ state: PersistedState) throws {
         do {
+            // 旧バージョンから読み込んだ状態でも、書き戻した時点で現在のバージョンに揃える
+            // （揃えないと、次の移行で「まだ旧形式」と誤判定する）。
+            var state = state
+            state.schemaVersion = PersistedState.currentSchemaVersion
             let data = try Self.encoder.encode(state)
             try data.write(to: fileURL, options: [.atomic])
         } catch {

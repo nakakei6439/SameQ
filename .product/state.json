@@ -1,7 +1,7 @@
 {
-  "currentSprint": "03",
+  "currentSprint": "04",
   "attempt": 1,
-  "status": "passed",
+  "status": "awaiting_eval",
   "history": [
     {
       "sprint": "01",
@@ -38,6 +38,12 @@
       "attempt": 1,
       "result": "passed",
       "note": "evaluator が iPhone 17 シミュレータ2台で実操作検証。受け入れ条件6/6（0件・1件・120件の3ケース、再起動後の既読残存を含む）、クラッシュ0、回帰8/8、いいねの永続は既読と独立に保持されることを UI と state.json の両方で確認。詳細は .product/sprints/03-timeline-rules/eval-1.md"
+    },
+    {
+      "sprint": "04",
+      "attempt": 1,
+      "result": "awaiting_eval",
+      "note": "F13/F14/F15 実装。タイムライン ⋯ からの通報（理由7種→送信→完了表示→即時非表示）とブロック（確認→完了表示→以後非表示・お題をまたいで持続）、設定画面のブロック一覧と解除（絵文字とニックネームのみ表示）、LocalBackend.candidates() への条件追加、visibleOthers による empty/exhausted の切り分け、schemaVersion 3、Debug オーバーレイに reported/blocked を追加。Supabase マイグレーション 20260818000003_report_block.sql を作成・適用（アプリからは未使用）。ユニット25本+UIテスト24本すべて通過（スプリント01〜03の回帰含む）"
     }
   ]
 }

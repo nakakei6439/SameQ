@@ -55,6 +55,17 @@ struct RootView: View {
                 .environment(session)
                 .safeAreaInset(edge: .bottom, spacing: 0) { debugOverlay }
         }
+        // 設定（今回はブロック管理のみ / F15）。今日のお題とお題待ちのどちらからも開ける。
+        .sheet(
+            isPresented: Binding(
+                get: { session.isSettingsPresented },
+                set: { session.isSettingsPresented = $0 }
+            )
+        ) {
+            SettingsView()
+                .fontDesign(.rounded)
+                .environment(session)
+        }
     }
 
     private var loadingView: some View {
