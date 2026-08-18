@@ -110,6 +110,12 @@
       "attempt": 1,
       "result": "passed",
       "note": "スプリント外・ユーザー直接フィードバックによるタイムラインUI調整の評価。evaluator が iPhone 17 / iOS 26.5 と iPhone 16e / iOS 26.5 の2機種、端末言語 日本語・英語で独自 XCUITest 13本（E01〜E13）＋ simctl 単独起動＋log stream＋state.json の直接確認により実操作検証し、スクリーンショットをすべて目視確認。受け入れ条件3/3（お題の常設表示・✕ボタン撤去とスワイプ一本化・いいねボタンの拡大と押下状態の明示）、クラッシュ0、アプリ由来の未処理エラー0、データ整合性OK（schemaVersion 4）、回帰は既存フルスイート90/90＋抜き取り6件すべてOK、使用性4。合否に影響しない改善提案4件（最優先: カード外の余白でスワイプが効かず画面の約1/3が無反応）は .product/sprints/timeline-ui-adjustment/eval-1.md に記載。state.json の currentSprint/status はスプリント06（実機確認待ちで blocked）のまま据え置き。"
+    },
+    {
+      "sprint": "timeline-ui-adjustment",
+      "attempt": 2,
+      "result": "passed",
+      "note": "eval-1 の優先度高の指摘[A][C]修正の再確認。evaluator が iPhone 17 / iOS 26.3（402×874）と iPhone 16e / iOS 26.3（390×844）の2機種で、ウィンドウ絶対座標を指定してスワイプする独自 XCUITest 13本（E01〜E13）＋ log stream ＋ state.json の直接読み出し＋スクリーンショットの目視確認により実操作検証し合格。[A]解消: 余白(上)163.7pt・余白(下)188.0pt の中点、および前回の無反応座標（正規化 y=0.25 / y=0.68）のすべてでスワイプが次へ進んだ。カード本体に一度も触れず余白だけで12件を読み切りまで送れた。反応領域は約27%→約59%。[C]解消: 追加された waitForBodyToChange がしきい値未満のドラッグで false を返すことを変異テストで確認（実効性あり）。誤操作なし（スワイプでのいいね誤爆0回、いいね・⋯・閉じるのタップは従来どおり）。前回合格の3点（お題の常設表示・timeline.next 不在・いいね82×82pt中央と押下ラベル）も維持。クラッシュ0、アプリ由来の未処理エラー0、データ整合性OK（schemaVersion 4、再起動後も既読/いいね保持・既読の再登場0件）、回帰は既存フルスイート90/90＋抜き取り4件、使用性4。残る改善提案は [E] 案内文『スワイプすると、次の知らない誰かへ』自身を含む下部 y 676〜874 が無反応帯（優先度中）、[F] いいねボタン上の横引きが無反応（優先度低）。state.json の currentSprint/status はスプリント06（実機確認待ちで blocked）のまま据え置き。詳細は .product/sprints/timeline-ui-adjustment/eval-2.md"
     }
   ]
 }
