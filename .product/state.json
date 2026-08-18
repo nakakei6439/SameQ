@@ -104,6 +104,12 @@
       "attempt": 3,
       "result": "blocked",
       "note": "eval-2.md の指摘[1][2]に対応。(1) SessionRequestQueue からセッションのキャッシュを完全に撤去し、perform(key:body:onJobTimeout:) が毎回新しいセッションを要求、取得したセッションは .translationTask のクロージャがまだ生きているスコープの中で session.translate(_:) まで完結させてから結果だけを返す設計に変更（セッションを外へ持ち出す経路を型的に無くした）。Translator の configuration 差し替えも、SDKの .swiftinterface を直接確認したうえで『新しいインスタンスへ丸ごと差し替え』から『いま割り当てているインスタンスへ invalidate() してから source/target を書き換え』に変更。(2) session.translate(_:) の実行を withTaskGroup でタイムアウト（既定30秒）と競走させ、タイムアウトが勝ったら session.cancel()（iOS 26+）を呼んでから諦める設計を追加。SessionRequestQueueTests を新しい契約に合わせて全面的に書き直し。シミュレータでのフルテストスイート（SameQTests + SameQUITests）を単独実行し90/90全件成功。実機向けビルド・devicectl device install app も成功。しかし実機（iPhone 17 Pro Max）が施錠されており devicectl device process launch がロック解除待ちで失敗、アプリを起動できず実機でのタイムライン読み切り確認ができなかった。ユーザーに端末のロック解除を依頼し、解除後に改めて実機確認が必要。詳細は .product/sprints/06-translation/self-review.md の attempt 3"
+    },
+    {
+      "sprint": "timeline-ui-adjustment",
+      "attempt": 1,
+      "result": "passed",
+      "note": "スプリント外・ユーザー直接フィードバックによるタイムラインUI調整の評価。evaluator が iPhone 17 / iOS 26.5 と iPhone 16e / iOS 26.5 の2機種、端末言語 日本語・英語で独自 XCUITest 13本（E01〜E13）＋ simctl 単独起動＋log stream＋state.json の直接確認により実操作検証し、スクリーンショットをすべて目視確認。受け入れ条件3/3（お題の常設表示・✕ボタン撤去とスワイプ一本化・いいねボタンの拡大と押下状態の明示）、クラッシュ0、アプリ由来の未処理エラー0、データ整合性OK（schemaVersion 4）、回帰は既存フルスイート90/90＋抜き取り6件すべてOK、使用性4。合否に影響しない改善提案4件（最優先: カード外の余白でスワイプが効かず画面の約1/3が無反応）は .product/sprints/timeline-ui-adjustment/eval-1.md に記載。state.json の currentSprint/status はスプリント06（実機確認待ちで blocked）のまま据え置き。"
     }
   ]
 }
