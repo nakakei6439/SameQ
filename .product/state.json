@@ -1,7 +1,7 @@
 {
   "currentSprint": "06",
   "attempt": 2,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "01",
@@ -92,6 +92,12 @@
       "attempt": 2,
       "result": "awaiting_eval",
       "note": "evaluator の指摘4点すべてに対応。(1) 翻訳キューの固着: 待ち行列ロジックを SessionRequestQueue<Session>（新規・Translation非依存のジェネリック型）に切り出し、一度取得できたセッションは言語ペアごとにキャッシュして2回目以降は新規要求を出さない設計に変更（同じ値の Configuration を再代入する経路自体を無くした）。保険として invalidate() の呼び出しと45秒タイムアウトも追加。(2) Debug限定の疑似翻訳モード -SameQFakeTranslate を追加し、シミュレータでも翻訳結果の反映・非対応言語のスキップ・キャッシュをテストできるようにした。(3) お題の翻訳フォールバック方針を検討し、原文へのフォールバックを維持する判断（お題は常に1つだけ有効でスキップの代替が無いため）。(4) Translator.translate の戻り値を TranslationOutcome（.text / .unavailable(permanent:)）に変更し恒久的失敗と一時的失敗を区別。Backend.nextTimelinePost に excluding / autoMarkViewed、新規 markPostViewed(_:) を追加し、一時的な失敗は既読にしないよう修正（既存呼び出し元は後方互換のデフォルト引数で無変更）。ユニット19本＋UIテスト2本を追加（合計 SameQTests 56本 ＋ SameQUITests 33本）、他プロセス非併走の単独実行でフルテスト全件成功。実機検証は今回未実施（ユーザー外出中のためスコープ外、次回evaluatorへ申し送り）。詳細は .product/sprints/06-translation/self-review.md の attempt 2"
+    },
+    {
+      "sprint": "06",
+      "attempt": 2,
+      "result": "needs_fix",
+      "note": "evaluator が iPhone 17 / iOS 26.5 シミュレータ（端末言語 日本語・英語・韓国語）と iPhone 17 Pro Max 実機で、独自 XCUITest 12本＋Translation Framework の直接プローブ6本により実操作検証。受け入れ条件 3/7 で不合格。実機で本物の Apple Translation が動くこと自体は初めて確認（お題・投稿とも実際に翻訳された文章で表示、status(en→ja)=installed）。しかし実機ではタイムラインが2〜3件目で無言のまま固着し3回中3回とも読み切りに到達しない。原因は attempt 2 で導入した『言語ペアごとに TranslationSession をキャッシュして使い回す』設計で、configuration を別ペアへ差し替えると前の .translationTask が畳まれセッションが無効になるため（プローブで Attempted to use TranslationSession after the view it was attached to has disappeared を直接観測）。session.translate(_:) に時間制限が無く45秒タイムアウトはセッション取得にしか掛からないため保険にならない。invalidate() も直後に同値の Configuration で上書きしているため .translationTask が再実行されず効いていない。attempt 1 の指摘2・3・4は解消を確認。シミュレータでは3言語とも30件を通し完走・ちらつき0・zxx 0回表示・翻訳関連UI不在。回帰5/5、データ整合性OK（schemaVersion 4）、使用性2。条件4（モデル未取得時）と7（機内モード）は評価不能。詳細は .product/sprints/06-translation/eval-2.md"
     }
   ]
 }

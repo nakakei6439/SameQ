@@ -388,16 +388,16 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					0EF1C37174603CA88C4AC01F = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = 7PTQ6W4R3T;
 						ProvisioningStyle = Automatic;
 						TestTargetID = E569CE55F25395D970DC315C;
 					};
 					715E7D496C1F0566CB8CC816 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = 7PTQ6W4R3T;
 						ProvisioningStyle = Automatic;
 					};
 					E569CE55F25395D970DC315C = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = 7PTQ6W4R3T;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -554,7 +554,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 7PTQ6W4R3T;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -638,7 +638,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 7PTQ6W4R3T;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -720,8 +720,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SameQ/Info.plist;
@@ -741,8 +739,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SameQ/Info.plist;
