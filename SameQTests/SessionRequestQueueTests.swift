@@ -1,156 +1,210 @@
 import XCTest
 @testable import SameQ
 
-/// スプリント06 attempt 2 の最重要修正（バグ1: 翻訳キューが同一言語ペアの2件目で
-/// 永久に固まる）を、`TranslationSession` / シミュレータに依存せず直接検証する。
+/// スプリント06 attempt 3 の最重要修正（不合格の原因[1]: 実機ではキャッシュしたセッションが
+/// 無効になり致命的エラーで固まる）を、`TranslationSession` / 実機に依存せず直接検証する。
 ///
-/// evaluator が実測した固着の直接原因は「値の等しい `TranslationSession.Configuration` を
-/// 代入し直しても `.translationTask` が再実行されない」ことだった。`SessionRequestQueue` は
-/// この制約があっても固まらないよう、**同じキーへは2回目以降新しい要求を出さない**設計に
-/// してある。`Session` をジェネリックにしてあるので、ここでは `String` をダミーの
-/// セッションとして使い、待ち行列のロジックだけを Translation Framework 抜きで確認する。
+/// evaluator が実機プローブで確認した根本原因は「`TranslationSession` をそれを供給した
+/// `.translationTask` の外へ持ち出して、後から再利用していた」こと。attempt 3 では
+/// キャッシュ・持ち出しを一切やめ、`perform(key:body:)` は**呼ぶたびに必ず新しいセッションを
+/// 要求し**、取得できたセッションは `resolve(session:)` の中（＝そのセッションが有効な
+/// スコープの中）で `body` を実行し終えてから返す設計にした。`Session` をジェネリックにして
+/// あるので、ここでは `String` をダミーのセッションとして使い、待ち行列のロジックだけを
+/// Translation Framework 抜きで確認する。
 final class SessionRequestQueueTests: XCTestCase {
 
-    /// evaluator の再現手順そのもの: 同じキーへの2件目の要求が来ても、
-    /// `onNeedsSession` は1回しか呼ばれない（＝同じ値の `Configuration` を2回代入しない）。
-    /// 修正前の実装（毎回新しい `Configuration` を作って代入する設計）だと、この場合
-    /// 2件目の `request` は永久に解決されなかった。
+    /// 同じキー（言語ペア）へ連続で要求しても、`perform` はキャッシュを返さず**毎回**
+    /// 新しいセッションを要求する。これが attempt 2 のキャッシュ設計を撤去したことの
+    /// 直接の確認（evaluator の実機プローブが再現した固着の根本原因への対処）。
     @MainActor
-    func testSameKeyRequestedTwiceOnlyAsksForOneSession() async {
+    func testSameKeyIsRequestedAgainEveryTime() async {
         var needsSessionCalls: [String] = []
         let queue = SessionRequestQueue<String>(onNeedsSession: { key in
             needsSessionCalls.append(key)
         })
 
-        async let first = queue.request("en")
-        // `request` 内の `withCheckedContinuation` がキューに積まれるまで、
-        // ごく短い間だけ譲る（実運用でも `.translationTask` からの解決は非同期に来る）。
+        async let first: String? = queue.perform(key: "en") { session in session }
         try? await Task.sleep(nanoseconds: 20_000_000)
-        queue.resolve(session: "en-session")
+        await queue.resolve(session: "en-session-1")
         let firstResult = await first
-        XCTAssertEqual(firstResult, "en-session")
+        XCTAssertEqual(firstResult, "en-session-1")
 
-        // 直前と同じキー（"en"）を2回目要求しても、新しいセッションは要求されない
-        // （evaluator が実測した固着の直接原因を構造的に無くしている）。
-        let secondResult = await queue.request("en")
-        XCTAssertEqual(secondResult, "en-session", "2回目はキャッシュから即座に返るはず")
-        XCTAssertEqual(needsSessionCalls, ["en"], "同じキーで2回目の要求を出してはいけない")
+        // 直前と同じキー（"en"）をもう一度要求すると、キャッシュからではなく
+        // 新しいセッション要求が発生する（`onNeedsSession` が2回目も呼ばれる）。
+        async let second: String? = queue.perform(key: "en") { session in session }
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        await queue.resolve(session: "en-session-2")
+        let secondResult = await second
+
+        XCTAssertEqual(secondResult, "en-session-2")
+        XCTAssertEqual(needsSessionCalls, ["en", "en"], "同じキーでも毎回新しい要求を出す")
     }
 
-    /// evaluator の実測ログを再現する3手順（en → en → ko）。
-    /// 「別の言語ペアなら発火する」という差分もあわせて確認する。
+    /// evaluator の実機プローブの手順（en → ko → en）を、値の再利用が起きないことに
+    /// 焦点を当てて再現する。3手目の "en" は1手目とは別の（新しい）セッションを受け取る。
     @MainActor
-    func testMatchesEvaluatorReproductionSequence() async {
+    func testMatchesEvaluatorReproductionSequenceWithoutReusingSessions() async {
         var needsSessionCalls: [String] = []
         let queue = SessionRequestQueue<String>(onNeedsSession: { key in
             needsSessionCalls.append(key)
         })
 
-        async let request1 = queue.request("en")
+        async let request1: String? = queue.perform(key: "en") { $0 }
         try? await Task.sleep(nanoseconds: 20_000_000)
-        queue.resolve(session: "session-en")
-        _ = await request1
+        await queue.resolve(session: "session-en-1")
+        let result1 = await request1
+        XCTAssertEqual(result1, "session-en-1")
 
-        // 2件目（同じ言語ペア）: evaluator のログでは「20秒待っても返ってこない」だった。
-        // 修正後はキャッシュから即座に返る。
-        let request2 = await queue.request("en")
-        XCTAssertEqual(request2, "session-en")
-
-        // 3件目（別の言語ペア）: 新しい要求が発生する。
-        async let request3 = queue.request("ko")
+        async let request2: String? = queue.perform(key: "ko") { $0 }
         try? await Task.sleep(nanoseconds: 20_000_000)
-        queue.resolve(session: "session-ko")
+        await queue.resolve(session: "session-ko")
+        let result2 = await request2
+        XCTAssertEqual(result2, "session-ko")
+
+        // 3件目: 最初の言語ペア（"en"）にまた戻ってきても、1件目のセッションは
+        // 二度と使われない（新しいセッションを要求し、新しい値を受け取る）。
+        async let request3: String? = queue.perform(key: "en") { $0 }
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        await queue.resolve(session: "session-en-2")
         let result3 = await request3
-        XCTAssertEqual(result3, "session-ko")
+        XCTAssertEqual(result3, "session-en-2")
+        XCTAssertNotEqual(result1, result3, "1件目のセッションを3件目で使い回してはいけない")
 
-        XCTAssertEqual(needsSessionCalls, ["en", "ko"], "en→en→ko で要求は en・ko の2回だけのはず")
-
-        // 4件目（最初の言語ペアにまた戻る）もキャッシュから即座に返り、要求は増えない。
-        let request4 = await queue.request("en")
-        XCTAssertEqual(request4, "session-en")
-        XCTAssertEqual(needsSessionCalls, ["en", "ko"])
+        XCTAssertEqual(needsSessionCalls, ["en", "ko", "en"], "毎回新しい要求を出すはず")
     }
 
-    /// 同じキーへ、まだ解決していないうちに複数回 `request` しても、
-    /// 新しい要求は1回だけ・全員が同じセッションを受け取る。
+    /// 取得したセッションは `resolve` の中で `body` に渡され、`body` の完了を待ってから
+    /// `resolve` 自身が完了する（＝セッションが有効なスコープの中で使い切られる）。
     @MainActor
-    func testConcurrentRequestsForSameUnresolvedKeyShareOneSession() async {
-        var needsSessionCalls: [String] = []
+    func testBodyRunsToCompletionInsideResolveBeforeQueueAdvances() async {
+        var events: [String] = []
         let queue = SessionRequestQueue<String>(onNeedsSession: { key in
-            needsSessionCalls.append(key)
+            events.append("needs(\(key))")
         })
 
-        async let a = queue.request("en")
-        async let b = queue.request("en")
-        async let c = queue.request("en")
-        try? await Task.sleep(nanoseconds: 20_000_000)
-        queue.resolve(session: "shared")
+        async let result: String? = queue.perform(key: "en") { session in
+            events.append("body-start")
+            try? await Task.sleep(nanoseconds: 30_000_000)
+            events.append("body-end")
+            return "translated:\(session)"
+        }
+        try? await Task.sleep(nanoseconds: 10_000_000)
+        events.append("resolve-call")
+        await queue.resolve(session: "en-session")
+        events.append("resolve-return")
 
-        let (resultA, resultB, resultC) = await (a, b, c)
-        XCTAssertEqual([resultA, resultB, resultC], ["shared", "shared", "shared"])
-        XCTAssertEqual(needsSessionCalls, ["en"], "未解決のうちの重複要求で新しい要求を増やしてはいけない")
+        let value = await result
+        XCTAssertEqual(value, "translated:en-session")
+        XCTAssertEqual(events, ["needs(en)", "resolve-call", "body-start", "body-end", "resolve-return"],
+                        "body の完了を待ってから resolve が返るはず（セッションが外へ漏れない設計の核心）")
     }
 
-    /// 保険: セッションが一定時間内に来なければタイムアウトで諦め、
+    /// 保険: セッションの取得自体が一定時間内に来なければタイムアウトで諦め、
     /// 後続の要求（別のキー）へ進める（永久に固まらない）。
     @MainActor
-    func testTimeoutRecoversAndDoesNotBlockSubsequentRequests() async {
+    func testAcquireTimeoutRecoversAndDoesNotBlockSubsequentRequests() async {
         var needsSessionCalls: [String] = []
         // テストで実時間を待たないよう `sleep` を差し替える。"en" だけ即座にタイムアウトさせ、
-        // それ以外のキーは（テスト側が手動で `resolve` するまで）十分長く待たせる
-        // — 固定の短い秒数にすると、あとで要求する "ko" まで巻き込んで即タイムアウトしてしまうため。
+        // それ以外のキーは（テスト側が手動で `resolve` するまで）十分長く待たせる。
         let queue = SessionRequestQueue<String>(
-            timeoutSeconds: 0.01,
+            acquireTimeoutSeconds: 0.01,
             sleep: { key, _ in
                 if key == "en" { return }
-                // `timeoutSeconds`（0.01秒）を使うと、あとで要求する "ko" までタイムアウトの
-                // 対象になってしまうので、それ以外のキーはテストの検証時間より
-                // 十分長く（実時間で）待たせる。
                 try? await Task.sleep(nanoseconds: 5_000_000_000)
             },
             onNeedsSession: { key in needsSessionCalls.append(key) }
         )
 
-        // "en" は誰も resolve しないのでタイムアウトする。
-        let timedOut = await queue.request("en")
+        // "en" は誰も resolve しないのでタイムアウトする（body は一度も呼ばれない）。
+        var bodyCalled = false
+        let timedOut: String? = await queue.perform(key: "en") { _ in
+            bodyCalled = true
+            return "unreachable"
+        }
         XCTAssertNil(timedOut, "タイムアウトしたら nil を返す")
+        XCTAssertFalse(bodyCalled, "セッションが来ていないので body は呼ばれない")
 
         // 固まらず、次の要求（別のキー）を処理できる。
-        async let ko = queue.request("ko")
+        async let ko: String? = queue.perform(key: "ko") { $0 }
         try? await Task.sleep(nanoseconds: 20_000_000)
-        queue.resolve(session: "session-ko")
+        await queue.resolve(session: "session-ko")
         let result = await ko
         XCTAssertEqual(result, "session-ko")
         XCTAssertEqual(needsSessionCalls, ["en", "ko"])
     }
 
-    /// タイムアウト後に同じキーをもう一度要求すると、（まだキャッシュが無いので）
-    /// 新しい要求を出し直せる（＝キー単位で永久に諦めたままにはならない）。
+    /// 保険: セッションは取得できたが `body`（実際には `session.translate(_:)`）が
+    /// 返ってこない場合、`jobTimeoutSeconds` を超えたら `nil` を返し、`onJobTimeout` を
+    /// 呼ぶ（不合格の原因[3]: `translate(_:)` 自体にも時間制限が無い、への対応）。
+    ///
+    /// `sleep` はキュー内の2箇所（セッション取得の待ち＝`key` に要求キーが入る／
+    /// ジョブ実行のタイムアウト競走＝`key` が空文字列）で使われる。ここでは
+    /// 空文字列のときだけ短く待たせ、それ以外（セッション取得側）は本テストの検証時間より
+    /// 十分長く待たせることで、2つのタイムアウトが競合しないようにする。
     @MainActor
-    func testTimedOutKeyCanBeRequestedAgainLater() async {
-        var needsSessionCalls: [String] = []
-        // 1回目の "en" だけ即座にタイムアウトさせ、2回目の "en" はテストが `resolve` するまで待たせる。
-        var enAttempts = 0
+    func testJobTimeoutGivesUpAndCallsOnJobTimeout() async {
         let queue = SessionRequestQueue<String>(
-            timeoutSeconds: 0.01,
             sleep: { key, _ in
-                guard key == "en" else { return }
-                enAttempts += 1
-                if enAttempts == 1 { return }
-                // 2回目の "en" はテストが `resolve` するまで、検証時間より十分長く待たせる。
+                if key.isEmpty {
+                    try? await Task.sleep(nanoseconds: 5_000_000)
+                } else {
+                    try? await Task.sleep(nanoseconds: 5_000_000_000)
+                }
+            },
+            onNeedsSession: { _ in }
+        )
+
+        var onJobTimeoutCalledWith: String?
+        async let result: String? = queue.perform(
+            key: "en",
+            body: { session in
+                // 現実の「返ってこない `session.translate(_:)`」を模した、長時間ハングする body。
+                // `Task.sleep` は協調的キャンセルに応答するため、`onJobTimeout` 後の
+                // `group.cancelAll()` でこの待ちはすぐに終わる（本テストが5秒かからないことも
+                // あわせて確認している）。
                 try? await Task.sleep(nanoseconds: 5_000_000_000)
+                return "should-not-reach-here"
+            },
+            onJobTimeout: { session in onJobTimeoutCalledWith = session }
+        )
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        await queue.resolve(session: "en-session")
+
+        let value = await result
+        XCTAssertNil(value, "body がタイムアウトしたら nil を返す")
+        XCTAssertEqual(onJobTimeoutCalledWith, "en-session", "onJobTimeout にそのセッションを渡す")
+    }
+
+    /// ジョブタイムアウト後も、次の要求（別のキー）へ正しく進める（永久に固まらない）。
+    @MainActor
+    func testAfterJobTimeoutQueueAdvancesToNextRequest() async {
+        var needsSessionCalls: [String] = []
+        let queue = SessionRequestQueue<String>(
+            sleep: { key, _ in
+                if key.isEmpty {
+                    try? await Task.sleep(nanoseconds: 5_000_000)
+                } else {
+                    try? await Task.sleep(nanoseconds: 5_000_000_000)
+                }
             },
             onNeedsSession: { key in needsSessionCalls.append(key) }
         )
 
-        let firstAttempt = await queue.request("en")
-        XCTAssertNil(firstAttempt)
-
-        async let secondAttempt = queue.request("en")
+        async let first: String? = queue.perform(key: "en") { _ in
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            return "unreachable"
+        }
         try? await Task.sleep(nanoseconds: 20_000_000)
-        queue.resolve(session: "session-en-2")
-        let result = await secondAttempt
-        XCTAssertEqual(result, "session-en-2")
-        XCTAssertEqual(needsSessionCalls, ["en", "en"], "タイムアウトしたキーは再要求できる")
+        await queue.resolve(session: "en-session")
+        let firstResult = await first
+        XCTAssertNil(firstResult)
+
+        // 次の要求（別のキー）は正常に処理できる。
+        async let second: String? = queue.perform(key: "ko") { $0 }
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        await queue.resolve(session: "session-ko")
+        let secondResult = await second
+        XCTAssertEqual(secondResult, "session-ko")
+        XCTAssertEqual(needsSessionCalls, ["en", "ko"])
     }
 }

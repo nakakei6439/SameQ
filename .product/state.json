@@ -1,7 +1,7 @@
 {
   "currentSprint": "06",
-  "attempt": 2,
-  "status": "needs_fix",
+  "attempt": 3,
+  "status": "blocked",
   "history": [
     {
       "sprint": "01",
@@ -98,6 +98,12 @@
       "attempt": 2,
       "result": "needs_fix",
       "note": "evaluator が iPhone 17 / iOS 26.5 シミュレータ（端末言語 日本語・英語・韓国語）と iPhone 17 Pro Max 実機で、独自 XCUITest 12本＋Translation Framework の直接プローブ6本により実操作検証。受け入れ条件 3/7 で不合格。実機で本物の Apple Translation が動くこと自体は初めて確認（お題・投稿とも実際に翻訳された文章で表示、status(en→ja)=installed）。しかし実機ではタイムラインが2〜3件目で無言のまま固着し3回中3回とも読み切りに到達しない。原因は attempt 2 で導入した『言語ペアごとに TranslationSession をキャッシュして使い回す』設計で、configuration を別ペアへ差し替えると前の .translationTask が畳まれセッションが無効になるため（プローブで Attempted to use TranslationSession after the view it was attached to has disappeared を直接観測）。session.translate(_:) に時間制限が無く45秒タイムアウトはセッション取得にしか掛からないため保険にならない。invalidate() も直後に同値の Configuration で上書きしているため .translationTask が再実行されず効いていない。attempt 1 の指摘2・3・4は解消を確認。シミュレータでは3言語とも30件を通し完走・ちらつき0・zxx 0回表示・翻訳関連UI不在。回帰5/5、データ整合性OK（schemaVersion 4）、使用性2。条件4（モデル未取得時）と7（機内モード）は評価不能。詳細は .product/sprints/06-translation/eval-2.md"
+    },
+    {
+      "sprint": "06",
+      "attempt": 3,
+      "result": "blocked",
+      "note": "eval-2.md の指摘[1][2]に対応。(1) SessionRequestQueue からセッションのキャッシュを完全に撤去し、perform(key:body:onJobTimeout:) が毎回新しいセッションを要求、取得したセッションは .translationTask のクロージャがまだ生きているスコープの中で session.translate(_:) まで完結させてから結果だけを返す設計に変更（セッションを外へ持ち出す経路を型的に無くした）。Translator の configuration 差し替えも、SDKの .swiftinterface を直接確認したうえで『新しいインスタンスへ丸ごと差し替え』から『いま割り当てているインスタンスへ invalidate() してから source/target を書き換え』に変更。(2) session.translate(_:) の実行を withTaskGroup でタイムアウト（既定30秒）と競走させ、タイムアウトが勝ったら session.cancel()（iOS 26+）を呼んでから諦める設計を追加。SessionRequestQueueTests を新しい契約に合わせて全面的に書き直し。シミュレータでのフルテストスイート（SameQTests + SameQUITests）を単独実行し90/90全件成功。実機向けビルド・devicectl device install app も成功。しかし実機（iPhone 17 Pro Max）が施錠されており devicectl device process launch がロック解除待ちで失敗、アプリを起動できず実機でのタイムライン読み切り確認ができなかった。ユーザーに端末のロック解除を依頼し、解除後に改めて実機確認が必要。詳細は .product/sprints/06-translation/self-review.md の attempt 3"
     }
   ]
 }

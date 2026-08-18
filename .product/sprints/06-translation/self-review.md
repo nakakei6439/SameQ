@@ -208,3 +208,149 @@ extension に `nextTimelinePost(promptID:)`（`excluding: []` / `autoMarkViewed:
   調整する
 - `Translator.textCache` に上限が無い問題（attempt 1 の評価提案、優先度中）は今回も未対応
   （指摘された4点に集中したため）
+
+---
+
+# attempt 3（eval-2.md [1][2] の修正）
+
+## 直した2点
+
+### [1]【最重要】キャッシュしたセッションが実機では無効になる
+
+**原因**: attempt 2 の `SessionRequestQueue` は「一度取得できたセッションを言語ペアごとに
+キャッシュし、以後は使い回す」設計だった。しかし `TranslationSession` は SwiftUI の
+`.translationTask` 修飾子のライフサイクルに紐づいており、`configuration` を別の言語ペアへ
+差し替えると前の `.translationTask` は畳まれ、そこで取得したセッションは無効になる。無効な
+セッションで `translate(_:)` を呼ぶと、フレームワークが致命的エラー
+（`Attempted to use TranslationSession after the view it was attached to has disappeared`）
+を出す。これは実機でのみ再現し（シミュレータの `-SameQFakeTranslate` は `sessionQueue` の
+手前で分岐するため、この経路を一度も通らない）、evaluator の実機プローブで確認された。
+
+**対応**: `SessionRequestQueue` からセッションのキャッシュを完全に撤去した。新しい契約
+（`SameQ/Backend/SessionRequestQueue.swift`）:
+- `perform(key:body:onJobTimeout:)` は**呼ぶたびに必ず新しいセッションを要求する**
+  （同じ言語ペアでもキャッシュを返さない。`onNeedsSession` は毎回呼ばれる）。
+- 取得できたセッションは `resolve(session:)` の中（＝そのセッションを供給した
+  `.translationTask` のクロージャがまだ生きている構造化された非同期スコープの中）で
+  `body`（実際の `session.translate(_:)`）を実行し終えてから返る。`resolve` 自体が
+  `body` の完了を待つので、セッションが `.translationTask` の外に持ち出されることは
+  型的に無い。
+- キューは常に1件ずつしか処理しない（元の設計と同じ。`isInFlight` フラグで直列化）。
+
+同じ言語ペアを連続で要求しても `.translationTask` が確実に再実行されるよう、`Translator` の
+`configuration` 差し替えロジックも変更した。attempt 2 は「`invalidate()` を呼んでから
+新しい `Configuration` インスタンスに丸ごと差し替える」実装だったが、これだと SwiftUI が
+次のレンダーで見る最終値は無効化前と等価な値に戻ってしまい（新しいインスタンスは
+`invalidate()` されていない）、`.translationTask` は再実行されない（attempt 2 の eval が
+指摘した2点目の不具合と同根）。SDK の `.swiftinterface`
+（`Translation.framework/Modules/Translation.swiftmodule/arm64e-apple-ios.swiftinterface`）
+を直接確認し、`TranslationSession.Configuration` の `source`/`target` が `var`、
+`invalidate()` が `mutating func` であることを確かめたうえで、**いま割り当てている
+インスタンスに対して** `invalidate()` を呼んでから `source`/`target` を書き換える方式に
+変更した。これにより、同じ言語ペアの連続要求でも SwiftUI が次のレンダーで見る値が
+無効化前と異なるものになり、`.translationTask` が確実に再実行される。
+
+### [2] `session.translate(_:)` 自体にタイムアウトが無い
+
+**対応**: `SessionRequestQueue.perform` の中で、取得したセッションに対する `body`
+（`session.translate(_:)`）の実行を `withTaskGroup` でタイムアウト用の `sleep` と競走させる
+（`jobTimeoutSeconds`、既定30秒）。タイムアウトが勝ったら `onJobTimeout(session)` を呼んでから
+`nil` を返す。`Translator` はこの `onJobTimeout` で `session.cancel()`（iOS 26+。SDKの
+`.swiftinterface` で確認: `TranslationSession.cancel()` は iOS 26.0+）を呼び、応答不能な
+`translate(_:)` 呼び出しへ中断を伝える。
+
+**確認した重要な性質（使い捨てスクリプトで検証済み）**: `withTaskGroup` は、クロージャが
+値を返したあとも、残っている子タスク（この場合はまだ走っている `body`）の完了を待ってから
+関数全体が返る。つまり `body` が本当に応答不能（cancellation を無視する）だと、
+`group.cancelAll()` を呼ぶだけではタイムアウトの意味が無い。`onJobTimeout` を
+`group.cancelAll()` より**先に**呼び、`session.cancel()` で `translate(_:)` 自身に
+中断を伝える設計にしたのはこのため。`Task.sleep` は協調的キャンセルに正しく応答することも
+別途確認済み（`body` が `Task.sleep` を含む場合はキャンセル後すぐに戻る）。
+
+タイムアウトした場合は `.unavailable(permanent: false)`（既存の仕組みをそのまま使う。
+既読にしないので後で再挑戦できる）。
+
+## 削って書き直したもの
+
+- `SessionRequestQueue.sessionsByKey`（セッションキャッシュ）と、それに依存していた
+  `SessionRequestQueueTests.swift` の既存5本を、新しい契約（毎回新しいセッションを要求・
+  キャッシュしない・`body` の実行まで含めて `resolve` が完了する）に合わせて書き直した
+  （6本、うち1本はセッションが有効なスコープの中で `body` が完了することを確認する新規テスト、
+  2本はジョブタイムアウトの保険を確認する新規テスト）。
+
+## 自分で確認したこと（このセッション）
+
+- SDK の `.swiftinterface` を直接読み、`TranslationSession.Configuration` の `source`/
+  `target` が `var`、`invalidate()` が `mutating func` であること、`TranslationSession.cancel()`
+  が iOS 26.0+ であることを確認（Web検索だけに頼らず、実際のインターフェースファイルで裏取りした）
+- 使い捨てのSwiftスクリプト3本で `withTaskGroup` の挙動を検証（`/private/tmp` 配下、
+  コミット対象外）:
+  1. `withTaskGroup` は非Sendableなクラスをキャプチャしても Swift 5 言語モードでは
+     コンパイルエラーにならないこと
+  2. cancellation に応答しない子タスクがあると、`group.next()` がタイムアウト側の値を
+     返したあとも、関数全体は応答しない子タスクの完了を待ち続けて返らないこと
+     （＝`cancelAll()` だけでは不十分）
+  3. `Task.isCancelled` を確認するループは `cancelAll()` 後すぐに戻ること（`Task.sleep` も
+     同様）
+- `xcodebuild -destination 'generic/platform=iOS Simulator' build` 成功
+- `SessionRequestQueueTests`（6本）・`TranslatorFakeModeTests`（6本）・
+  `AppSessionTranslationTests`（3本）・`TranslationSkipTests`（5本）を単独実行し、
+  20本全件成功（ハングなし、`SessionRequestQueueTests` のジョブタイムアウト系テストも
+  実時間で1秒未満）
+- 他にxcodebuildプロセスが動いていないことを確認したうえで、シミュレータ
+  （iPhone 17 / iOS 26.5）でフルテストスイート（`SameQTests` + `SameQUITests`）を実行 →
+  **90/90 全件成功**（`xcresulttool` の `test-results summary` で確認: `failedTests: 0`,
+  `passedTests: 90`）
+- `xcodebuild -destination 'id=B7121EA8-8AED-5E66-B696-511BFFC729E2' -allowProvisioningUpdates build`
+  成功（実機向けビルド・署名は通る）
+- `xcrun devicectl device install app` 成功（実機へのインストールも通る）
+
+## 実機での確認について（重要・未完了）
+
+**実機（iPhone 17 Pro Max、`B7121EA8-8AED-5E66-B696-511BFFC729E2`）が施錠されており、
+アプリを起動できなかった。** `devicectl device process launch` が
+`Unable to launch com.nakakei6439.SameQ because the device was not, or could not be, unlocked`
+で失敗する（インストール自体は成功しているので、開発者イメージのマウント・署名・
+プロビジョニングには問題が無い。ロック画面を開く操作だけができない）。20秒待って
+再試行したが同じ結果だった。
+
+このため、**このセッションでは「タイムラインを実機で読み切りまで操作して確認する」
+という最重要の確認ができていない**。実装した内容（[1][2]の修正）はコードレベル・SDK
+インターフェースの裏取り・使い捨てスクリプトでの `withTaskGroup` 挙動確認・シミュレータでの
+フルテスト（90/90）までは完了しているが、evaluator が実機プローブで見つけたのと同種の
+不具合（実機の Apple Translation Framework の実際の挙動）が本当に解消しているかは、
+**ユーザーが端末のロックを解除したあとの実機確認が必須**。
+
+## 動かし方（evaluator向け・attempt 3で変わった点）
+
+- コード上の変更点（`Translator` / `SessionRequestQueue`）だけで、起動引数・UIには変更なし。
+  `-SameQFakeTranslate` の挙動もキャッシュ非依存の実装のまま維持（`sessionQueue` の手前で
+  分岐する構造は変えていない）
+- 実機確認手順（PROGRESS.md の依頼どおり）:
+  ```
+  xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'id=B7121EA8-8AED-5E66-B696-511BFFC729E2' -allowProvisioningUpdates build
+  xcrun devicectl device install app --device B7121EA8-8AED-5E66-B696-511BFFC729E2 <ビルドしたSameQ.appのパス>
+  xcrun devicectl device process launch --device B7121EA8-8AED-5E66-B696-511BFFC729E2 com.nakakei6439.SameQ -- -SameQResetState -SameQDebugOverlay
+  ```
+  （`-SameQFakeTranslate` を**付けない**のが重要。これを付けると本物の翻訳経路を通らない）
+- **端末のロックを解除してから**でないと `devicectl device process launch` は失敗する
+  （`FBSOpenApplicationErrorDomain error 7`）
+
+## 自分で見つけた弱点（正直に書く）
+
+- **上記のとおり、今回のセッションでも実機での最終確認ができていない**（今回は「外出中」
+  ではなく「端末がロックされている」ことが理由）。コードの修正自体は SDK インターフェースの
+  裏取りと使い捨てスクリプトでの検証を伴っており、attempt 2 のときより確度は高いと考えているが、
+  「確度が高い」と「実機で確認した」はイコールではない。evaluator には必ず実機で確認してほしい
+- `jobTimeoutSeconds`（既定30秒）・`acquireTimeoutSeconds`（既定45秒）はどちらも経験的な値。
+  実機でモデルの初回ダウンロードにこれより長くかかる場合、正当な待ちを「一時的な失敗」として
+  打ち切ってしまう可能性がある（既読にはならないので次の巡回で再挑戦できる、という位置づけ）
+- `session.cancel()` を呼んだあとに実際に `translate(_:)` がどれだけ早く戻ってくるかは、
+  Apple Translation Framework の内部実装に依存しており、コード側からは保証できない
+  （`TranslationError.alreadyCancelled` を投げて戻ってくることを期待した設計だが、
+  実機での実測はできていない）
+
+## 提案（今回はやらなかったこと）
+
+- 実機で `jobTimeoutSeconds` / `acquireTimeoutSeconds` の実測値を確認し、必要なら調整する
+- `Translator.textCache` に上限が無い問題（attempt 1 から継続、優先度中）は今回も未対応

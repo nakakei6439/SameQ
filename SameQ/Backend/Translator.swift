@@ -25,12 +25,33 @@ enum TranslationOutcome: Equatable {
 /// 呼び出し側（`AppSession`）はこの仕組みを意識せず `translate(_:sourceLanguageCode:)` を
 /// 呼ぶだけでよい。
 ///
-/// ## attempt 2 での変更（evaluator 指摘の修正）
-/// セッションの取得は `SessionRequestQueue` に切り出し、**同じ言語ペアでは2回目以降
-/// 新しいセッションを要求せずキャッシュを再利用する**ようにした。これにより
-/// 「値の等しい `TranslationSession.Configuration` を代入し直しても `.translationTask` が
-/// 再実行されない」という制約があっても、待ち行列が固着しない（詳細は
-/// `SessionRequestQueue.swift` のコメントを参照）。
+/// ## attempt 2 での変更（シミュレータでは検証できなかった不具合）
+/// attempt 2 は「同じ言語ペアでは2回目以降キャッシュしたセッションを再利用する」設計に
+/// したが、これは実機で `TranslationSession` を**そのセッションを供給した
+/// `.translationTask` の外へ持ち出して**使い回すことになり、`configuration` を別の
+/// 言語ペアへ差し替えた時点で前の `.translationTask` が畳まれ、そこで得たセッションが
+/// 無効になる（Apple Translation Framework が致命的エラーを出す）。実機でのみ再現し、
+/// evaluator の実機プローブで確認された。
+///
+/// ## attempt 3 での変更（evaluator 指摘 [1][2] の修正）
+/// セッションのキャッシュ・持ち出しを一切やめた。`SessionRequestQueue.perform(key:body:)` は
+/// 呼ぶたびに必ず新しいセッションを要求し、取得できたセッションは `.translationTask` の
+/// クロージャの中（＝そのセッションが有効な構造化された非同期スコープの中）で
+/// `session.translate(_:)` まで完結させてから結果だけを持ち帰る。セッションが
+/// `.translationTask` の外に出ることは型的に無い。
+///
+/// 同じ言語ペアを連続で要求しても `.translationTask` が固着せず再実行されるよう、
+/// `configuration` の差し替えは「新しい `Configuration` に丸ごと差し替える」のではなく
+/// 「いま割り当てているインスタンスを `invalidate()` してから `source`/`target` を
+/// 書き換える」方式にした（`TranslationSession.Configuration` は `source`/`target` が
+/// `var` で `invalidate()` が `mutating func` であることを SDK の `.swiftinterface` で
+/// 確認済み）。新しいインスタンスへ丸ごと差し替えると、SwiftUI が次のレンダーで見る
+/// 最終値は無効化前と等価な値に戻ってしまい、`.translationTask` が再実行されない
+/// （attempt 2 の不具合の直接原因）。
+///
+/// `session.translate(_:)` 自体にもタイムアウトを設けている（`SessionRequestQueue` の
+/// `jobTimeoutSeconds`）。タイムアウトした場合は `session.cancel()`（iOS 26+）を呼び、
+/// 応答不能な呼び出しへ中断を伝える。
 @MainActor
 @Observable
 final class Translator {
@@ -41,9 +62,8 @@ final class Translator {
     /// （`[<targetLanguageCode>] <原文>`）を検証できるようにするため。外部には公開しない。
     let targetLanguageCode: String
 
-    /// `TranslationHostView` の `.translationTask` に渡す設定。
-    /// 新しい言語ペアのセッションが必要になったときだけ値を差し替える
-    /// （同じ言語ペアで2回差し替えることは無い。詳細は `SessionRequestQueue`）。
+    /// `TranslationHostView` の `.translationTask` に渡す設定。新しいセッションが必要になる
+    /// たびに（同じ言語ペアでも毎回）更新する。詳細は `sessionQueue` の `onNeedsSession` を参照。
     private(set) var configuration: TranslationSession.Configuration?
 
     private let availability: LanguageAvailability
@@ -59,22 +79,31 @@ final class Translator {
     /// `TranslationError.unsupportedLanguagePairing` 系のときだけ記録する。
     private var unsupportedSourceCodes: Set<String> = []
 
-    /// `TranslationSession` の取得を1件ずつさばく待ち行列。新しい言語ペアが必要になったら
-    /// `configuration` を差し替えて `.translationTask` へ知らせる。
+    /// `TranslationSession` の取得を1件ずつさばく待ち行列。新しいセッションが必要になる
+    /// たびに（同じ言語ペアでも毎回）`configuration` を更新して `.translationTask` へ知らせる。
     /// `@ObservationIgnored`: `@Observable` の追跡対象にすると `lazy` と両立できない
     /// （SwiftUI の描画には関係しない内部の実装詳細のため、追跡対象からも外してよい）。
     @ObservationIgnored
     private lazy var sessionQueue = SessionRequestQueue<TranslationSession>(
         onNeedsSession: { [weak self] sourceCode in
             guard let self else { return }
-            // `invalidate()` は「値が同じでも次のセッションは必ず作り直させる」ための保険
-            // （evaluator の提案）。通常はここに来る時点で未取得の新しい言語ペアのはずだが、
-            // 念のため呼んでおく。
-            self.configuration?.invalidate()
-            self.configuration = TranslationSession.Configuration(
-                source: Locale.Language(identifier: sourceCode),
-                target: self.targetLanguage
-            )
+            let requestedSource = Locale.Language(identifier: sourceCode)
+            // 新しいインスタンスへ丸ごと差し替えるのではなく、**いま割り当てている
+            // インスタンスに対して** `invalidate()` を呼んでから中身を書き換える。
+            // 同じ言語ペアの連続要求でも、SwiftUI が次のレンダーで見る最終値が
+            // 無効化前と異なる値になるため、`.translationTask` が確実に再実行される
+            // （attempt 2 の不具合の直接原因の修正。詳細はクラス冒頭のコメント）。
+            if var config = self.configuration {
+                config.invalidate()
+                config.source = requestedSource
+                config.target = self.targetLanguage
+                self.configuration = config
+            } else {
+                self.configuration = TranslationSession.Configuration(
+                    source: requestedSource,
+                    target: self.targetLanguage
+                )
+            }
         }
     )
 
@@ -132,11 +161,34 @@ final class Translator {
             return .unavailable(permanent: true)
         }
 
-        guard let session = await sessionQueue.request(sourceCode) else {
-            // 待ち行列がタイムアウトした（保険）。ソフトウェア側の不具合や一時的な状況を
-            // 疑い、恒久的な非対応とは扱わない。既読にしないので後で再挑戦できる。
-            return .unavailable(permanent: false)
-        }
+        // `perform` は毎回新しいセッションを要求し、取得できたセッションは
+        // `.translationTask` のクロージャの中で `session.translate(_:)` まで完結させてから
+        // 結果だけを持ち帰る（セッションを外へ持ち出さない。attempt 3 の修正）。
+        let outcome = await sessionQueue.perform(
+            key: sourceCode,
+            body: { [weak self] session -> TranslationOutcome in
+                guard let self else { return .unavailable(permanent: false) }
+                return await self.performTranslate(session: session, text: text, sourceCode: sourceCode, cacheKey: cacheKey)
+            },
+            onJobTimeout: { session in
+                // `session.translate(_:)` が `jobTimeoutSeconds` を超えても返ってこない場合の保険。
+                // `cancel()` は iOS 26+ のみ（このアプリの Deployment Target は iOS 18.0 のため
+                // ガードする）。呼べない環境では中断を伝える手段が無く、`body` は応答不能な
+                // ままバックグラウンドで待ち続けることになる。
+                if #available(iOS 26.0, *) {
+                    session.cancel()
+                }
+            }
+        )
+        // `outcome` が `nil` なのは、セッションの取得自体がタイムアウトした場合
+        // （`body` は一度も呼ばれていない）。
+        return outcome ?? .unavailable(permanent: false)
+    }
+
+    /// 取得済みの `session` で実際に翻訳する。`SessionRequestQueue.resolve` の中（＝
+    /// `.translationTask` のクロージャがまだ生きている構造化された非同期スコープの中）から
+    /// しか呼ばれない。
+    private func performTranslate(session: TranslationSession, text: String, sourceCode: String, cacheKey: String) async -> TranslationOutcome {
         do {
             let response = try await session.translate(text)
             textCache[cacheKey] = response.targetText
@@ -147,8 +199,9 @@ final class Translator {
                 unsupportedSourceCodes.insert(sourceCode)
                 return .unavailable(permanent: true)
             }
-            // それ以外（一時的なエラー）はエラーダイアログを出さずスキップさせるが、
-            // 既読にはしない（受け入れ条件・バグ4の修正）。
+            // それ以外（一時的なエラー・タイムアウトによる `cancel()` 後の
+            // `TranslationError.alreadyCancelled` など）はエラーダイアログを出さずスキップ
+            // させるが、既読にはしない（受け入れ条件・バグ4の修正を維持）。
             return .unavailable(permanent: false)
         }
     }
@@ -164,9 +217,12 @@ final class Translator {
         return supported
     }
 
-    /// `TranslationHostView` が新しいセッションを受け取ったら呼ぶ。
-    func resolve(session: TranslationSession) {
-        sessionQueue.resolve(session: session)
+    /// `TranslationHostView` が新しいセッションを受け取ったら呼ぶ。`await` している間、
+    /// `.translationTask` のクロージャ（＝このセッションを供給しているタスク）はまだ
+    /// 生きている。`session.translate(_:)` はこのクロージャが生きている間にしか安全に
+    /// 呼べないため、`sessionQueue.resolve` はここで実際の翻訳が終わるまで返らない。
+    func resolve(session: TranslationSession) async {
+        await sessionQueue.resolve(session: session)
     }
 
     // MARK: 疑似翻訳（Debug限定・シミュレータ検証用）

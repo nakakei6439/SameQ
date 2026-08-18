@@ -44,3 +44,46 @@
 - 新規ユニットテスト（`SessionRequestQueue` の固着再現・修正確認、`Translator` 疑似モード、
   `LocalBackend` の一時失敗/恒久失敗の既読区別）
 - 既存の呼び出し元・既存テストは protocol extension のデフォルト引数により無変更のまま通す想定
+
+---
+
+# 修正計画（attempt 3、eval-2.md 対応）
+
+## 直す2点
+1. **[最重要] キャッシュしたセッションが実機では無効になる**
+   - `SessionRequestQueue` から「セッションをキーごとにキャッシュして使い回す」設計を撤去する。
+   - 新しい契約: `perform(key:body:)` は毎回**必ず**新しいセッション取得を要求し（`onNeedsSession`
+     を毎回呼ぶ）、取得できたセッションで `body`（実際の `session.translate(_:)`）を
+     **`.translationTask` のクロージャと同じ非同期スコープの中で最後まで実行してから**結果を返す。
+     セッションを外へ持ち出して後で使う経路を型的に無くす（`resolve` はセッションをキャッシュに
+     入れず、その場で `body` に渡して終わるまで待つだけ）。
+   - 同一言語ペアの連続要求でも `.translationTask` を確実に再発火させるため、`configuration` の
+     差し替えロジックを「新しい `Configuration` を作って上書き」から「既存のインスタンスに対して
+     `invalidate()` を呼び、必要なら同じインスタンスの `source`/`target` を書き換える」方式に変える
+     （新しいインスタンスに差し替えると、SwiftUI が次のレンダーで見る最終値は無効化前と等価になり
+     再実行されない。事前にSDKの `.swiftinterface` を確認し `invalidate()` が `mutating func` で
+     `source`/`target` も `var` であることを確認済み）。
+2. **`session.translate(_:)` 自体にタイムアウトが無い**
+   - `SessionRequestQueue.perform` の中で、取得したセッションに対する `body` の実行を
+     `withTaskGroup` でタイムアウト用の `sleep` と競走させる。タイムアウトが勝ったら
+     `onJobTimeout(session)` を呼んでから諦める（Translator側で `session.cancel()`(iOS 26+)を
+     呼び、応答不能な `translate(_:)` へ中断を伝える保険）。`withTaskGroup` は抜ける前に
+     残っている子タスクの完了を待つ仕様のため、`cancel()` を呼ばないとタイムアウトの意味が
+     薄れることを検証用の使い捨てスクリプトで確認済み。
+   - タイムアウトした場合は `.unavailable(permanent: false)`（既存の仕組みをそのまま使う）。
+
+## 削るもの
+- `SessionRequestQueue.sessionsByKey`（セッションキャッシュ）とそれに依存する既存ユニットテスト
+  5本（`SessionRequestQueueTests`）。新しい契約（毎回セッション取得・キャッシュしない）に合わせて
+  書き直す。
+
+## 影響範囲
+- `SameQ/Backend/SessionRequestQueue.swift`（契約を大きく変更）
+- `SameQ/Backend/Translator.swift`（`sessionQueue.perform` を使う形に書き換え、`configuration`
+  差し替えロジックの修正、`session.cancel()` の呼び出し追加）
+- `SameQTests/SessionRequestQueueTests.swift`（新しい契約に合わせて書き直し）
+- `SameQ/App/TranslationHostView.swift`（`translator.resolve` が非同期でセッションを使い切るように
+  なるだけで、呼び出し方自体は変わらない見込み）
+- シミュレータでの `-SameQFakeTranslate` 経路・`TranslationOutcome`・既読区別の仕組みは変更しない
+  （壊さないことを既存テストで確認する）
+- **実機での確認が必須**（`-SameQFakeTranslate` 無しでタイムラインを読み切りまで）
