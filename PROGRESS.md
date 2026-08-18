@@ -33,7 +33,8 @@ SwiftUI Viewにハードコードされた日本語文字列）は一切ロー�
   既にあるので、UI文字列の切り替えにも同じ言語判定を使い回せる可能性がある
 
 ## 現在の状態
-- **フェーズ**: スプリント06（投稿本文とお題の自動翻訳）**attempt 2 不合格 → generator の修正待ち（attempt 3）**
+- **フェーズ**: スプリント06（投稿本文とお題の自動翻訳）**attempt 3 実装完了・シミュレータ全件成功 → 実機での最終確認が保留中**（2026-08-19、ユーザーが外出中で実機のロックを解除できないため。詳細は「スプリント06 attempt 3」節）
+- **並行タスク**: ユーザー確定済みのUI変更3点（お題を世界タイムラインでも常時表示／✕ボタン削除・操作はスワイプ＋いいねのみ／いいねボタンの位置・見た目の調整）を、実機確認待ちの間に着手する。スプリント06とは独立したタイムライン画面の変更（詳細は「並行タスク: タイムラインUI調整」節）
 - **スプリント06 attempt 1 の実装内容（generator、2026-08-18）**: Apple Translation Framework のみを使い（外部翻訳API・フォールバックは無し、サーバーへ本文を送らない）投稿本文とお題本文を端末言語へ変換して表示。`TranslationSession` は `.translationTask` からしか作れないため、`RootView` の背景に常駐させた不可視の `TranslationHostView` がセッションを供給し、`Translator`（`SameQ/Backend/Translator.swift`）が要求をさばく。お題・投稿とも翻訳が確定するまで表示せず「準備中…」を出すことで「ちらつき」を防止（F21）。同梱シードに `promptLanguage` を追加し、多言語投稿での翻訳確認ができるようにした。この attempt 1 は evaluator の検証で受け入れ条件3/7の不合格となり（詳細下記）、attempt 2 で4点を修正した。
 - **スプリント06 attempt 2 の修正内容（generator、2026-08-18）**: evaluatorの指摘4点すべてに対応。詳細は [`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 2」を参照。
   1. **[最重要] 翻訳キューの固着を解消**。待ち行列ロジックを `SessionRequestQueue<Session>`（新規、Translation非依存のジェネリック型）に切り出し、一度取得できたセッションは言語ペアごとにキャッシュして2回目以降は新規要求を出さない設計に変更。同じ値の `Configuration` を再代入する経路自体を無くした。保険として `invalidate()` の呼び出しと45秒タイムアウト（一時的失敗として扱う）も追加。ユニット5本（`SessionRequestQueueTests`）で `TranslationSession` を使わずロジックを直接検証。
@@ -47,7 +48,8 @@ SwiftUI Viewにハードコードされた日本語文字列）は一切ロー�
   - **[最重要・要修正] 実機ではタイムラインが2〜3件目で無言のまま固まり、二度と進まない**（3回中3回再現）。原因は attempt 2 で入れた「言語ペアごとに `TranslationSession` をキャッシュして使い回す」設計そのもの。`configuration` を別の言語ペアへ差し替えた時点で前の `.translationTask` は畳まれ、そこで得たセッションは無効になる。無効なセッションで `translate(_:)` を呼ぶとフレームワークが `Attempted to use TranslationSession after the view it was attached to has disappeared` の致命的エラーを出す（実機プローブで直接確認）。アプリ上では `translate(_:)` が返らず `timelineContent` が `.loading` のまま止まり、タイムライン画面自体が消える。`SessionRequestQueue` の45秒タイムアウトは**セッション取得にしか掛かっていない**ため保険にならない。
   - **[要修正] `invalidate()` の保険が効いていない**。`configuration?.invalidate()` の直後に同値の `Configuration` で上書きしているため `.translationTask` は再実行されず、一度タイムアウトした言語はそのプロセスの間ずっと復帰できない（`fireCount` で実測）。
   - attempt 1 の指摘のうち、**2（シミュレータでの検証手段）・3（お題が原文のまま）・4（スキップした回答の既読化）は解消を確認**。一時的な失敗が既読にならないことは `state.json` を直接読んで検証済み。回帰5/5、データ整合性OK（schemaVersion 4、翻訳結果は永続化されない）。使用性2。
-- **次にやること**: **スプリント06 attempt 3（generator の修正）**。[`eval-2.md`](.product/sprints/06-translation/eval-2.md) の不合格原因[1][2]を直す。方向性は「`TranslationSession` をクロージャの外へ持ち出さず、`.translationTask` の中で翻訳まで済ませて結果だけ持ち帰る」形（attempt 1 の eval で優先度 高として挙げた提案が、そのまま今回の原因になっている）。併せて `session.translate(_:)` 側にも時間制限を掛けて、返らない事態を検知できるようにすること。修正後は**必ず実機（`-SameQFakeTranslate` を付けない）でタイムラインを読み切りまで通す**こと（疑似翻訳モードは `sessionQueue` の手前で分岐するため、この不具合を1本も捕まえられなかった）。
+- **スプリント06 attempt 3 の修正内容（generator、2026-08-18）**: eval-2.mdの指摘[1][2]に対応。①`SessionRequestQueue` からセッションキャッシュを撤去し、取得したセッションは `.translationTask` のクロージャが生きているスコープの中で `session.translate(_:)` まで完結させる設計に変更（セッションを外へ持ち出す経路を型的に廃止）。`Configuration` の差し替えも「新規インスタンス」ではなく「既存インスタンスへの `invalidate()` + `source`/`target` 書き換え」に修正（新規インスタンス差し替えだとSwiftUIが再実行を検知できないことがattempt 2の直接原因だった）。②`session.translate(_:)` 自体にもタイムアウトを追加（`withTaskGroup` で競走、タイムアウト時は `session.cancel()` で中断）。シミュレータでのフルテストスイート（`SameQTests` + `SameQUITests`）**90/90 全件成功**。実機向けビルド・インストールも成功。詳細は [`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 3」。
+- **次にやること**: **スプリント06 attempt 3 の実機での最終確認（evaluator）**。`-SameQFakeTranslate` を付けずに実機（iPhone 17 Pro Max、UDID `B7121EA8-8AED-5E66-B696-511BFFC729E2`）でタイムラインを読み切りまで通し、attempt 2で見つかった「2〜3件目で固まる」不具合が再発しないことを確認する。**2026-08-19時点で、ユーザーが仕事に出かけておりスマホを使えないため保留中。** ユーザーが戻り実機のロックを解除できるようになったら再開すること。それまでの間は「並行タスク: タイムラインUI調整」を進める。
 - **スプリント05（BAN・投稿頻度制限・スパム対策）は合格済み（attempt 2、2026-08-18）**。1お題1投稿の担保、直近投稿と同一本文の連投拒否、空白・改行のみ／同一文字の過剰な繰り返しの拒否、いいね・通報の連打制限、BAN状態のアカウント締め出し、BANされた投稿者の非表示化を実装。受け入れ条件6/6・回帰10/10。詳細は [`self-review.md`](.product/sprints/05-ban-spam/self-review.md) / [`eval-2.md`](.product/sprints/05-ban-spam/eval-2.md)。
   - スプリント05の評価で挙がった改善提案（合否には影響しないが、着手時に踏まえる）:
     - **[A] 空白だけを入力しているとき、文字数カウンタが「8/140」と出る**（拒否メッセージは出るようになったので実害は消えたが、押す前は空欄に見えるのに入力済みに見える矛盾が残る）。trim 後の文字数を数える等。
@@ -131,6 +133,19 @@ SwiftUI Viewにハードコードされた日本語文字列）は一切ロー�
 - [x] 評価（evaluator、attempt 2）— 2026-08-18 **不合格**。受け入れ条件 3/7（2件は評価不能、2件は未達）。iPhone 17 / iOS 26.5 シミュレータ（日本語・英語・韓国語）＋ **iPhone 17 Pro Max 実機**で実操作検証。実機では本物の翻訳が表示されることを確認できた一方、**タイムラインが2〜3件目で固まり主要動線が完走しない（3/3再現）**。原因は言語ペアごとに `TranslationSession` をキャッシュする設計（`.translationTask` の外へ持ち出したセッションは configuration 差し替えで無効になる）。`invalidate()` の保険も効いていない。attempt 1 の指摘2・3・4は解消、回帰5/5、データ整合性OK、使用性2。[`eval-2.md`](.product/sprints/06-translation/eval-2.md)
 - [x] 修正（generator / attempt 3）— 2026-08-18。**修正済み・再評価待ち（実機での最終確認はユーザーの端末ロック解除待ち）**。[`eval-2.md`](.product/sprints/06-translation/eval-2.md) の[1][2]に対応。(1) `SessionRequestQueue` からセッションのキャッシュを完全に撤去し、`perform(key:body:onJobTimeout:)` が**毎回**新しいセッションを要求、取得したセッションは `resolve(session:)` の中（＝そのセッションを供給した `.translationTask` のクロージャがまだ生きているスコープの中）で `session.translate(_:)` まで完結させてから結果だけを返す設計に変更（セッションを外へ持ち出す経路を型的に無くした）。`Translator` の `configuration` 差し替えも「新しいインスタンスへ丸ごと差し替え」から「いま割り当てているインスタンスへ `invalidate()` してから `source`/`target` を書き換え」に変更（SDKの `.swiftinterface` で `source`/`target` が `var`・`invalidate()` が `mutating func` であることを確認したうえで対応。新しいインスタンスへの差し替えだと SwiftUI が次のレンダーで見る最終値が無効化前と等価に戻ってしまい `.translationTask` が再実行されないことが attempt 2 の不具合の直接原因だった）。(2) `SessionRequestQueue.perform` 内で `session.translate(_:)` の実行を `withTaskGroup` でタイムアウト（既定30秒）と競走させ、タイムアウトが勝ったら `session.cancel()`（iOS 26+）を呼んでから諦める設計を追加（使い捨てスクリプトで `withTaskGroup` が cancellation に応答しない子タスクの完了を待ち続けることを確認したうえで、`cancelAll()` より先に `cancel()` を呼ぶ順序にした）。`SessionRequestQueueTests` を新しい契約に合わせて書き直し（6本）。シミュレータでのフルテストスイート（`SameQTests` + `SameQUITests`）を単独実行し **90/90 全件成功**。実機向けビルド（`-destination 'id=...'`）・`devicectl device install app` も成功（署名・プロビジョニングは問題なし）。**しかし実機（iPhone 17 Pro Max）が施錠されており `devicectl device process launch` が `Unable to launch ... because the device was not, or could not be, unlocked` で失敗、アプリを起動できず「タイムラインを実機で読み切りまで操作して確認する」という最重要の確認が完了していない**。詳細は [`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 3」。
 - [ ] 評価（evaluator、attempt 3）— 受け入れ条件は `.product/spec.md` 194〜201行。**ユーザーが実機のロックを解除したあと**、`-SameQFakeTranslate` を付けずに実機でタイムラインを読み切りまで確認すること
+
+### 並行タスク: タイムラインUI調整（スプリント外、ユーザー確定・2026-08-18/19）
+仕様書のスプリント計画には無い、ユーザーからの直接フィードバックに基づく変更。スプリント06の
+実機最終確認待ち（保留中）の間に並行して着手する。対象は `SameQ/Feature/Timeline/` および
+`SameQ/Feature/Today/` 周辺。
+- [ ] 世界タイムライン閲覧中も、今日のお題の文章を常に見える状態にする（現状はタイムラインに
+      入るとお題が見えなくなる）
+- [ ] ✕（次へ）ボタンを削除する。操作はスワイプといいねの2つだけにする。理由: ✕はスワイプと
+      機能重複しており、ユーザーが用途を理解できないとの指摘（ユーザーへの回答: ✕は「次へ」＝
+      スワイプと同じ動作）
+- [ ] いいねボタンの位置・見た目を分かりやすく調整する（現状の配置が分かりにくいとの
+      フィードバック。具体的なデザイン方向は未指定、generatorの裁量）
+- [ ] 評価（evaluator）— シミュレータで実機不要。上記3点の実装後、通常どおり検証する
 
 ### スプリント07: ニックネームの自動ローカライズ
 含む機能: F23
