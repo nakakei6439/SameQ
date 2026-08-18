@@ -78,17 +78,31 @@ struct TodayPromptView: View {
         }
     }
 
+    /// お題本文は端末言語への翻訳が終わるまで表示しない（F22）。
+    /// 原文をいったん出してから翻訳済みの文章に差し替える「ちらつき」を避けるため、
+    /// 準備中は代わりにローディング表示を出す（F21）。
     private var promptCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("今日のお題")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.inkTertiary)
                 .tracking(1)
-            Text(session.prompt?.text ?? "")
-                .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(Theme.ink)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("today.promptText")
+            if let text = session.promptDisplayText {
+                Text(text)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("today.promptText")
+            } else {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .tint(Theme.inkSecondary)
+                    Text("準備中…")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+                .accessibilityIdentifier("today.promptLoading")
+            }
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)

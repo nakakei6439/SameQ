@@ -233,19 +233,36 @@ final class SprintFiveAcceptanceTests: XCTestCase {
     // MARK: 受け入れ条件6（BANされたユーザーの回答は他ユーザーのタイムラインに表示されない）
 
     func test07_bannedAuthorsPostNeverAppearsInDefaultSeed() {
-        // 引数なし（同梱シードそのまま）。SeedData.json に混ぜたBAN済み投稿者の回答が
-        // 22件を読み切るまで一度も出ないことを確かめる。
+        // 引数なし（同梱シードそのまま）。SeedData.json に混ぜたBAN済み投稿者の回答が、
+        // 読み切りに到達するまで一度も出ないことを確かめる。
+        //
+        // スプリント06（F20）で「端末言語へ翻訳できない回答はスキップする」が入ったため、
+        // 同梱22件すべてが出ることはもう前提にできない（Simulator は Apple Translation の
+        // 実際の翻訳処理に対応しておらず、日本語以外の原文は軒並みスキップされる。
+        // 実機ではもっと多く出るはず）。件数を決め打ちにせず、読み切りに着くまで見て、
+        // その過程でBANの目印が一度も出ないことだけを確かめる。
         let app = launch(arguments: [], reset: true)
         completeOnboarding(app)
         submitAnswer(app, body: answerBody)
 
-        for step in 1...22 {
+        var seenCount = 0
+        for _ in 0..<30 {
+            if app.staticTexts["timeline.exhausted"].exists { break }
             let card = app.staticTexts["timeline.card.body"]
-            XCTAssertTrue(card.waitForExistence(timeout: 8), "\(step)件目が出ない")
+            // 未対応言語の内部スキップに実時間がかかることがある（Simulator は特に遅い）ので、
+            // 1件あたりの待ちを長めに取る。
+            guard card.waitForExistence(timeout: 20)
+                || app.staticTexts["timeline.exhausted"].waitForExistence(timeout: 1) else {
+                XCTFail("\(seenCount + 1)件目も読み切りも出ない")
+                break
+            }
+            guard card.exists else { break }
             XCTAssertFalse(card.label.contains(bannedMarker), "BANされた投稿者の回答が表示された: \(card.label)")
+            seenCount += 1
             app.buttons["timeline.next"].tap()
         }
-        XCTAssertTrue(app.staticTexts["timeline.exhausted"].waitForExistence(timeout: 8), "読み切りに到達しない")
+        XCTAssertTrue(app.staticTexts["timeline.exhausted"].waitForExistence(timeout: 20), "読み切りに到達しない")
+        XCTAssertGreaterThan(seenCount, 0, "翻訳可能な回答が1件も出なかった（原文と端末言語が同じものだけは出るはず）")
     }
 
     // MARK: ヘルパー

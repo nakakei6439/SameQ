@@ -32,6 +32,9 @@ struct RootView: View {
         }
         .fontDesign(.rounded)
         .environment(session)
+        // 翻訳セッションの供給元（F18 / F22）。画面が切り替わっても常駐させておく必要があるので、
+        // 表示中の画面と同じ階層ではなく背景として1つだけ持たせる。
+        .background(TranslationHostView(translator: session.translator))
         .safeAreaInset(edge: .bottom, spacing: 0) { debugOverlay }
         .task {
             await session.start()

@@ -3,6 +3,7 @@
     {
       "id": "prompt_001",
       "text": "今日、思わず笑ってしまったことは何ですか？",
+      "promptLanguage": "ja",
       "posts": [
         {
           "id": "A27331CF-683D-46E7-84FE-00FD8A513A16",
@@ -203,6 +204,78 @@
           "minutesAgo": 439
         },
         {
+          "id": "C1A2B3C4-0001-4000-8000-000000000001",
+          "authorID": "D1A2B3C4-0001-4000-8000-000000000001",
+          "authorEmoji": "🦔",
+          "authorNickname": "ゆず",
+          "body": "エレベーターで独り言を言っていたら、扉が開いた瞬間に人がいて全部聞かれていた。",
+          "bodyLanguage": "ja",
+          "minutesAgo": 455
+        },
+        {
+          "id": "C1A2B3C4-0002-4000-8000-000000000002",
+          "authorID": "D1A2B3C4-0002-4000-8000-000000000002",
+          "authorEmoji": "🍡",
+          "authorNickname": null,
+          "body": "コンビニの店員さんと同時に「ありがとうございます」って言ってしまって、二人で笑った。",
+          "bodyLanguage": "ja",
+          "minutesAgo": 470
+        },
+        {
+          "id": "C1A2B3C4-0003-4000-8000-000000000003",
+          "authorID": "D1A2B3C4-0003-4000-8000-000000000003",
+          "authorEmoji": "🐿️",
+          "authorNickname": "そら",
+          "body": "上司が真剣な顔で「それは違うんじゃないかな」と言ったあと、思いっきりくしゃみをした。",
+          "bodyLanguage": "ja",
+          "minutesAgo": 485
+        },
+        {
+          "id": "C1A2B3C4-0004-4000-8000-000000000004",
+          "authorID": "D1A2B3C4-0004-4000-8000-000000000004",
+          "authorEmoji": "🍄",
+          "authorNickname": null,
+          "body": "傘を忘れたと思って引き返したら、最初からリュックに入っていた。",
+          "bodyLanguage": "ja",
+          "minutesAgo": 500
+        },
+        {
+          "id": "C1A2B3C4-0005-4000-8000-000000000005",
+          "authorID": "D1A2B3C4-0005-4000-8000-000000000005",
+          "authorEmoji": "🦦",
+          "authorNickname": "みのり",
+          "body": "電話越しに祖母が「聞こえてる？」と3回言ったが、実は私の声が大きすぎただけだった。",
+          "bodyLanguage": "ja",
+          "minutesAgo": 515
+        },
+        {
+          "id": "C1A2B3C4-0006-4000-8000-000000000006",
+          "authorID": "D1A2B3C4-0006-4000-8000-000000000006",
+          "authorEmoji": "🫐",
+          "authorNickname": null,
+          "body": "会議中に猫が画面の前を横切って、誰も何も言わずに続きが始まった。",
+          "bodyLanguage": "ja",
+          "minutesAgo": 530
+        },
+        {
+          "id": "C1A2B3C4-0007-4000-8000-000000000007",
+          "authorID": "D1A2B3C4-0007-4000-8000-000000000007",
+          "authorEmoji": "🦥",
+          "authorNickname": "たくと",
+          "body": "自分で自分に「よし」と声をかけたら、隣の席の人が「よし」と返してくれた。",
+          "bodyLanguage": "ja",
+          "minutesAgo": 545
+        },
+        {
+          "id": "C1A2B3C4-0008-4000-8000-000000000008",
+          "authorID": "D1A2B3C4-0008-4000-8000-000000000008",
+          "authorEmoji": "🐝",
+          "authorNickname": null,
+          "body": "宅配便の人と会話が噛み合わないまま、なぜかお互い笑顔でさようならをした。",
+          "bodyLanguage": "ja",
+          "minutesAgo": 560
+        },
+        {
           "id": "BA000001-0000-4000-8000-000000000001",
           "authorID": "BA000002-0000-4000-8000-000000000002",
           "authorEmoji": "🚫",
@@ -210,12 +283,22 @@
           "body": "【検証用】BANされた投稿者のテスト投稿です。この文言が表示されたら不具合です。",
           "bodyLanguage": "ja",
           "minutesAgo": 460
+        },
+        {
+          "id": "FA000001-0000-4000-8000-000000000001",
+          "authorID": "FA000002-0000-4000-8000-000000000002",
+          "authorEmoji": "🛸",
+          "authorNickname": "Vex",
+          "body": "Zzrel voth kimbra dol fassenqi ittho vren — sameQ_untranslatable_test_marker.",
+          "bodyLanguage": "zxx",
+          "minutesAgo": 480
         }
       ]
     },
     {
       "id": "prompt_002",
       "text": "最近、誰かに言われてうれしかった一言は何ですか？",
+      "promptLanguage": "ja",
       "posts": [
         {
           "id": "A7BE2A5F-5F1D-4A6A-B67A-BF87A07FBB0B",

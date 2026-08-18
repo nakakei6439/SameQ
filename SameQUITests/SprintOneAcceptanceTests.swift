@@ -78,13 +78,25 @@ final class SprintOneAcceptanceTests: XCTestCase {
         XCTAssertTrue(waitForBodyToChange(app, from: firstBody), "スワイプで別の回答に切り替わる")
 
         // 最後まで送っても自分の回答は一度も出ない
+        //
+        // スプリント06（F20）で「端末言語へ翻訳できない回答はスキップする」が入ったため、
+        // 未対応言語の内部スキップに実時間がかかることがある（Simulator は特に遅い）。
+        // `.exists` の瞬時チェックだけでは間に合わないことがあるので、1件あたりの
+        // 待ちを長めに取る。
         var seen = 0
-        while app.staticTexts["timeline.card.body"].exists, seen < 30 {
+        for _ in 0..<30 {
+            if app.otherElements["timeline.end"].exists { break }
+            guard app.staticTexts["timeline.card.body"].waitForExistence(timeout: 20)
+                || app.otherElements["timeline.end"].waitForExistence(timeout: 1) else {
+                XCTFail("\(seen + 1)件目も読み切りも出ない")
+                break
+            }
+            guard app.staticTexts["timeline.card.body"].exists else { break }
             XCTAssertNotEqual(app.staticTexts["timeline.card.body"].label, answerBody, "自分の投稿がタイムラインに出た")
             seen += 1
             app.buttons["timeline.next"].tap()
         }
-        XCTAssertTrue(app.otherElements["timeline.end"].waitForExistence(timeout: 5), "読み切ったら終端表示になる")
+        XCTAssertTrue(app.otherElements["timeline.end"].waitForExistence(timeout: 20), "読み切ったら終端表示になる")
         XCTAssertGreaterThanOrEqual(seen, 10, "検証には自分以外の回答が10件以上必要")
     }
 

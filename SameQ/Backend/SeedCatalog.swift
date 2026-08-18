@@ -20,6 +20,8 @@ enum SeedCatalog {
             let id: String
             let text: String
             let posts: [SeedPost]
+            /// お題原文の言語（F22 の翻訳可否判定に使う内部情報）。無ければ日本語として扱う。
+            let promptLanguage: String?
         }
         let prompts: [SeedPrompt]
         /// BAN状態の投稿者（F16）。同梱シードの誰がBANされているかをここに書く。
@@ -62,7 +64,13 @@ enum SeedCatalog {
         for (index, seedPrompt) in file.prompts.enumerated() {
             let startsAt = starts[index]
             let endsAt = startsAt.addingTimeInterval(Prompt.defaultDuration)
-            prompts.append(Prompt(id: seedPrompt.id, text: seedPrompt.text, startsAt: startsAt, endsAt: endsAt))
+            prompts.append(Prompt(
+                id: seedPrompt.id,
+                text: seedPrompt.text,
+                startsAt: startsAt,
+                endsAt: endsAt,
+                language: seedPrompt.promptLanguage ?? "ja"
+            ))
 
             var promptPosts = seedPrompt.posts.map { seed in
                 // 投稿時刻は画面に出さないので、お題の期間内に収まっていれば十分。
@@ -81,7 +89,6 @@ enum SeedCatalog {
             }
             if let requested = options.answerCount {
                 promptPosts = resize(
-                    promptPosts,
                     to: requested,
                     promptSlot: index,
                     promptID: seedPrompt.id,
@@ -98,21 +105,27 @@ enum SeedCatalog {
 
     /// 各お題の回答を指定件数ちょうどに揃える。
     ///
-    /// 足りないぶんは機械的に作る。ID は起動ごとに変わらない決め打ちなので、
-    /// アプリを再起動しても「同じ回答」として既読の判定ができる（F12 の検証に必要）。
-    /// 本文には通し番号を入れてあり、同じ回答が2回出ていないかを目視で追える。
+    /// 件数指定があるときは、同梱シードの実データ（多言語）は使わず**全件を機械的に作る**
+    /// （スプリント06で追加）。`-SameQAnswerCount` はタイムライン取得ルール・既読・BAN・
+    /// 通報連打制限など（F11〜F17）の検証に使う起動引数で、翻訳（F18〜F22）の検証とは
+    /// 役割が別。機械生成は常に端末言語と同じ「ja」で作るので、翻訳を挟まず
+    /// スキップも発生しない（＝件数どおりに必ず表示される）。翻訳そのものの検証は
+    /// `-SameQAnswerCount` を付けない同梱シードそのまま（多言語）で行う。
+    ///
+    /// ID は起動ごとに変わらない決め打ちなので、アプリを再起動しても「同じ回答」として
+    /// 既読の判定ができる（F12 の検証に必要）。本文には通し番号を入れてあり、
+    /// 同じ回答が2回出ていないかを目視で追える。
     private static func resize(
-        _ seeded: [Post],
         to count: Int,
         promptSlot: Int,
         promptID: String,
         startsAt: Date,
         endsAt: Date
     ) -> [Post] {
-        if count <= seeded.count { return Array(seeded.prefix(count)) }
-        var posts = seeded
+        guard count > 0 else { return [] }
+        var posts: [Post] = []
         let span = endsAt.timeIntervalSince(startsAt)
-        for number in (seeded.count + 1)...count {
+        for number in 1...count {
             let sentence = generatedSentences[(promptSlot + number) % generatedSentences.count]
             let emoji = generatedEmojis[number % generatedEmojis.count]
             // 4件に1件はニックネーム未設定（絵文字のみ表示のレイアウト確認用）。

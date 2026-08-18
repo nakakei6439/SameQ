@@ -26,4 +26,20 @@ struct Post: Codable, Identifiable, Equatable, Sendable {
         let trimmed = authorNickname.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
+
+    /// 本文を端末言語へ翻訳した表示用コピーを返す（F18）。他のフィールドは変えない。
+    /// `state.json` には保存せず、`AppSession.timelineContent` の中でだけ使う使い捨ての値。
+    func displaying(translatedBody: String) -> Post {
+        Post(
+            id: id,
+            promptID: promptID,
+            authorID: authorID,
+            authorEmoji: authorEmoji,
+            authorNickname: authorNickname,
+            body: translatedBody,
+            bodyLanguage: bodyLanguage,
+            createdAt: createdAt,
+            expiresAt: expiresAt
+        )
+    }
 }

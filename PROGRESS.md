@@ -16,11 +16,12 @@
 | 開発ハーネス | planner → generator → evaluator |
 
 ## 現在の状態
-- **フェーズ**: スプリント05（BAN・投稿頻度制限・スパム対策）**合格（attempt 2）**／次はスプリント06（投稿本文とお題の自動翻訳）の実装
-- **状態**: スプリント05（F16・F17）を実装（attempt 1、2026-08-18）。1お題1投稿の担保（既存実装の確認のみ）、直近投稿と同一本文の連投拒否（`PersistedState.lastPostBody`）、空白・改行のみ／同一文字の過剰な繰り返しの拒否（`PostValidator`）、いいね・通報の連打制限（`RateLimiter`、Debug限定 `-SameQRateLimitTestMode` で短縮可）、BAN状態のアカウント締め出し（Debug限定 `-SameQBanned` → `BannedView`）、BANされた投稿者の回答の非表示化（`SeedData.json` の `bannedAuthorIDs` → `LocalBackend.visibleOthers`）を実装。制限メッセージは日本語・英語を併記。実装中に見つけた不具合（`TodayPromptView` と `TimelineView` が同じ `alertMessage` に二重に `.alert` を出し、競合してタイムラインごと閉じる）も修正。ユニット12本＋UIテスト7本を追加（合計 37 ＋ 31、スプリント01〜04の回帰も全通過）。詳細は [`plan.md`](.product/sprints/05-ban-spam/plan.md) / [`self-review.md`](.product/sprints/05-ban-spam/self-review.md)。
-- **評価結果（2026-08-18）**: スプリント05は **合格**（attempt 2）。受け入れ条件 **6/6**・安定性OK（クラッシュ0・アプリ由来の Error/Fault ログ0）・データ整合性OK（拒否された投稿は `state.json` に一切残らず、成功した投稿は再起動後も一致）・回帰10/10・使用性4。attempt 1 の不合格理由（空白・改行のみの投稿で拒否メッセージが出ない）の解消を実操作で確認。詳細は [`eval-2.md`](.product/sprints/05-ban-spam/eval-2.md)（attempt 1 は [`eval-1.md`](.product/sprints/05-ban-spam/eval-1.md)）。スプリント01〜04も合格済み。
-- **修正内容（attempt 2、2026-08-18）**: `TodayPromptView.canSubmit` を `!draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty` から `!draft.isEmpty` に変更。何か入力されていれば送信ボタンを押せるようにし、空白・改行のみの拒否は `LocalBackend.submitPost` 側の `emptyBody`（日英併記の拒否メッセージ）に委ねる形にした（同一文字の過剰な繰り返しと同じ導線に揃えた）。指摘された1点のみを修正し、他は変更していない。`SprintFiveAcceptanceTests.test02_blankAndRepeatedCharacterBodiesAreRejected` も、ボタンが無効になることだけでなく拒否メッセージが実際に表示されることまで検証するように更新。ユニット37本は全通過（evaluator 側でも再実行して 0 failures を確認）。詳細は [`self-review.md`](.product/sprints/05-ban-spam/self-review.md) の「attempt 2」を参照。
-- **次にやること**: **スプリント06（投稿本文とお題の自動翻訳・F18〜F22）の実装（generator）**。受け入れ条件は `.product/spec.md` 194〜201行。端末内翻訳による投稿本文とお題の変換表示、翻訳モデルの準備、翻訳できない組み合わせのスキップ、翻訳関連UIが1つも存在しないことの担保。
+- **フェーズ**: スプリント06（投稿本文とお題の自動翻訳）**実装完了 → 評価待ち**
+- **スプリント06の実装内容（generator、2026-08-18。途中でセッション上限に達したため、ビルド確認・フルテスト実行・self-review.md作成・PROGRESS.md更新はcoordinatorが引き継いで完了）**: Apple Translation Framework のみを使い（外部翻訳API・フォールバックは無し、サーバーへ本文を送らない）投稿本文とお題本文を端末言語へ変換して表示。`TranslationSession` は `.translationTask` からしか作れないため、`RootView` の背景に常駐させた不可視の `TranslationHostView` がセッションを供給し、`Translator`（`SameQ/Backend/Translator.swift`）が要求を1件ずつさばく。翻訳できない言語ペア・翻訳失敗は `nil` を返し、`AppSession.drawNextPost` がスキップして次を引き直す（`nextTimelinePost` は返した時点で既読化するのでスキップした投稿は後で再度出ない＝F20）。お題・投稿とも翻訳が確定するまで表示せず「準備中…」を出すことで、原文が一瞬見えてから差し替わる「ちらつき」を防止（F21）。端末言語は起動時に `Locale.preferredLanguages.first` を1回だけ読む（`Locale.current` はローカライズ未対応アプリだと開発言語に丸められる既知の落とし穴があるため使わない）。同梱シードに `promptLanguage` を追加し、多言語投稿での翻訳確認ができるようにした。詳細は [`self-review.md`](.product/sprints/06-translation/self-review.md)。
+- **実装中に見つかった副作用と対処**: 翻訳の非同期スキップが挟まったことで `SprintOneAcceptanceTests.test02_lockedUntilAnsweredThenTimeline`（「読み切ったら終端表示になる」の5秒待ち）が不安定になった。プロダクションコードではなくテスト側の待ち時間を伸ばして解消（詳細は self-review.md）。フルテストスイート（`SameQTests` 37本 ＋ `SameQUITests` 31本）は、他にxcodebuildプロセスが動いていない単独実行で **全件成功**をcoordinatorが確認済み。
+- **evaluatorへの申し送り**: 受け入れ条件のうち「翻訳モデル未取得時の初回準備中表示」「機内モードでの翻訳表示」の2点は自動テストで検証できておらず、コードレビュー上は設計を満たしているはずだが**実機/シミュレータでの目視確認が必要**。評価者への注記どおり、端末言語を日本語／英語／韓国語の3種で切り替えて（設定変更後にアプリを再起動）確認すること。`-SameQAnswerCount` を付けると機械生成の日本語のみ投稿になり翻訳を挟まないので、**翻訳の検証には `-SameQAnswerCount` を付けずに同梱シード（多言語）のまま起動すること**。
+- **次にやること**: **スプリント06（投稿本文とお題の自動翻訳）の evaluator による評価**。受け入れ条件は `.product/spec.md` 194〜201行、評価者への注記は203行。
+- **スプリント05（BAN・投稿頻度制限・スパム対策）は合格済み（attempt 2、2026-08-18）**。1お題1投稿の担保、直近投稿と同一本文の連投拒否、空白・改行のみ／同一文字の過剰な繰り返しの拒否、いいね・通報の連打制限、BAN状態のアカウント締め出し、BANされた投稿者の非表示化を実装。受け入れ条件6/6・回帰10/10。詳細は [`self-review.md`](.product/sprints/05-ban-spam/self-review.md) / [`eval-2.md`](.product/sprints/05-ban-spam/eval-2.md)。
   - スプリント05の評価で挙がった改善提案（合否には影響しないが、着手時に踏まえる）:
     - **[A] 空白だけを入力しているとき、文字数カウンタが「8/140」と出る**（拒否メッセージは出るようになったので実害は消えたが、押す前は空欄に見えるのに入力済みに見える矛盾が残る）。trim 後の文字数を数える等。
     - **[B] `Yessssssss` のような正常な英語表現が繰り返し判定に引っかかる**（`PostValidator` の閾値が伸ばし表現を弾く）。文字種で閾値を変える／連続同一文字の最大ラン長で判定する等。
@@ -97,8 +98,8 @@
 
 ### スプリント06: 投稿本文とお題の自動翻訳
 含む機能: F18, F19, F20, F21, F22
-- [ ] 実装（generator）
-- [ ] 評価（evaluator）— 受け入れ条件は `.product/spec.md` 194〜201行
+- [x] 実装（generator、仕上げはcoordinatorが引き継ぎ）— 2026-08-18。Apple Translation Framework による投稿本文・お題の端末内翻訳、非対応言語ペアのスキップ（F20）、翻訳確定までの「ちらつき」防止（F21）。[`self-review.md`](.product/sprints/06-translation/self-review.md)
+- [ ] 評価（evaluator）— 受け入れ条件は `.product/spec.md` 194〜201行。モデル未取得時の初回表示・機内モードの2点は実機/シミュレータでの目視確認が必要（自動テスト対象外）
 
 ### スプリント07: ニックネームの自動ローカライズ
 含む機能: F23
@@ -190,6 +191,15 @@
 36. **制限メッセージは日本語行＋英語行を同じ文字列に入れて常時両方表示する**（`BackendError.errorDescription` の該当ケースと `BannedView`）。アプリ全体の多言語対応の基盤（Localizable.strings 等）がまだ無いため、範囲をスプリント05で追加・変更したメッセージ（`emptyBody` / `bodyTooLong` / `duplicateBody` / `meaninglessBody` / `rateLimited` / BAN画面）に絞った。
 37. **`TimelineView` に `.alert` を新設した**（スプリント04の改善提案[4]の一部を解消）。いいね・通報の制限メッセージがタイムライン上で発生するため、表示先が必要になった。実装したところ、裏で生き続ける `TodayPromptView` の `.alert` と同時に `isPresented` になり `fullScreenCover` ごと閉じる不具合が見つかったため、`isTimelinePresented` でどちらか一方だけが有効になるようゲートした。
 
+### スプリント06で決めたこと
+38. **`TranslationSession` の供給元をアプリルート常駐の不可視ビュー（`TranslationHostView`）にした**。SwiftUI では `.translationTask` からしかセッションを作れず、個々の画面に置くと画面遷移のたびにセッションが作り直されて待たされるため、`RootView` の背景に1つだけ置いて画面を横断させた。
+39. **翻訳要求は `Translator` 内で1件ずつ順番にさばく**（`pending` キュー＋`isSessionInFlight`）。同時に複数の翻訳を投げると `.translationTask` のセッション解決を取り違える恐れがあるため。
+40. **端末言語は `Locale.preferredLanguages.first` を起動時に1回だけ読む**。`Locale.current.language` は本アプリがローカライズリソース（Localizable.strings等）を持たないため、実機・シミュレータで開発言語（既定 "en"）に丸められる挙動を確認しており、それを避けるため。受け入れ条件「言語設定を変えて起動し直すとその言語になる」に合わせ、アプリ内切り替えは実装していない。
+41. **お題の翻訳失敗時は原文へフォールバックする**。投稿は「スキップして次を引く」が使えるが、お題は常に1つだけ有効（置いた前提2）でスキップの代わりが無いため。
+42. **翻訳結果と対応可否判定はプロセス内キャッシュのみ**（`Translator.textCache` / `statusCache` / `unsupportedSourceCodes`）。アプリ再起動をまたいだキャッシュは持たない（OS側のモデル自体は端末に永続されるため、モデルの再ダウンロードは発生しない設計だが、セッション生成コストは再起動後に再度発生しうる）。
+43. **`-SameQAnswerCount` を使うと翻訳を挟まない検証モードになる**（機械生成の回答は常に端末言語と同じ "ja" で作る）。F11〜F17の検証と、F18〜F22（翻訳）の検証は役割を分離し、翻訳の検証には同梱シード（多言語）をそのまま使う設計にした。
+44. **スプリント01の受け入れ条件8関連のテストの待ち時間を伸ばした**（`SprintOneAcceptanceTests.test02_lockedUntilAnsweredThenTimeline`）。翻訳の非同期スキップが挟まったことで1件あたりの表示・終端判定に実時間がかかるようになり、既存の5秒タイムアウトでは不安定になったための対処。プロダクションコードの挙動は変えていない。
+
 ## 変更履歴
 - 2026-08-17: `.product/spec.md` 作成（planner）。PROGRESS.md 初版作成。
 - 2026-08-17: スプリント01 実装（generator）。SwiftUI雛形＋F01〜F07、Supabaseスキーマ、UIテスト5本。
@@ -205,3 +215,4 @@
 - 2026-08-18: スプリント05 評価（evaluator）。iPhone 17（iOS 26.3 / 26.5）シミュレータ2台で独自 XCUITest 12本（E01〜E12）＋`simctl` 単体起動により実操作検証し **不合格**。BAN画面から抜ける裏道なし・BAN投稿者の回答が22件の読み切りまで一度も出ない・連投拒否・繰り返し拒否・いいね/通報の連打制限・制限後の復帰・schemaVersion 3→4 の移行はいずれもOK。**空白・改行のみの投稿に拒否メッセージが出ない**点だけが受け入れ条件を満たさず（5/6）。次はスプリント05の修正（generator / attempt 2）。[`eval-1.md`](.product/sprints/05-ban-spam/eval-1.md)
 - 2026-08-18: スプリント05 修正（generator / attempt 2）。`TodayPromptView.canSubmit` の送信ボタン有効条件を trim 後の空文字判定から `!draft.isEmpty` に変更し、空白・改行のみの投稿でも `LocalBackend.submitPost` の `emptyBody`（日英併記の拒否メッセージ）まで届くようにした。指摘された1点のみ修正。`SprintFiveAcceptanceTests.test02_blankAndRepeatedCharacterBodiesAreRejected` を拒否メッセージの表示まで検証するよう更新。ユニット37本は全通過を確認、UIテストはコーディネーター側で別途確認中。次はスプリント05の evaluator 再検証。
 - 2026-08-18: スプリント05 評価（evaluator / attempt 2）。iPhone 17 / iOS 26.3 シミュレータで独自 XCUITest 13本（E01〜E08 / R1〜R5）＋ `state.json` の直接確認により実操作検証し **合格**。空白・改行のみの投稿（半角スペース1個・改行のみ・全角スペースの3種）で送信ボタンが押せ、日英併記の拒否メッセージが出て投稿されないこと、OKで閉じたあと同一セッションのまま書き直して投稿できることを確認。連投拒否・繰り返し拒否・いいね/通報の連打制限・BAN画面の締め出し（ボタン0個）・BAN投稿者の非表示（22件読み切りまで0件）も再確認。回帰10/10（スプリント01の初回設定ゲートと未回答ロック／02の期限切れ→お題待ち／03の重複なし・既読の再起動後の残存・0件の空状態／04の通報の即時非表示・ブロック一覧と解除）。クラッシュ0、拒否された投稿は永続層に一切残らない。使用性4。次はスプリント06（投稿本文とお題の自動翻訳）の実装。[`eval-2.md`](.product/sprints/05-ban-spam/eval-2.md)
+- 2026-08-18: スプリント06 実装（generator）。F18〜F22。Apple Translation Framework のみで投稿本文・お題を端末内翻訳。`TranslationHostView`（常駐・不可視）が `.translationTask` からセッションを供給し、`Translator` が翻訳・対応可否判定を1件ずつさばく。非対応言語ペア・翻訳失敗はスキップして次を引き直す（F20）。翻訳確定まで表示せず「準備中…」を出しちらつきを防止（F21）。端末言語は起動時に `Locale.preferredLanguages.first` を1回だけ読む。同梱シードに `promptLanguage` を追加。実装途中でセッション上限に達したため、ビルド確認・フルテスト実行（他プロセス非併走・単独実行、37+31件**全件成功**）・`self-review.md` 作成・本エントリを含む `PROGRESS.md` 更新は coordinator が引き継いで完了。次はスプリント06の evaluator 検証（モデル未取得時の表示・機内モードは実機/シミュレータでの目視確認が必要）。

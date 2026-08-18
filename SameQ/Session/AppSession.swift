@@ -37,12 +37,22 @@ final class AppSession {
 
     private let backend: Backend
     private let clock: AppClock
+    /// 投稿本文とお題本文を端末言語へ変換する窓口（F18 / F20 / F21 / F22）。
+    /// `RootView` がこれを `TranslationHostView` へ渡し、常駐する `.translationTask` から
+    /// `TranslationSession` を受け取れるようにする。
+    let translator: Translator
 
     private(set) var screen: Screen = .loading
     private(set) var user: AppUser?
     private(set) var promptState: PromptState = .waiting(nextStartsAt: nil)
     /// 今日のお題への自分の回答。nil の間は世界タイムラインを開けない（F05）。
     private(set) var myPost: Post?
+    /// 今日のお題を端末言語へ翻訳した表示用の本文（F22）。
+    /// 翻訳が終わるまでは nil にして、画面側に準備中の表示をさせる
+    /// （原文が一瞬見えてから翻訳に差し替わる「ちらつき」を避けるため）。
+    private(set) var promptDisplayText: String?
+    private var promptTranslationTask: Task<Void, Never>?
+    private var lastTranslatedPromptID: String?
     /// タイムラインにいま出しているもの（F11 / F12）。回答は常に1件だけ持ち、配列で先読みしない。
     private(set) var timelineContent: TimelineContent = .loading
     private(set) var likedPostIDs: Set<UUID> = []
@@ -66,9 +76,10 @@ final class AppSession {
     /// いま有効なお題。お題待ちのあいだは nil。
     var prompt: Prompt? { promptState.prompt }
 
-    init(backend: Backend = BackendProvider.make(), clock: AppClock = AppClock()) {
+    init(backend: Backend = BackendProvider.make(), clock: AppClock = AppClock(), translator: Translator = Translator()) {
         self.backend = backend
         self.clock = clock
+        self.translator = translator
         self.now = clock.now
     }
 
@@ -132,6 +143,9 @@ final class AppSession {
             timelineContent = .loading
             myPost = nil
             likedPostIDs = try await backend.likedPostIDs()
+            promptTranslationTask?.cancel()
+            promptDisplayText = nil
+            lastTranslatedPromptID = nil
             screen = .waiting
         case .active(let prompt):
             myPost = try await backend.myPost(promptID: prompt.id)
@@ -142,9 +156,35 @@ final class AppSession {
                 timelineContent = .loading
             }
             screen = .today
+            syncPromptTranslation(prompt: prompt)
             if openTimelineIfAnswered, myPost != nil {
                 await openTimeline()
             }
+        }
+    }
+
+    // MARK: お題の翻訳（F22）
+
+    /// お題本文を端末言語へ翻訳し、`promptDisplayText` に入れる。
+    ///
+    /// 同じお題を翻訳し直さないよう `lastTranslatedPromptID` で保護する。
+    /// 翻訳が終わるまで `promptDisplayText` は nil のまま（画面側が準備中の表示を出す）にして、
+    /// 原文が一瞬見えてから翻訳に差し替わる「ちらつき」を避ける。
+    private func syncPromptTranslation(prompt: Prompt) {
+        guard lastTranslatedPromptID != prompt.id else { return }
+        promptTranslationTask?.cancel()
+        promptDisplayText = nil
+        let promptID = prompt.id
+        let text = prompt.text
+        let language = prompt.language
+        promptTranslationTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let translated = await self.translator.translate(text, sourceLanguageCode: language)
+            guard !Task.isCancelled else { return }
+            // お題は投稿と違って「スキップして次を出す」代わりが無い（常に1つだけ有効）ので、
+            // 翻訳できなかった場合は原文へフォールバックする（今回の判断）。
+            self.promptDisplayText = translated ?? text
+            self.lastTranslatedPromptID = promptID
         }
     }
 
@@ -202,19 +242,36 @@ final class AppSession {
         await drawNextPost()
     }
 
+    /// 次の1件を引いて翻訳する（F18 / F20）。
+    ///
+    /// 翻訳できない言語ペア、または翻訳に失敗した回答は表示せずスキップし、
+    /// バックエンドから次を引き直す（`nextTimelinePost` は返した時点で既読にするので、
+    /// スキップした回答が後で出てくることもない）。
+    /// 表示を切り替えるのは翻訳が確定してからだけにして、原文が一瞬見えてから
+    /// 差し替わる「ちらつき」を避ける（間は `.loading` のまま）。
     private func drawNextPost() async {
         guard let prompt else {
             timelineContent = .empty
             return
         }
+        timelineContent = .loading
         do {
-            switch try await backend.nextTimelinePost(promptID: prompt.id) {
-            case .post(let post):
-                timelineContent = .post(post)
-            case .empty:
-                timelineContent = .empty
-            case .exhausted:
-                timelineContent = .exhausted
+            draw: while true {
+                switch try await backend.nextTimelinePost(promptID: prompt.id) {
+                case .post(let post):
+                    guard let translatedBody = await translator.translate(
+                        post.body,
+                        sourceLanguageCode: post.bodyLanguage
+                    ) else {
+                        continue draw
+                    }
+                    timelineContent = .post(post.displaying(translatedBody: translatedBody))
+                case .empty:
+                    timelineContent = .empty
+                case .exhausted:
+                    timelineContent = .exhausted
+                }
+                break draw
             }
             try await refreshTimelineCounts(promptID: prompt.id)
         } catch {
