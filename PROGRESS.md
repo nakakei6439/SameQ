@@ -15,6 +15,23 @@
 | 製品仕様書 | [`.product/spec.md`](.product/spec.md)（機能一覧34件、スプリント11本） |
 | 開発ハーネス | planner → generator → evaluator |
 
+## バックログ（新規スコープ、未着手）
+
+### アプリ自体のUIローカライズ（2026-08-18、ユーザー確定）
+現状、Apple Translation Frameworkで翻訳しているのは**投稿本文とお題（content）のみ**（F18〜F22）。
+アプリ自体のUI文言（ボタン・見出し・オンボーディングの文章・設定画面など、`SameQ/Feature/` 配下の
+SwiftUI Viewにハードコードされた日本語文字列）は一切ローカライズされておらず、端末言語を変えても
+常に日本語のまま表示される。ユーザーが実機検証中にこれを確認し、「世界中の誰かとつながるアプリ」
+というコンセプト上、UI自体も端末言語に対応させたいとの意向。
+
+- **方針**: 対応する（推奨案として採用）。ただし今すぐではなく、**新規スコープとして後で対応**する
+- **未確定**: どのスプリントに割り当てるか（既存11スプリントの後、新しいスプリント12として追加するか、
+  スプリント07以降のどこかに差し込むか）はplannerの判断が必要。対応方針（String Catalog / 
+  `Localizable.strings` の導入、対応言語の範囲）も未検討
+- **影響範囲の見立て**: `SameQ/Feature/Onboarding`, `Today`, `Timeline`, `Waiting`, `Banned`, 
+  `Settings` 配下の全Viewが対象になる見込み。`Translator.targetLanguage`（起動時に読む端末言語）は
+  既にあるので、UI文字列の切り替えにも同じ言語判定を使い回せる可能性がある
+
 ## 現在の状態
 - **フェーズ**: スプリント06（投稿本文とお題の自動翻訳）**修正完了（attempt 2） → 評価待ち**
 - **スプリント06 attempt 1 の実装内容（generator、2026-08-18）**: Apple Translation Framework のみを使い（外部翻訳API・フォールバックは無し、サーバーへ本文を送らない）投稿本文とお題本文を端末言語へ変換して表示。`TranslationSession` は `.translationTask` からしか作れないため、`RootView` の背景に常駐させた不可視の `TranslationHostView` がセッションを供給し、`Translator`（`SameQ/Backend/Translator.swift`）が要求をさばく。お題・投稿とも翻訳が確定するまで表示せず「準備中…」を出すことで「ちらつき」を防止（F21）。同梱シードに `promptLanguage` を追加し、多言語投稿での翻訳確認ができるようにした。この attempt 1 は evaluator の検証で受け入れ条件3/7の不合格となり（詳細下記）、attempt 2 で4点を修正した。
