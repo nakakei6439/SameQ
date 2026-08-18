@@ -171,9 +171,8 @@ final class SprintFiveAcceptanceTests: XCTestCase {
         dismissAlert(app)
         XCTAssertEqual(likeButton.isSelected, selectedBeforeLimit, "制限された操作の見た目が反映されてしまった")
 
-        // 操作不能にならない：他の操作は普通に使える
-        XCTAssertTrue(app.buttons["timeline.next"].isEnabled)
-        app.buttons["timeline.next"].tap()
+        // 操作不能にならない：他の操作（スワイプでの遷移）は普通に使える
+        app.swipeLeft()
         XCTAssertTrue(app.staticTexts["timeline.card.body"].waitForExistence(timeout: 8), "制限のあと操作を続けられない")
 
         // クールダウンが明けると再びいいねできる（復帰できることの確認）
@@ -202,9 +201,11 @@ final class SprintFiveAcceptanceTests: XCTestCase {
         XCTAssertTrue(alertMessageContains(app, "Reports too fast"), "通報の制限メッセージ（英語）が出ない")
         dismissAlert(app)
 
-        // 操作不能にならない：タイムラインの操作は続けられる
-        XCTAssertTrue(app.staticTexts["timeline.card.body"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.buttons["timeline.next"].isEnabled)
+        // 操作不能にならない：タイムラインの操作（スワイプでの遷移）は続けられる
+        let bodyBeforeAdvance = app.staticTexts["timeline.card.body"]
+        XCTAssertTrue(bodyBeforeAdvance.waitForExistence(timeout: 8))
+        app.swipeLeft()
+        XCTAssertTrue(app.staticTexts["timeline.card.body"].waitForExistence(timeout: 8), "制限のあと操作を続けられない")
     }
 
     // MARK: 受け入れ条件5（BAN状態のアカウントは今日のお題にもタイムラインにも入れない）
@@ -259,7 +260,7 @@ final class SprintFiveAcceptanceTests: XCTestCase {
             guard card.exists else { break }
             XCTAssertFalse(card.label.contains(bannedMarker), "BANされた投稿者の回答が表示された: \(card.label)")
             seenCount += 1
-            app.buttons["timeline.next"].tap()
+            app.swipeLeft()
         }
         XCTAssertTrue(app.staticTexts["timeline.exhausted"].waitForExistence(timeout: 20), "読み切りに到達しない")
         XCTAssertGreaterThan(seenCount, 0, "翻訳可能な回答が1件も出なかった（原文と端末言語が同じものだけは出るはず）")

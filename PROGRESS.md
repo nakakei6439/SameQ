@@ -34,7 +34,7 @@ SwiftUI Viewにハードコードされた日本語文字列）は一切ロー�
 
 ## 現在の状態
 - **フェーズ**: スプリント06（投稿本文とお題の自動翻訳）**attempt 3 実装完了・シミュレータ全件成功 → 実機での最終確認が保留中**（2026-08-19、ユーザーが外出中で実機のロックを解除できないため。詳細は「スプリント06 attempt 3」節）
-- **並行タスク**: ユーザー確定済みのUI変更3点（お題を世界タイムラインでも常時表示／✕ボタン削除・操作はスワイプ＋いいねのみ／いいねボタンの位置・見た目の調整）を、実機確認待ちの間に着手する。スプリント06とは独立したタイムライン画面の変更（詳細は「並行タスク: タイムラインUI調整」節）
+- **並行タスク**: ユーザー確定済みのUI変更3点（お題を世界タイムラインでも常時表示／✕ボタン削除・操作はスワイプ＋いいねのみ／いいねボタンの位置・見た目の調整）を、実機確認待ちの間に着手する。スプリント06とは独立したタイムライン画面の変更（詳細は「並行タスク: タイムラインUI調整」節）。**2026-08-19、実装完了・シミュレータ全件成功、評価待ち**。
 - **スプリント06 attempt 1 の実装内容（generator、2026-08-18）**: Apple Translation Framework のみを使い（外部翻訳API・フォールバックは無し、サーバーへ本文を送らない）投稿本文とお題本文を端末言語へ変換して表示。`TranslationSession` は `.translationTask` からしか作れないため、`RootView` の背景に常駐させた不可視の `TranslationHostView` がセッションを供給し、`Translator`（`SameQ/Backend/Translator.swift`）が要求をさばく。お題・投稿とも翻訳が確定するまで表示せず「準備中…」を出すことで「ちらつき」を防止（F21）。同梱シードに `promptLanguage` を追加し、多言語投稿での翻訳確認ができるようにした。この attempt 1 は evaluator の検証で受け入れ条件3/7の不合格となり（詳細下記）、attempt 2 で4点を修正した。
 - **スプリント06 attempt 2 の修正内容（generator、2026-08-18）**: evaluatorの指摘4点すべてに対応。詳細は [`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 2」を参照。
   1. **[最重要] 翻訳キューの固着を解消**。待ち行列ロジックを `SessionRequestQueue<Session>`（新規、Translation非依存のジェネリック型）に切り出し、一度取得できたセッションは言語ペアごとにキャッシュして2回目以降は新規要求を出さない設計に変更。同じ値の `Configuration` を再代入する経路自体を無くした。保険として `invalidate()` の呼び出しと45秒タイムアウト（一時的失敗として扱う）も追加。ユニット5本（`SessionRequestQueueTests`）で `TranslationSession` を使わずロジックを直接検証。
@@ -138,13 +138,27 @@ SwiftUI Viewにハードコードされた日本語文字列）は一切ロー�
 仕様書のスプリント計画には無い、ユーザーからの直接フィードバックに基づく変更。スプリント06の
 実機最終確認待ち（保留中）の間に並行して着手する。対象は `SameQ/Feature/Timeline/` および
 `SameQ/Feature/Today/` 周辺。
-- [ ] 世界タイムライン閲覧中も、今日のお題の文章を常に見える状態にする（現状はタイムラインに
-      入るとお題が見えなくなる）
-- [ ] ✕（次へ）ボタンを削除する。操作はスワイプといいねの2つだけにする。理由: ✕はスワイプと
+- [x] 世界タイムライン閲覧中も、今日のお題の文章を常に見える状態にする（現状はタイムラインに
+      入るとお題が見えなくなる）— 2026-08-19。`TimelineView` に `promptStrip` を追加し、
+      `topBar` の直下・カード表示より上に常設。`session.promptDisplayText` をそのまま参照し、
+      翻訳未確定時は `TodayPromptView.promptCard` と同じ作法（ProgressView＋「準備中…」）を
+      踏襲。識別子は `timeline.promptText` / `timeline.promptLoading`。
+- [x] ✕（次へ）ボタンを削除する。操作はスワイプといいねの2つだけにする。理由: ✕はスワイプと
       機能重複しており、ユーザーが用途を理解できないとの指摘（ユーザーへの回答: ✕は「次へ」＝
-      スワイプと同じ動作）
-- [ ] いいねボタンの位置・見た目を分かりやすく調整する（現状の配置が分かりにくいとの
-      フィードバック。具体的なデザイン方向は未指定、generatorの裁量）
+      スワイプと同じ動作）— 2026-08-19。`actionBar` から `xmark` ボタンを撤去し、次へ進む手段を
+      `cardStack` の `DragGesture`（スワイプ）のみに一本化。影響を受けた既存UIテスト
+      （`SprintOneAcceptanceTests` / `SprintThreeAcceptanceTests` / `SprintFourAcceptanceTests` /
+      `SprintFiveAcceptanceTests` / `SprintSixAcceptanceTests` の計7ファイル中5ファイル）で
+      `app.buttons["timeline.next"].tap()` を使っていた箇所は全て `app.swipeLeft()` に書き換え済み。
+- [x] いいねボタンの位置・見た目を分かりやすく調整する（現状の配置が分かりにくいとの
+      フィードバック。具体的なデザイン方向は未指定、generatorの裁量）— 2026-08-19。✕ボタンが
+      無くなった分の余白を使い、カード直下の中央に単独配置。直径82ptの円形ボタンに拡大
+      （旧62pt）、押下時は`Theme.like`で塗り潰し＋白いハート、未押下時は白背景＋`Theme.like`の
+      縁取りで押せる場所を明示。ボタン直下に「いいね」／「いいねしました」の文字ラベルも添えた。
+      アクセシビリティ識別子 `timeline.like` ・`isSelected` トレイトは変更していない。
+- [x] 実装後のフルテスト（generator、2026-08-19）— 他プロセス非併走の単独実行で
+      `SameQTests` 57件 ＋ `SameQUITests` 33件、**計90件すべて成功**。詳細は
+      [`self-review.md`](.product/sprints/timeline-ui-adjustment/self-review.md)。
 - [ ] 評価（evaluator）— シミュレータで実機不要。上記3点の実装後、通常どおり検証する
 
 ### スプリント07: ニックネームの自動ローカライズ
@@ -275,3 +289,4 @@ SwiftUI Viewにハードコードされた日本語文字列）は一切ロー�
 - 2026-08-18: スプリント06 修正（generator / attempt 2）。evaluator の指摘4点すべてに対応。(1) 翻訳キューの固着: 待ち行列ロジックを `SessionRequestQueue<Session>`（新規・`SameQ/Backend/SessionRequestQueue.swift`。Translation非依存のジェネリック型）に切り出し、一度取得できたセッションは言語ペアごとにキャッシュして2回目以降は新規要求を出さない設計にした（同じ値の `Configuration` を再代入する経路自体を無くす）。保険として `invalidate()` と45秒タイムアウトも追加。(2) シミュレータでの検証手段としてDebug限定の疑似翻訳モード `-SameQFakeTranslate` を追加（`Translator.translate` が `TranslationSession` を使わず `[<言語コード>] <原文>` を返す）。(3) お題の翻訳フォールバック方針を検討し、原文へのフォールバックを維持する判断（理由は self-review.md）。(4) `Translator.translate` の戻り値を `TranslationOutcome`（`.text`/`.unavailable(permanent:)`）に変更し、恒久的な非対応と一時的な失敗を区別。`Backend.nextTimelinePost` に `excluding`／`autoMarkViewed`、新規 `markPostViewed(_:)` を追加し、一時的な失敗は既読にしないようにした（既存呼び出し元は後方互換のデフォルト引数で無変更）。ユニット19本（`SessionRequestQueueTests` 5・`TranslatorFakeModeTests` 6・`TranslationSkipTests` 5・`AppSessionTranslationTests` 3）＋UIテスト2本（`SprintSixAcceptanceTests`）を追加。フルテストスイート（他プロセス非併走の単独実行、`SameQTests` 56本 ＋ `SameQUITests` 33本）**全件成功**。実機検証は今回未実施（ユーザーが外出中のため、当初の依頼どおりスコープ外とした）。次はスプリント06 attempt 2 の evaluator 再検証。[`self-review.md`](.product/sprints/06-translation/self-review.md)
 - 2026-08-18: スプリント06 評価（evaluator / attempt 2）。iPhone 17 / iOS 26.5 シミュレータ（端末言語 日本語・英語・韓国語）と **iPhone 17 Pro Max 実機**（`-AppleLanguages` でプロセス単位の言語切り替え）で、独自 XCUITest 12本＋Translation Framework の直接プローブ6本により実操作検証し **不合格**。受け入れ条件 3/7。**実機で本物の Apple Translation が動くこと自体は初めて確認できた**（お題・投稿とも実際に翻訳された文章で表示。`status(en→ja)` などは `installed`）。しかし実機ではタイムラインが2〜3件目で無言のまま固着し、3回中3回とも読み切りに到達しない。原因は attempt 2 で導入した「言語ペアごとに `TranslationSession` をキャッシュして使い回す」設計で、`configuration` を別ペアへ差し替えると前の `.translationTask` が畳まれ、そのセッションが無効になるため（プローブでフレームワークの `Attempted to use TranslationSession after the view it was attached to has disappeared` を直接観測）。`session.translate(_:)` には時間制限が無く、45秒タイムアウトはセッション取得にしか掛からないので保険にならない。`invalidate()` の保険も、直後に同値の `Configuration` で上書きしているため `.translationTask` が再実行されず効いていない（`fireCount` で実測）。一方、attempt 1 の指摘2（シミュレータでの検証手段＝`-SameQFakeTranslate`）・3（お題が原文のまま）・4（スキップした回答の既読化）は解消を確認。シミュレータでは3言語とも30件を通し完走・ちらつき0・`zxx` 0回表示・翻訳関連UIは1つも無い。回帰5/5、データ整合性OK（schemaVersion 4、翻訳結果は永続化されず、固着時も既読は増えない）、使用性2。受け入れ条件4（モデル未取得時）と7（機内モード）は評価不能（実機はモデル取得済み／機内モードは端末設定の変更にあたるためユーザーの操作が必要）。次はスプリント06 attempt 3（generator の修正）。[`eval-2.md`](.product/sprints/06-translation/eval-2.md)
 - 2026-08-18: スプリント06 修正（generator / attempt 3）。eval-2.md の指摘[1][2]に対応。(1) `SessionRequestQueue` からセッションのキャッシュを完全に撤去し、`perform(key:body:onJobTimeout:)` が**毎回**新しいセッションを要求、取得したセッションは `.translationTask` のクロージャがまだ生きているスコープの中で `session.translate(_:)` まで完結させてから結果だけを返す設計に変更（セッションを外へ持ち出す経路を型的に無くした）。`Translator` の `configuration` 差し替えも、SDKの `.swiftinterface` を直接確認したうえで「新しいインスタンスへ丸ごと差し替え」から「いま割り当てているインスタンスへ `invalidate()` してから `source`/`target` を書き換え」に変更（新しいインスタンスへの差し替えだと SwiftUI が次のレンダーで見る最終値が無効化前と等価に戻り `.translationTask` が再実行されないことが attempt 2 の不具合の直接原因だった）。(2) `session.translate(_:)` の実行を `withTaskGroup` でタイムアウト（既定30秒）と競走させ、タイムアウトが勝ったら `session.cancel()`（iOS 26+）を呼んでから諦める設計を追加（`withTaskGroup` が cancellation に応答しない子タスクの完了を待ち続けることを使い捨てスクリプトで確認したうえで、`cancelAll()` より先に `cancel()` を呼ぶ順序にした）。`SessionRequestQueueTests` を新しい契約に合わせて全面的に書き直し。シミュレータでのフルテストスイート（`SameQTests` + `SameQUITests`）を単独実行し **90/90 全件成功**。実機向けビルド・`devicectl device install app` も成功（署名・プロビジョニングは問題なし）。**しかし実機（iPhone 17 Pro Max）が施錠されており `devicectl device process launch` がロック解除待ちで失敗、アプリを起動できず実機でのタイムライン読み切り確認ができなかった**。ユーザーに端末のロック解除を依頼し、解除後に改めて実機確認を行う。[`self-review.md`](.product/sprints/06-translation/self-review.md) の attempt 3
+- 2026-08-19: 並行タスク「タイムラインUI調整」実装（generator）。スプリント06の実機確認待ちの間に着手した、スプリント計画外・ユーザー直接フィードバックによる変更。`SameQ/Feature/Timeline/TimelineView.swift` のみを変更（スプリント06関連ファイルには触れていない）。(1) `promptStrip` を新設し、今日のお題（`session.promptDisplayText`）を `topBar` の直下・カード表示の上に常設表示。翻訳未確定時は `TodayPromptView.promptCard` と同じ「準備中…」の作法を踏襲（識別子は `timeline.promptText` / `timeline.promptLoading`）。(2) ✕（次へ）ボタンを撤去し、次へ進む操作を `cardStack` のスワイプのみに一本化。旧 `circleButton` ヘルパーは使用箇所がいいねボタンのみになったため削除し専用実装に置き換えた。(3) いいねボタンを直径82ptの円形ボタンに拡大し、カード直下の中央へ単独配置。押下時は `Theme.like` で塗り潰し＋白いハート、未押下時は白背景＋縁取りで押下可能な場所を明示、直下に状態を表す文字ラベル（「いいね」／「いいねしました」）を追加。識別子 `timeline.like` と `isSelected` トレイトは変更していない。✕ボタン撤去の影響で `app.buttons["timeline.next"].tap()` を使っていた既存UIテスト5ファイル（`SprintOneAcceptanceTests` / `SprintThreeAcceptanceTests` / `SprintFourAcceptanceTests` / `SprintFiveAcceptanceTests` / `SprintSixAcceptanceTests`）を `app.swipeLeft()` へ書き換え、失われた「操作不能にならないことの確認」の意図は `SprintFiveAcceptanceTests` の2箇所で実際にスワイプして次の回答が出ることを確認する形に置き換えた。ビルド確認後、他プロセス非併走の単独実行でフルテストスイート（`SameQTests` 57本 ＋ `SameQUITests` 33本）**計90件すべて成功**。Simulator.app のGUI自動操作に必要な Accessibility 権限が取得できず（`computer-use` もこの環境では iOS Simulator が明示的に unsupported）、タイムライン画面そのものの目視スクリーンショットは取得できていない（詳細・弱点は self-review.md 参照）。次は本タスクの evaluator 検証。[`self-review.md`](.product/sprints/timeline-ui-adjustment/self-review.md)

@@ -28,7 +28,7 @@ final class SprintThreeAcceptanceTests: XCTestCase {
             XCTAssertFalse(seen.contains(body), "\(step)件目に既読の回答が再び出た: 『\(body)』")
             XCTAssertNotEqual(body, answerBody, "自分の回答が他人として出た")
             seen.append(body)
-            app.buttons["timeline.next"].tap()
+            app.swipeLeft()
         }
         XCTAssertEqual(Set(seen).count, 20)
 
@@ -53,7 +53,7 @@ final class SprintThreeAcceptanceTests: XCTestCase {
             let card = app.staticTexts["timeline.card.body"]
             XCTAssertTrue(card.waitForExistence(timeout: 8))
             seen.append(card.label)
-            app.buttons["timeline.next"].tap()
+            app.swipeLeft()
         }
         // 8回送った結果、画面に出ている9件目も「見た」ことになる
         let onScreen = app.staticTexts["timeline.card.body"]
@@ -68,7 +68,7 @@ final class SprintThreeAcceptanceTests: XCTestCase {
             XCTAssertTrue(card.waitForExistence(timeout: 12), "再起動後の\(step)件目が出ない")
             XCTAssertFalse(seen.contains(card.label), "再起動後に既読の回答が出た: 『\(card.label)』")
             seen.append(card.label)
-            app.buttons["timeline.next"].tap()
+            app.swipeLeft()
         }
         XCTAssertEqual(Set(seen).count, 20)
         XCTAssertTrue(app.staticTexts["timeline.exhausted"].waitForExistence(timeout: 8))
@@ -99,7 +99,7 @@ final class SprintThreeAcceptanceTests: XCTestCase {
         submitAnswer(app, body: answerBody)
 
         XCTAssertTrue(app.staticTexts["timeline.card.body"].waitForExistence(timeout: 10), "1件だけ出る")
-        app.buttons["timeline.next"].tap()
+        app.swipeLeft()
         XCTAssertTrue(app.staticTexts["timeline.exhausted"].waitForExistence(timeout: 8))
 
         // 再起動しても、その1件はもう出ない
@@ -144,7 +144,7 @@ final class SprintThreeAcceptanceTests: XCTestCase {
 
         // 右スワイプ（戻る方向）でも前の回答には戻らず、次の未読へ進む
         let first = app.staticTexts["timeline.card.body"].label
-        app.buttons["timeline.next"].tap()
+        app.swipeLeft()
         XCTAssertTrue(waitForBodyToChange(app, from: first))
         let second = app.staticTexts["timeline.card.body"].label
         app.swipeRight()
@@ -173,7 +173,7 @@ final class SprintThreeAcceptanceTests: XCTestCase {
             let card = app.staticTexts["timeline.card.body"]
             guard card.waitForExistence(timeout: 8) else { break }
             firstPromptBodies.append(card.label)
-            app.buttons["timeline.next"].tap()
+            app.swipeLeft()
         }
         XCTAssertFalse(firstPromptBodies.isEmpty)
 
@@ -190,7 +190,7 @@ final class SprintThreeAcceptanceTests: XCTestCase {
                 firstPromptBodies.contains(card.label),
                 "前のお題への回答が今日のタイムラインに出た: 『\(card.label)』"
             )
-            app.buttons["timeline.next"].tap()
+            app.swipeLeft()
         }
     }
 

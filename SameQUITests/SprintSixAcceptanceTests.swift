@@ -51,7 +51,7 @@ final class SprintSixAcceptanceTests: XCTestCase {
                 sawTranslatedPrefix = true
             }
             seenCount += 1
-            app.buttons["timeline.next"].tap()
+            app.swipeLeft()
         }
         XCTAssertTrue(
             app.staticTexts["timeline.exhausted"].waitForExistence(timeout: 20),

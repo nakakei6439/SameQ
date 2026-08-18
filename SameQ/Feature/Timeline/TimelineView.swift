@@ -16,6 +16,7 @@ struct TimelineView: View {
     var body: some View {
         VStack(spacing: 0) {
             topBar
+            promptStrip
 
             switch session.timelineContent {
             case .loading:
@@ -110,6 +111,50 @@ struct TimelineView: View {
         .padding(.bottom, 12)
     }
 
+    /// 今日のお題を、タイムライン閲覧中も上部に小さく常設表示する（並行タスク：UI調整）。
+    /// 翻訳が確定するまでの「準備中…」の作法は `TodayPromptView.promptCard` に揃える。
+    private var promptStrip: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text("お題")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Theme.inkTertiary)
+                .tracking(1)
+                .padding(.top, 1)
+
+            if let text = session.promptDisplayText {
+                Text(text)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("timeline.promptText")
+            } else {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .tint(Theme.inkSecondary)
+                    Text("準備中…")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+                .accessibilityIdentifier("timeline.promptLoading")
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Theme.hairline.opacity(0.35))
+        )
+        .padding(.horizontal, 20)
+        .padding(.bottom, 12)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("timeline.prompt")
+    }
+
     private var loadingState: some View {
         VStack {
             Spacer()
@@ -150,66 +195,52 @@ struct TimelineView: View {
         .frame(maxHeight: .infinity)
     }
 
-    /// カードの下の操作。スキップ（次の人へ）といいねの2つだけ。
+    /// カードの下の操作。いいねだけ（並行タスク：UI調整で✕「次の人へ」ボタンを撤去）。
+    /// 次の人へ進む操作はスワイプのみになったので、その導線を文言で示す。
     /// 「前へ」は置かない（置いた前提5）。通報・ブロックは上部の ⋯ から。
     private func actionBar(post: Post) -> some View {
         let isLiked = session.isLiked(post.id)
-        return VStack(spacing: 14) {
-            HStack(spacing: 28) {
-                circleButton(
-                    systemName: "xmark",
-                    tint: Theme.inkSecondary,
-                    filled: false,
-                    label: "次の人へ",
-                    identifier: "timeline.next"
-                ) {
-                    advance(towards: CGSize(width: -1, height: 0))
-                }
-
-                circleButton(
-                    systemName: isLiked ? "heart.fill" : "heart",
-                    tint: Theme.like,
-                    filled: isLiked,
-                    label: isLiked ? "いいね済み" : "いいね",
-                    identifier: "timeline.like",
-                    isSelected: isLiked
-                ) {
-                    Task { await session.toggleLike(postID: post.id) }
-                }
+        return VStack(spacing: 10) {
+            Button {
+                Task { await session.toggleLike(postID: post.id) }
+            } label: {
+                Image(systemName: isLiked ? "heart.fill" : "heart")
+                    .font(.system(size: 32, weight: .semibold))
+                    .foregroundStyle(isLiked ? Color.white : Theme.like)
+                    .frame(width: 82, height: 82)
+                    .background(
+                        Circle()
+                            .fill(isLiked ? Theme.like : Theme.surface)
+                            .overlay(
+                                Circle()
+                                    .strokeBorder(Theme.like.opacity(isLiked ? 0 : 0.4), lineWidth: 2)
+                            )
+                            .shadow(
+                                color: Theme.like.opacity(isLiked ? 0.35 : 0.08),
+                                radius: isLiked ? 16 : 10,
+                                x: 0,
+                                y: 6
+                            )
+                    )
+                    .scaleEffect(isLiked ? 1.06 : 1.0)
             }
+            .buttonStyle(.plain)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isLiked)
+            .accessibilityIdentifier("timeline.like")
+            .accessibilityLabel(Text(isLiked ? "いいね済み" : "いいね"))
+            .accessibilityAddTraits(isLiked ? [.isSelected] : [])
+
+            Text(isLiked ? "いいねしました" : "いいね")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(isLiked ? Theme.like : Theme.inkTertiary)
 
             Text("スワイプすると、次の知らない誰かへ")
                 .font(.system(size: 12, design: .rounded))
                 .foregroundStyle(Theme.inkTertiary)
+                .padding(.top, 4)
         }
-        .padding(.top, 8)
+        .padding(.top, 10)
         .padding(.bottom, 28)
-    }
-
-    private func circleButton(
-        systemName: String,
-        tint: Color,
-        filled: Bool,
-        label: String,
-        identifier: String,
-        isSelected: Bool = false,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 24, weight: .medium))
-                .foregroundStyle(filled ? Color.white : tint)
-                .frame(width: 62, height: 62)
-                .background(
-                    Circle()
-                        .fill(filled ? tint : Theme.surface)
-                        .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
-                )
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(identifier)
-        .accessibilityLabel(Text(label))
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
     /// 読み切ったとき／1件も無いときの明示表示。

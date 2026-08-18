@@ -51,7 +51,7 @@ final class SprintFourAcceptanceTests: XCTestCase {
         for _ in 1...9 {
             guard card.waitForExistence(timeout: 8) else { break }
             XCTAssertNotEqual(card.label, reportedBody, "再起動後に通報した回答が出た")
-            app.buttons["timeline.next"].tap()
+            app.swipeLeft()
         }
         XCTAssertTrue(
             app.staticTexts["timeline.exhausted"].waitForExistence(timeout: 8),
@@ -85,7 +85,7 @@ final class SprintFourAcceptanceTests: XCTestCase {
         for _ in 1...9 {
             guard card.waitForExistence(timeout: 6) else { break }
             XCTAssertNotEqual(card.label, blockedBody, "ブロックした人の回答が出た")
-            app.buttons["timeline.next"].tap()
+            app.swipeLeft()
         }
         XCTAssertTrue(app.staticTexts["timeline.exhausted"].waitForExistence(timeout: 8))
     }
@@ -128,7 +128,7 @@ final class SprintFourAcceptanceTests: XCTestCase {
         for _ in 1...10 {
             guard card.waitForExistence(timeout: 6) else { break }
             if card.label == blockedBody { restored = true; break }
-            app.buttons["timeline.next"].tap()
+            app.swipeLeft()
         }
         XCTAssertTrue(restored, "解除した人の回答が戻ってこない")
     }
@@ -199,7 +199,7 @@ final class SprintFourAcceptanceTests: XCTestCase {
         let first = card.label
         app.buttons["timeline.like"].tap()
         XCTAssertTrue(app.buttons["timeline.like"].isSelected, "いいねの押下状態にならない")
-        app.buttons["timeline.next"].tap()
+        app.swipeLeft()
         XCTAssertTrue(card.waitForExistence(timeout: 8))
         XCTAssertNotEqual(card.label, first)
         app.buttons["timeline.close"].tap()

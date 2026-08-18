@@ -94,7 +94,7 @@ final class SprintOneAcceptanceTests: XCTestCase {
             guard app.staticTexts["timeline.card.body"].exists else { break }
             XCTAssertNotEqual(app.staticTexts["timeline.card.body"].label, answerBody, "自分の投稿がタイムラインに出た")
             seen += 1
-            app.buttons["timeline.next"].tap()
+            app.swipeLeft()
         }
         XCTAssertTrue(app.otherElements["timeline.end"].waitForExistence(timeout: 20), "読み切ったら終端表示になる")
         XCTAssertGreaterThanOrEqual(seen, 10, "検証には自分以外の回答が10件以上必要")
@@ -119,7 +119,7 @@ final class SprintOneAcceptanceTests: XCTestCase {
         XCTAssertTrue(like.isSelected, "押すと押下状態になる")
 
         // 別の投稿へ進んでから、タイムラインを閉じる
-        app.buttons["timeline.next"].tap()
+        app.swipeLeft()
         XCTAssertTrue(waitForBodyToChange(app, from: likedBody))
         app.buttons["timeline.close"].tap()
         XCTAssertTrue(app.buttons["today.openTimeline"].waitForExistence(timeout: 5))
@@ -138,7 +138,7 @@ final class SprintOneAcceptanceTests: XCTestCase {
                 found = true
                 break
             }
-            app.buttons["timeline.next"].tap()
+            app.swipeLeft()
             _ = app.staticTexts["timeline.card.body"].waitForExistence(timeout: 2)
         }
         XCTAssertTrue(found, "いいねした回答が見つからなかった")
