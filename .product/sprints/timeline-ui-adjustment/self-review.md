@@ -52,3 +52,53 @@
   短文が前提だが、将来長文お題を許容するなら全文表示への切り替え（タップで展開等）が要るかもしれない。
 - いいねボタンにハプティクスを付けると「押したことが分かる」がさらに強化されるが、今回のフィード
   バックは視覚的な分かりやすさのみだったため見送った。
+
+---
+
+## 追記（スプリント外の小さな修正、2026-08-19）
+
+`eval-1.md` の「合否には影響しないが要対応・優先度高」の指摘2件（[A][C]）への対応。
+合格判定を受けた変更に、副作用への手当てを追加するもので、新しい受け入れ条件は無い。
+対象は `SameQ/Feature/Timeline/TimelineView.swift` と `SameQUITests/SprintFiveAcceptanceTests.swift`
+のみ。スプリント06関連ファイルには触れていない。
+
+### 対応内容
+
+| 指摘 | 状態 | 内容 |
+|---|---|---|
+| [A] カードの上下の余白（実測 約138pt／約139pt）でスワイプが効かず画面の約1/3が無反応 | 対応済み | `cardStack` の `DragGesture` を `AnswerCardView` 本体から `ZStack` 側へ移動。`ZStack` に `.frame(maxWidth: .infinity, maxHeight: .infinity)` を先に適用したうえで `.contentShape(Rectangle())` を付け、お題表示〜いいねボタンに挟まれた領域全体（カードの上下の余白を含む）でジェスチャを受け取るようにした。カード自体の `offset`／`rotationEffect` は変更していない。 |
+| [C] `SprintFiveAcceptanceTests` の2箇所で「スワイプ後に実際に次へ進んだこと」の検証が抜けていた | 対応済み | `test04_likeRateLimitBlocksThenRecovers` と `test05_reportRateLimitBlocksThenShowsMessage` の `app.swipeLeft()` 直後に、`SprintOneAcceptanceTests` / `SprintThreeAcceptanceTests` と同じ実装の `waitForBodyToChange`（スワイプ前の本文を保持し、変わるか終端表示に移るまで待つ）を追加。スワイプ前の本文を保持してから比較する形にした。 |
+
+指摘[B]（お題とカードの間の空白が大きい・視線が落ち着きにくい）と[D]（長文お題での2行省略）は
+今回のタスクの依頼範囲外（デザイン調整の裁量判断・スプリント09の材料）のため対応していない。
+
+### 確認方法
+
+1. ビルド確認: `xcodebuild build -project SameQ.xcodeproj -scheme SameQ -destination 'platform=iOS Simulator,id=12050FBD-587B-4910-8812-696BB91BE051'` → `** BUILD SUCCEEDED **`。
+2. フルテストスイート（他の `xcodebuild` プロセスが無いことを `ps aux | grep xcodebuild` で確認したうえで単独実行）:
+   `xcodebuild test -project SameQ.xcodeproj -scheme SameQ -destination 'platform=iOS Simulator,id=12050FBD-587B-4910-8812-696BB91BE051'`
+   → `SameQTests` 57件 ＋ `SameQUITests` 33件、**計90件すべて成功**（`** TEST SUCCEEDED **`）。
+   `SprintFiveAcceptanceTests`（新しい検証を追加した箇所を含む）も全件成功。
+3. [A]の修正が実際に効いていることの自己確認: 一時的なUIテスト（`TempSwipeMarginProbeTests`、
+   コミットせず）を作り、`timeline.prompt` の下端と `timeline.card.body` の上端の中間 y座標、
+   および `timeline.card.body` の下端と `timeline.like` の上端の中間 y座標で、ウィンドウ座標を
+   直接指定してスワイプ（`XCUICoordinate.press(forDuration:thenDragTo:)`）した。どちらも
+   スワイプ後に本文が変わることを確認できた（`test_swipeInMarginAboveAndBelowCardAdvances` 1件、
+   単独実行で成功）。このテストをビルドに含めるため `project.pbxproj` に一時的にエントリを追加して
+   実行し、確認後は `project.pbxproj` をコミット前の状態に復元、テストファイルは削除した
+   （`git status` で pbxproj に差分が残っていないことを確認済み）。
+
+### 自分で見つけた弱点
+
+- `.contentShape(Rectangle())` を `ZStack` の `.frame(maxWidth: .infinity, maxHeight: .infinity)` の
+  後段に付けたため、スワイプの反応領域は「お題表示の直下〜いいねボタンの直上」の画面幅いっぱいに
+  広がった。これは evaluator の提案どおりだが、副作用として、カードの左右（画面端に近い余白）でも
+  スワイプが反応するようになった。従来はカード本体（`.padding(.horizontal, 20)` の内側）でしか
+  反応しなかった領域が広がる形なので、意図しない挙動ではないと判断したが、evaluator の目視確認を
+  お願いしたい。
+- 一時的な確認用UIテスト（`TempSwipeMarginProbeTests`）はリポジトリに残していない。再現したい場合は
+  上記「確認方法」の3番の手順で再作成できる。
+
+### 提案（今回はやらなかったこと）
+
+- なし（今回は指摘された2点のみに対応）。

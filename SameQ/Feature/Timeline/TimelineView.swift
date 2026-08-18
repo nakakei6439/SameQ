@@ -170,29 +170,32 @@ struct TimelineView: View {
         ZStack {
             AnswerCardView(post: post)
                 .padding(.horizontal, 20)
-            .offset(dragOffset)
-            .rotationEffect(.degrees(Double(dragOffset.width / 32)))
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        guard !isAdvancing else { return }
-                        dragOffset = value.translation
-                    }
-                    .onEnded { value in
-                        guard !isAdvancing else { return }
-                        let distance = max(abs(value.translation.width), abs(value.translation.height))
-                        if distance > 70 {
-                            advance(towards: value.translation)
-                        } else {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                dragOffset = .zero
-                            }
+                .offset(dragOffset)
+                .rotationEffect(.degrees(Double(dragOffset.width / 32)))
+                .id(post.id)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // カード本体だけでなく、お題表示〜いいねボタンに挟まれた余白全体でもスワイプを
+        // 受け取れるようにする（カードの上下に生まれる空白ではジェスチャが効かなかった不具合の修正）。
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    guard !isAdvancing else { return }
+                    dragOffset = value.translation
+                }
+                .onEnded { value in
+                    guard !isAdvancing else { return }
+                    let distance = max(abs(value.translation.width), abs(value.translation.height))
+                    if distance > 70 {
+                        advance(towards: value.translation)
+                    } else {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            dragOffset = .zero
                         }
                     }
-            )
-            .id(post.id)
-        }
-        .frame(maxHeight: .infinity)
+                }
+        )
     }
 
     /// カードの下の操作。いいねだけ（並行タスク：UI調整で✕「次の人へ」ボタンを撤去）。

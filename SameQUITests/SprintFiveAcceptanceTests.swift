@@ -172,8 +172,10 @@ final class SprintFiveAcceptanceTests: XCTestCase {
         XCTAssertEqual(likeButton.isSelected, selectedBeforeLimit, "制限された操作の見た目が反映されてしまった")
 
         // 操作不能にならない：他の操作（スワイプでの遷移）は普通に使える
+        let bodyBeforeSwipe = app.staticTexts["timeline.card.body"].label
         app.swipeLeft()
         XCTAssertTrue(app.staticTexts["timeline.card.body"].waitForExistence(timeout: 8), "制限のあと操作を続けられない")
+        XCTAssertTrue(waitForBodyToChange(app, from: bodyBeforeSwipe), "制限のあとスワイプしても次の回答へ進まない")
 
         // クールダウンが明けると再びいいねできる（復帰できることの確認）
         Thread.sleep(forTimeInterval: 9)
@@ -204,8 +206,10 @@ final class SprintFiveAcceptanceTests: XCTestCase {
         // 操作不能にならない：タイムラインの操作（スワイプでの遷移）は続けられる
         let bodyBeforeAdvance = app.staticTexts["timeline.card.body"]
         XCTAssertTrue(bodyBeforeAdvance.waitForExistence(timeout: 8))
+        let bodyBeforeSwipe = bodyBeforeAdvance.label
         app.swipeLeft()
         XCTAssertTrue(app.staticTexts["timeline.card.body"].waitForExistence(timeout: 8), "制限のあと操作を続けられない")
+        XCTAssertTrue(waitForBodyToChange(app, from: bodyBeforeSwipe), "制限のあとスワイプしても次の回答へ進まない")
     }
 
     // MARK: 受け入れ条件5（BAN状態のアカウントは今日のお題にもタイムラインにも入れない）
@@ -340,5 +344,17 @@ final class SprintFiveAcceptanceTests: XCTestCase {
         if ok.waitForExistence(timeout: 5) {
             ok.tap()
         }
+    }
+
+    /// スワイプ後に実際に次の回答へ進んだこと（本文が変わったこと）を確かめる。
+    private func waitForBodyToChange(_ app: XCUIApplication, from previous: String) -> Bool {
+        let deadline = Date().addingTimeInterval(5)
+        while Date() < deadline {
+            let card = app.staticTexts["timeline.card.body"]
+            if !card.exists { return true }          // 終端表示に移った場合も「変わった」とみなす
+            if card.label != previous { return true }
+            usleep(200_000)
+        }
+        return false
     }
 }
