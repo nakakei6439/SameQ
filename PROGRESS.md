@@ -16,11 +16,16 @@
 | 開発ハーネス | planner → generator → evaluator |
 
 ## 現在の状態
-- **フェーズ**: スプリント06（投稿本文とお題の自動翻訳）**実装完了 → 評価待ち**
+- **フェーズ**: スプリント06（投稿本文とお題の自動翻訳）**評価 attempt 1 → 不合格。generator による修正待ち**
 - **スプリント06の実装内容（generator、2026-08-18。途中でセッション上限に達したため、ビルド確認・フルテスト実行・self-review.md作成・PROGRESS.md更新はcoordinatorが引き継いで完了）**: Apple Translation Framework のみを使い（外部翻訳API・フォールバックは無し、サーバーへ本文を送らない）投稿本文とお題本文を端末言語へ変換して表示。`TranslationSession` は `.translationTask` からしか作れないため、`RootView` の背景に常駐させた不可視の `TranslationHostView` がセッションを供給し、`Translator`（`SameQ/Backend/Translator.swift`）が要求を1件ずつさばく。翻訳できない言語ペア・翻訳失敗は `nil` を返し、`AppSession.drawNextPost` がスキップして次を引き直す（`nextTimelinePost` は返した時点で既読化するのでスキップした投稿は後で再度出ない＝F20）。お題・投稿とも翻訳が確定するまで表示せず「準備中…」を出すことで、原文が一瞬見えてから差し替わる「ちらつき」を防止（F21）。端末言語は起動時に `Locale.preferredLanguages.first` を1回だけ読む（`Locale.current` はローカライズ未対応アプリだと開発言語に丸められる既知の落とし穴があるため使わない）。同梱シードに `promptLanguage` を追加し、多言語投稿での翻訳確認ができるようにした。詳細は [`self-review.md`](.product/sprints/06-translation/self-review.md)。
 - **実装中に見つかった副作用と対処**: 翻訳の非同期スキップが挟まったことで `SprintOneAcceptanceTests.test02_lockedUntilAnsweredThenTimeline`（「読み切ったら終端表示になる」の5秒待ち）が不安定になった。プロダクションコードではなくテスト側の待ち時間を伸ばして解消（詳細は self-review.md）。フルテストスイート（`SameQTests` 37本 ＋ `SameQUITests` 31本）は、他にxcodebuildプロセスが動いていない単独実行で **全件成功**をcoordinatorが確認済み。
 - **evaluatorへの申し送り**: 受け入れ条件のうち「翻訳モデル未取得時の初回準備中表示」「機内モードでの翻訳表示」の2点は自動テストで検証できておらず、コードレビュー上は設計を満たしているはずだが**実機/シミュレータでの目視確認が必要**。評価者への注記どおり、端末言語を日本語／英語／韓国語の3種で切り替えて（設定変更後にアプリを再起動）確認すること。`-SameQAnswerCount` を付けると機械生成の日本語のみ投稿になり翻訳を挟まないので、**翻訳の検証には `-SameQAnswerCount` を付けずに同梱シード（多言語）のまま起動すること**。
-- **次にやること**: **スプリント06（投稿本文とお題の自動翻訳）の evaluator による評価**。受け入れ条件は `.product/spec.md` 194〜201行、評価者への注記は203行。
+- **次にやること**: **スプリント06 の修正（generator、attempt 2）**。evaluator の指摘は [`eval-1.md`](.product/sprints/06-translation/eval-1.md)。直す順に:
+  1. **[最重要] `Translator` の待ち行列が、直前と同じ言語ペアの2件目の要求で永久に詰まる。** 値の等しい `TranslationSession.Configuration` を代入し直しても `.translationTask` は再実行されない（evaluator が発火回数を実測: 同値の再代入では発火せず、別ペアなら発火する）。`startNextIfNeeded()` が毎回 `Configuration` を作り直して代入するだけなので、`withCheckedContinuation` が再開されず `pending` の先頭が残り `isSessionInFlight` が true のまま固まる。以後どの言語ペアも要求が出せない。結果として `AppSession.drawNextPost` が返らずタイムラインが `.loading`（スピナー）から戻らない／`syncPromptTranslation` が返らずお題が「準備中…」から戻らない。**端末言語が日本語以外なら、お題（ja→端末言語）の直後に ja の回答を引いた時点でほぼ即座に成立する**（prompt_001 は31件中13件が ja）。修正案は `invalidate()` を使う／言語ペアごとにセッションを保持して使い回す／来なかったときのタイムアウトで `nil` に落として固まらせない。
+  2. **翻訳が実際に動く環境での確認手段を用意する。** シミュレータでは Apple Translation が全ペアで `unsupportedLanguagePairing`（`TranslationErrorDomain Code=14`）を返し、`Translator` のセッション経路が1度も実行されない。「フルテスト31本全通過」は F18/F21/F22 について何も担保していない（上記1のバグがテストを1本も落とさずに通った）。**実機で動かせる形**（署名設定＋実機で翻訳が通ったことの記録）か、Debug 限定の疑似翻訳（例 `-SameQFakeTranslate`）でシミュレータでも経路を通せる形のどちらかを用意すること。
+  3. **端末言語が日本語以外だとお題が日本語の原文のまま出る**（英語端末・韓国語端末で確認）。翻訳できないときのお題の扱い（原文を出す／準備中を出し続ける／別の文言）を決め直す。
+  4. **翻訳できずにスキップした回答が恒久的に既読になる**（韓国語端末で読み切ったあと `viewedPostIDs` が31＝全件）。非対応言語（恒久的な失敗）と、モデル未取得・翻訳エラー（一時的な失敗）を区別し、後者は既読にしないこと。
+- **evaluator が確認できたこと（再修正で壊さないこと）**: 翻訳関連UI（翻訳ボタン・原文表示・切替・「翻訳済み」・言語ラベル）が全画面に1つも無い／`zxx` の非対応投稿は3言語すべての通しで0回表示／翻訳失敗でエラーダイアログを出さずスキップして次へ進む／クラッシュ0／`state.json` は schemaVersion 4 で翻訳結果を永続化しない／回帰6/6。
 - **スプリント05（BAN・投稿頻度制限・スパム対策）は合格済み（attempt 2、2026-08-18）**。1お題1投稿の担保、直近投稿と同一本文の連投拒否、空白・改行のみ／同一文字の過剰な繰り返しの拒否、いいね・通報の連打制限、BAN状態のアカウント締め出し、BANされた投稿者の非表示化を実装。受け入れ条件6/6・回帰10/10。詳細は [`self-review.md`](.product/sprints/05-ban-spam/self-review.md) / [`eval-2.md`](.product/sprints/05-ban-spam/eval-2.md)。
   - スプリント05の評価で挙がった改善提案（合否には影響しないが、着手時に踏まえる）:
     - **[A] 空白だけを入力しているとき、文字数カウンタが「8/140」と出る**（拒否メッセージは出るようになったので実害は消えたが、押す前は空欄に見えるのに入力済みに見える矛盾が残る）。trim 後の文字数を数える等。
@@ -99,7 +104,8 @@
 ### スプリント06: 投稿本文とお題の自動翻訳
 含む機能: F18, F19, F20, F21, F22
 - [x] 実装（generator、仕上げはcoordinatorが引き継ぎ）— 2026-08-18。Apple Translation Framework による投稿本文・お題の端末内翻訳、非対応言語ペアのスキップ（F20）、翻訳確定までの「ちらつき」防止（F21）。[`self-review.md`](.product/sprints/06-translation/self-review.md)
-- [ ] 評価（evaluator）— 受け入れ条件は `.product/spec.md` 194〜201行。モデル未取得時の初回表示・機内モードの2点は実機/シミュレータでの目視確認が必要（自動テスト対象外）
+- [x] 評価（evaluator）— 2026-08-18 **不合格**（attempt 1）。受け入れ条件 3/7（2件は評価不能、2件は未達）。同じ言語ペアの2件目の翻訳要求で `Translator` の待ち行列が永久に詰まる／シミュレータでは Apple Translation が機能せず翻訳経路が1度も実行されない／英語・韓国語端末でお題が日本語原文のまま／スキップした回答が恒久的に既読になる。クラッシュ0・データ整合性OK・回帰6/6・使用性3。[`eval-1.md`](.product/sprints/06-translation/eval-1.md)
+- [ ] 修正（generator、attempt 2）— 上の「次にやること」の4点
 
 ### スプリント07: ニックネームの自動ローカライズ
 含む機能: F23
@@ -216,3 +222,4 @@
 - 2026-08-18: スプリント05 修正（generator / attempt 2）。`TodayPromptView.canSubmit` の送信ボタン有効条件を trim 後の空文字判定から `!draft.isEmpty` に変更し、空白・改行のみの投稿でも `LocalBackend.submitPost` の `emptyBody`（日英併記の拒否メッセージ）まで届くようにした。指摘された1点のみ修正。`SprintFiveAcceptanceTests.test02_blankAndRepeatedCharacterBodiesAreRejected` を拒否メッセージの表示まで検証するよう更新。ユニット37本は全通過を確認、UIテストはコーディネーター側で別途確認中。次はスプリント05の evaluator 再検証。
 - 2026-08-18: スプリント05 評価（evaluator / attempt 2）。iPhone 17 / iOS 26.3 シミュレータで独自 XCUITest 13本（E01〜E08 / R1〜R5）＋ `state.json` の直接確認により実操作検証し **合格**。空白・改行のみの投稿（半角スペース1個・改行のみ・全角スペースの3種）で送信ボタンが押せ、日英併記の拒否メッセージが出て投稿されないこと、OKで閉じたあと同一セッションのまま書き直して投稿できることを確認。連投拒否・繰り返し拒否・いいね/通報の連打制限・BAN画面の締め出し（ボタン0個）・BAN投稿者の非表示（22件読み切りまで0件）も再確認。回帰10/10（スプリント01の初回設定ゲートと未回答ロック／02の期限切れ→お題待ち／03の重複なし・既読の再起動後の残存・0件の空状態／04の通報の即時非表示・ブロック一覧と解除）。クラッシュ0、拒否された投稿は永続層に一切残らない。使用性4。次はスプリント06（投稿本文とお題の自動翻訳）の実装。[`eval-2.md`](.product/sprints/05-ban-spam/eval-2.md)
 - 2026-08-18: スプリント06 実装（generator）。F18〜F22。Apple Translation Framework のみで投稿本文・お題を端末内翻訳。`TranslationHostView`（常駐・不可視）が `.translationTask` からセッションを供給し、`Translator` が翻訳・対応可否判定を1件ずつさばく。非対応言語ペア・翻訳失敗はスキップして次を引き直す（F20）。翻訳確定まで表示せず「準備中…」を出しちらつきを防止（F21）。端末言語は起動時に `Locale.preferredLanguages.first` を1回だけ読む。同梱シードに `promptLanguage` を追加。実装途中でセッション上限に達したため、ビルド確認・フルテスト実行（他プロセス非併走・単独実行、37+31件**全件成功**）・`self-review.md` 作成・本エントリを含む `PROGRESS.md` 更新は coordinator が引き継いで完了。次はスプリント06の evaluator 検証（モデル未取得時の表示・機内モードは実機/シミュレータでの目視確認が必要）。
+- 2026-08-18: スプリント06 評価（evaluator / attempt 1）。iPhone 17 / iOS 26.5 シミュレータで端末言語を日本語・英語・韓国語の3種に切り替え（`.GlobalPreferences` を書き換えて端末ごと再起動）、独自 XCUITest 9本＋Translation Framework の直接プローブ4本で実操作検証し **不合格**。受け入れ条件 3/7。最大の問題は `Translator` の待ち行列が「直前と同じ言語ペアの2件目の要求」で永久に詰まること（同値の `TranslationSession.Configuration` を代入し直しても `.translationTask` が再実行されないことを発火回数で実測）。加えて、シミュレータでは Apple Translation が全ペアで `unsupportedLanguagePairing` を返すため翻訳経路が1度も実行されず、受け入れ条件 4（モデル未取得時）と 7（機内モード）は評価不能。英語・韓国語端末ではお題が日本語原文のまま表示され、翻訳できずスキップした回答は `viewedPostIDs` に焼き付いて二度と出ない。翻訳関連UIの不在・非対応言語のスキップ・エラーダイアログを出さないこと・回帰6/6・クラッシュ0は確認。次はスプリント06 attempt 2（generator の修正）。[`eval-1.md`](.product/sprints/06-translation/eval-1.md)

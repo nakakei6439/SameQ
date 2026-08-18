@@ -1,7 +1,7 @@
 {
-  "currentSprint": "05",
-  "attempt": 2,
-  "status": "passed",
+  "currentSprint": "06",
+  "attempt": 1,
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "01",
@@ -74,6 +74,18 @@
       "attempt": 2,
       "result": "passed",
       "note": "evaluator が iPhone 17 / iOS 26.3 シミュレータで独自 XCUITest 13本（E01〜E08 / R1〜R5）＋ state.json の直接確認により実操作検証。受け入れ条件6/6で合格。attempt 1 の不合格理由（空白・改行のみの投稿で拒否メッセージが出ない）は解消。半角スペース1個・改行のみ・全角スペースの3種すべてで送信ボタンが押せ、日英併記の拒否メッセージが出て投稿されず、OKで閉じたあと同一セッションのまま書き直して投稿できることを確認。連投拒否・繰り返し拒否・いいね/通報の連打制限と復帰・BAN画面の締め出し（ボタン0個）・BAN投稿者の非表示（22件読み切りまで0件）も再確認。クラッシュ0、アプリ由来の Error/Fault ログ0、拒否された投稿は state.json に一切残らない（schemaVersion 4）、回帰10/10、使用性4。詳細は .product/sprints/05-ban-spam/eval-2.md"
+    },
+    {
+      "sprint": "06",
+      "attempt": 1,
+      "result": "awaiting_eval",
+      "note": "F18〜F22 実装。Apple Translation Framework のみで投稿本文・お題を端末内翻訳。TranslationHostView が .translationTask からセッションを供給し Translator が要求を1件ずつさばく。非対応言語ペア・翻訳失敗はスキップ。coordinator が引き継いで自己評価を作成（モデル未取得時の初回表示と機内モードの2点は未検証と明記）"
+    },
+    {
+      "sprint": "06",
+      "attempt": 1,
+      "result": "needs_fix",
+      "note": "evaluator が iPhone 17 / iOS 26.5 シミュレータで端末言語を日本語・英語・韓国語の3種に切り替えて実操作検証（独自 XCUITest 9本＋Translation Framework の直接プローブ4本）。受け入れ条件 3/7 で不合格。(1) Translator の待ち行列が、直前と同じ言語ペアの2件目の要求で永久に詰まる（値の等しい TranslationSession.Configuration を代入し直しても .translationTask が再実行されないことを実測。以後どの言語ペアも要求が出せなくなる）。(2) シミュレータでは Apple Translation が全ペアで unsupportedLanguagePairing を返すため、セッション経路が1度も実行されず F18/F21/F22 は実機確認が必須。(3) 英語・韓国語端末でお題が日本語原文のまま。(4) 翻訳できずスキップした回答も既読として焼き付く（viewedPostIDs 31）。翻訳関連UIの不在・非対応言語のスキップ・エラーダイアログを出さないことは確認できた。クラッシュ0、データ整合性OK（schemaVersion 4）、回帰6/6、使用性3。詳細は .product/sprints/06-translation/eval-1.md"
     }
   ]
 }
