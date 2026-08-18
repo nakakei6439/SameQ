@@ -1,7 +1,7 @@
 {
   "currentSprint": "05",
   "attempt": 2,
-  "status": "awaiting_eval",
+  "status": "passed",
   "history": [
     {
       "sprint": "01",
@@ -68,6 +68,12 @@
       "attempt": 2,
       "result": "awaiting_eval",
       "note": "指摘1件のみ修正。TodayPromptView.canSubmit を trim後の空文字判定から !draft.isEmpty に変更し、空白・改行のみの投稿でも送信ボタンが押せ、LocalBackend.submitPost の emptyBody（日英併記の拒否メッセージ）まで届くようにした。SprintFiveAcceptanceTests.test02 を拒否メッセージの表示まで検証するよう更新。ユニット37本は全通過を確認。UIテスト（スプリント01〜05・31本）はコーディネーターが別途バックグラウンドで確認中。詳細は .product/sprints/05-ban-spam/self-review.md の attempt 2 を参照"
+    },
+    {
+      "sprint": "05",
+      "attempt": 2,
+      "result": "passed",
+      "note": "evaluator が iPhone 17 / iOS 26.3 シミュレータで独自 XCUITest 13本（E01〜E08 / R1〜R5）＋ state.json の直接確認により実操作検証。受け入れ条件6/6で合格。attempt 1 の不合格理由（空白・改行のみの投稿で拒否メッセージが出ない）は解消。半角スペース1個・改行のみ・全角スペースの3種すべてで送信ボタンが押せ、日英併記の拒否メッセージが出て投稿されず、OKで閉じたあと同一セッションのまま書き直して投稿できることを確認。連投拒否・繰り返し拒否・いいね/通報の連打制限と復帰・BAN画面の締め出し（ボタン0個）・BAN投稿者の非表示（22件読み切りまで0件）も再確認。クラッシュ0、アプリ由来の Error/Fault ログ0、拒否された投稿は state.json に一切残らない（schemaVersion 4）、回帰10/10、使用性4。詳細は .product/sprints/05-ban-spam/eval-2.md"
     }
   ]
 }
