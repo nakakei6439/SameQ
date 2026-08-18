@@ -18,6 +18,12 @@ import Foundation
 /// - `-SameQBanned`                   自分のアカウントがBAN状態であるかのように起動する（F16）。
 ///                                    運営がサーバー側でBANを切り替える運用のため、アプリ内にBAN操作UIは無い。
 /// - `-SameQRateLimitTestMode`        いいね・通報の連打制限の閾値を短時間で確認できる値に縮める（F17）
+/// - `-SameQFakeTranslate`            `Translator` に実際の `TranslationSession` を使わせず、
+///                                    決定的な疑似翻訳（`[<言語コード>] <原文>`）を返させる（F18〜F22）。
+///                                    シミュレータでは Apple Translation が全言語ペアで
+///                                    未対応を返すため、翻訳の周辺ロジック（表示切り替え・
+///                                    非対応スキップ・ちらつき防止・キャッシュ）を確定的に
+///                                    検証するための Debug 限定モード。
 struct LaunchOptions: Sendable {
     var resetsState: Bool = false
     var resetsViewed: Bool = false
@@ -30,6 +36,9 @@ struct LaunchOptions: Sendable {
     var showsDebugOverlay: Bool = false
     /// `-SameQBanned`（Debug限定）。true の間は起動直後にBAN画面へ固定し、今日のお題・タイムラインへ入れない（F16）。
     var isBanned: Bool = false
+    /// `-SameQFakeTranslate`（Debug限定）。true の間は `Translator` が実際の `TranslationSession` を
+    /// 使わず、決定的な疑似翻訳を返す（F18〜F22。シミュレータでの検証用）。
+    var fakeTranslate: Bool = false
     /// いいねの連打制限（F17）。既定は15秒間に8回まで、超えたら15秒制限。
     var likeRateLimit = RateLimitSettings(maxActions: 8, windowSeconds: 15, cooldownSeconds: 15)
     /// 通報の連打制限（F17）。既定は30秒間に4回まで、超えたら20秒制限。
@@ -50,6 +59,7 @@ struct LaunchOptions: Sendable {
         options.resetsViewed = arguments.contains("-SameQResetViewed")
         options.showsDebugOverlay = arguments.contains("-SameQDebugOverlay")
         options.isBanned = arguments.contains("-SameQBanned")
+        options.fakeTranslate = arguments.contains("-SameQFakeTranslate")
         if arguments.contains("-SameQRateLimitTestMode") {
             // 手動検証・UIテストで実時間を長く待たなくて済むように回数を減らす。
             // ウィンドウは「操作を数回繰り返す」のに十分な長さを残す

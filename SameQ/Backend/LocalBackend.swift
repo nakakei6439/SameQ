@@ -150,7 +150,7 @@ actor LocalBackend: Backend {
         return candidates(promptID: promptID, at: now)
     }
 
-    func nextTimelinePost(promptID: String) async throws -> TimelineDraw {
+    func nextTimelinePost(promptID: String, excluding: Set<UUID>, autoMarkViewed: Bool) async throws -> TimelineDraw {
         let now = clock.now
         pruneExpired(at: now)
         // 「そもそも誰も答えていない」と「ブロック・通報で出せるものが無くなった」を混同しない。
@@ -159,16 +159,31 @@ actor LocalBackend: Backend {
         guard !all.isEmpty else { return .exhausted }
 
         let viewed = Set(state.viewedPostIDs)
-        let unread = all.filter { !viewed.contains($0.id) }
+        // `excluding` は永続化しない一時的な除外（バグ4の修正）。翻訳が一時的に失敗した回答を
+        // 同じ巡回内で引き直さないためのもので、未読が尽きた扱いにはこれも含めて判定する
+        // （除外中の候補しか残っていなければ `.exhausted` と同様に扱い、無限ループにしない）。
+        let unread = all.filter { !viewed.contains($0.id) && !excluding.contains($0.id) }
         // 未読からランダムに1件（F11）。順番を持たないので「次に誰が出るか」は毎回変わる。
         guard let picked = unread.randomElement() else { return .exhausted }
 
-        // 出したその場で既読にする（F12）。保存に失敗しても表示は続ける。
+        if autoMarkViewed {
+            // 出したその場で既読にする（F12・従来どおり）。保存に失敗しても表示は続ける。
+            var next = state
+            next.viewedPostIDs.append(picked.id)
+            try? store.save(next)
+            state = next
+        }
+        return .post(picked)
+    }
+
+    /// `nextTimelinePost(..., autoMarkViewed: false)` で引いた回答を、実際に表示できると
+    /// 確定した時点で既読にする（F12・バグ4の修正）。すでに既読なら何もしない。
+    func markPostViewed(_ postID: UUID) async throws {
+        guard !state.viewedPostIDs.contains(postID) else { return }
         var next = state
-        next.viewedPostIDs.append(picked.id)
+        next.viewedPostIDs.append(postID)
         try? store.save(next)
         state = next
-        return .post(picked)
     }
 
     func viewedPostIDs() async throws -> Set<UUID> {

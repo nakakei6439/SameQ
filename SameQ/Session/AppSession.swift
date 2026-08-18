@@ -179,11 +179,18 @@ final class AppSession {
         let language = prompt.language
         promptTranslationTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            let translated = await self.translator.translate(text, sourceLanguageCode: language)
+            let outcome = await self.translator.translate(text, sourceLanguageCode: language)
             guard !Task.isCancelled else { return }
-            // お題は投稿と違って「スキップして次を出す」代わりが無い（常に1つだけ有効）ので、
-            // 翻訳できなかった場合は原文へフォールバックする（今回の判断）。
-            self.promptDisplayText = translated ?? text
+            switch outcome {
+            case .text(let translated):
+                self.promptDisplayText = translated
+            case .unavailable:
+                // お題は投稿と違って「スキップして次を出す」代わりが無い（常に1つだけ有効・
+                // 置いた前提2）ので、恒久的な失敗・一時的な失敗のどちらでも原文へフォールバック
+                // する（決定を維持。「準備中…」を出し続けると F19「2回目以降は待たない」と
+                // 矛盾するため。attempt 2 の self-review に判断理由を記載）。
+                self.promptDisplayText = text
+            }
             self.lastTranslatedPromptID = promptID
         }
     }
@@ -245,8 +252,11 @@ final class AppSession {
     /// 次の1件を引いて翻訳する（F18 / F20）。
     ///
     /// 翻訳できない言語ペア、または翻訳に失敗した回答は表示せずスキップし、
-    /// バックエンドから次を引き直す（`nextTimelinePost` は返した時点で既読にするので、
-    /// スキップした回答が後で出てくることもない）。
+    /// バックエンドから次を引き直す。既読にするタイミングは「翻訳できて実際に表示できると
+    /// 確定した時点」または「恒久的に翻訳できないと確定した時点」だけにする（バグ4の修正）。
+    /// モデル未取得のタイムアウトなど**一時的な失敗**は既読にせず、この巡回のあいだだけ
+    /// バックエンドの候補から一時的に除外して無限ループを避ける（永続化しないので、
+    /// 次の巡回・次回起動では再挑戦できる）。
     /// 表示を切り替えるのは翻訳が確定してからだけにして、原文が一瞬見えてから
     /// 差し替わる「ちらつき」を避ける（間は `.loading` のまま）。
     private func drawNextPost() async {
@@ -256,16 +266,26 @@ final class AppSession {
         }
         timelineContent = .loading
         do {
+            var skippedThisDraw: Set<UUID> = []
             draw: while true {
-                switch try await backend.nextTimelinePost(promptID: prompt.id) {
+                switch try await backend.nextTimelinePost(
+                    promptID: prompt.id,
+                    excluding: skippedThisDraw,
+                    autoMarkViewed: false
+                ) {
                 case .post(let post):
-                    guard let translatedBody = await translator.translate(
-                        post.body,
-                        sourceLanguageCode: post.bodyLanguage
-                    ) else {
+                    switch await translator.translate(post.body, sourceLanguageCode: post.bodyLanguage) {
+                    case .text(let translatedBody):
+                        try await backend.markPostViewed(post.id)
+                        timelineContent = .post(post.displaying(translatedBody: translatedBody))
+                    case .unavailable(let permanent):
+                        if permanent {
+                            try await backend.markPostViewed(post.id)
+                        } else {
+                            skippedThisDraw.insert(post.id)
+                        }
                         continue draw
                     }
-                    timelineContent = .post(post.displaying(translatedBody: translatedBody))
                 case .empty:
                     timelineContent = .empty
                 case .exhausted:

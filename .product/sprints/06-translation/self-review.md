@@ -43,3 +43,168 @@ open /Users/nakagawakeita/Products/iOSApp/SameQ/SameQ.xcodeproj
 ## 提案（今回はやらなかったこと）
 
 - 特になし（評価者への注記に沿った3言語切り替え確認は evaluator の作業として引き継ぎ）
+
+---
+
+# スプリント06 自己評価（attempt 2）
+
+evaluator の `eval-1.md`（不合格・受け入れ条件3/7）で指摘された4点に対応した。
+実機検証（ユーザーが外出中のため今回スコープ外）以外は、シミュレータで確認できる範囲を
+最大限進めた。指摘された4点の修正に集中し、ついでのリファクタリングはしていない。
+
+## 対応した4点
+
+### 1.【最重要】翻訳キューが同一言語ペアの2件目の要求で永久に固まる
+
+**原因**: `Translator.startNextIfNeeded()` が毎回 `TranslationSession.Configuration` を
+新しく作って `configuration` に代入し直していた。evaluator が実測したとおり、値が同じ
+`Configuration` を代入し直しても `.translationTask` は再実行されない。
+
+**対応**: 待ち行列のロジックを `SessionRequestQueue<Session>`（新規・`Translation` に依存しない
+ジェネリック型、`SameQ/Backend/SessionRequestQueue.swift`）に切り出し、**一度取得できた
+セッションはキー（原文の言語コード）ごとにキャッシュし、2回目以降は新しい要求を一切出さず
+キャッシュを即座に返す**設計にした。これにより「同じ値の `Configuration` を2回連続で代入する」
+という固着の直接原因が構造的に起こり得なくなる（新しい `Configuration` を作るのは、まだ
+一度もセッションを取得していない言語ペアのときだけ）。
+
+保険として、evaluator の提案どおり `invalidate()` の呼び出し（新しい要求を出す直前）と、
+一定時間（45秒）セッションが来なければタイムアウトして次の要求へ進む仕組みの両方を入れた
+（タイムアウト時は「一時的な失敗」として扱い、恒久的な非対応とはしない＝バグ4の修正と連動）。
+
+**確認方法**: `SessionRequestQueueTests.swift`（新規、ユニット5本）で、`TranslationSession` を
+一切使わずに以下を直接検証:
+- 同じキーへの2回目の要求では `onNeedsSession`（＝`Configuration` の差し替えに相当）が
+  呼ばれない（evaluator の実測ログの再現: en→en→ko で要求は en・koの2回だけ）
+- 未解決のうちの重複要求も1回にまとまる
+- セッションが来ないままタイムアウトしても `nil` を返し、後続の別キーの要求はブロックされない
+- タイムアウトしたキーは、あとで再要求できる（永久に諦めない）
+
+この待ち行列ロジックは `Translator.sessionQueue`（`SessionRequestQueue<TranslationSession>`）が
+そのまま使っているので、ロジックの正しさはコードレベルで直結している。ただし
+`TranslationSession` を使った実際のセッション取得・翻訳そのもの（`.translate(_:)` の実行）は
+このシミュレータでは検証できない（後述の2点目）。
+
+### 2. シミュレータでの実処理経路の検証手段が無い
+
+**対応**: Debug限定・起動引数 `-SameQFakeTranslate` を追加（`LaunchOptions.fakeTranslate`）。
+有効なとき `Translator.translate` は実際の `TranslationSession` を一切使わず、
+`[<端末言語コード>] <原文>` という決定的な変換を返す。同梱シードの検証用マーカー
+（`zxx`）は疑似モードでも「恒久的に非対応」として扱う。テキストキャッシュ
+（`textCache`）・非対応キャッシュ（`unsupportedSourceCodes`）は本番経路と共有しているので、
+「同じ原文は2回目以降キャッシュから返る」という周辺ロジックも同じコード経路で検証できる。
+実際の `TranslationSession` を使う本番経路（`sessionQueue` 以降）はそのまま残しており、
+疑似モードは `translate()` の先頭付近で分岐するだけ。Releaseビルドには含まれない
+（既存の `-SameQBanned` 等と同じ扱い。`#if DEBUG` で起動引数を解釈する既存の仕組みをそのまま使う）。
+
+テスト時にホスト環境のロケールへ依存しないよう、`Translator.init` に
+`preferredLanguageIdentifier`（既定 nil＝実際の端末設定を読む）という上書き用の引数も追加した。
+
+**確認方法**:
+- `TranslatorFakeModeTests.swift`（新規、ユニット6本）: 疑似変換の内容、同一言語のスキップ、
+  `zxx` の恒久的非対応、キャッシュの効き、空文字の扱い、端末言語ごとの接頭辞の追従
+- `AppSessionTranslationTests.swift`（新規、ユニット3本）: `AppSession` + `LocalBackend` +
+  疑似 `Translator` を組み合わせ、(a) お題の翻訳確定、(b) **同じ原文言語（"en"）の回答10件を
+  連続で引いても途中で止まらず全件表示できる**（バグ1の統合確認。修正前の設計なら1件目の
+  あとで止まっていたはずの状況を、疑似モードでも AppSession の流れとして再現）、
+  (c) 非対応言語（`zxx`）が一度も表示されず恒久的にスキップされる、を確認
+- `SprintSixAcceptanceTests.swift`（新規UIテスト2本）: 実際にアプリを `-SameQFakeTranslate`
+  付きで起動し、同梱シード（多言語）を読み切りまでスワイプ。途中で止まらないこと・非対応
+  マーカーが出ないこと・少なくとも1件は `[<言語コード>] ` 接頭辞付きで表示されること、
+  お題が「準備中…」のまま固まらず確定表示に変わることを確認
+
+### 3. 端末言語が日本語以外だとお題が日本語原文のまま出る
+
+**調査結果**: attempt 1 の環境（シミュレータ）でこの症状が起きていた直接原因は、バグ2
+（Apple Translation がこの環境では全ペアで失敗する）であり、`isSupported()` が
+`.unsupported` を返すため即座に原文へフォールバックしていた（「準備中…」が一瞬も
+見えなかったのはこのため）。バグ1（キュー固着）は、実機で翻訳が機能する環境において
+「お題（ja→端末言語）の直後に ja の回答を連続で引く」場面で発生しうる不具合であり、
+1の修正でこの経路は解消した。
+
+**設計判断（決定を維持）**: お題は「常に1つだけ有効・スキップの代替が無い」（置いた前提2）
+ため、翻訳できない場合は引き続き原文へフォールバックする。判断理由:
+- 翻訳関連UIを一切出さない方針（evaluatorが確認済みの合格ポイント）のため、「これは原文です」
+  と示すラベルも追加できない
+- 「準備中…」を出し続けると、受け入れ条件「2回目以降は待ちが発生しない」と矛盾する
+- 恒久的な非対応・一時的な失敗のどちらでも「原文を出す」以外に取れる選択肢が無い
+  （投稿と違って「スキップして次を出す」代わりが無い）
+
+1の修正により、実機で翻訳が機能する環境では、少なくとも「同じ言語ペアの連続」による
+見かけ上の失敗は解消されているはずだが、**実機での最終確認は今回のスコープ外**
+（ユーザーが外出中のため）。次回 evaluator が実機で確認できる状態になった際に、
+改めてこの点を検証してほしい。
+
+### 4. 翻訳できずスキップした回答が恒久的に既読になる
+
+**対応**: `Translator.translate` の戻り値を `TranslationOutcome`（`.text` /
+`.unavailable(permanent:)`）に変更し、「恒久的な失敗（非対応言語）」と「一時的な失敗
+（セッション取得のタイムアウト・翻訳時の一時的なエラー）」を区別できるようにした。
+
+`Backend` プロトコルの `nextTimelinePost` に `excluding`（この巡回だけの一時的な除外。
+永続化しない）と `autoMarkViewed`（既読にするかを呼び出し側に委ねる）を追加し、新たに
+`markPostViewed(_:)` を追加した。`AppSession.drawNextPost` は
+`nextTimelinePost(..., autoMarkViewed: false)` で引いてから翻訳を試し、
+- 翻訳成功、または恒久的に非対応と判明した場合だけ `markPostViewed` を呼ぶ
+- 一時的な失敗の場合は、既読にせず、その巡回内だけ `excluding` に入れて次を引き直す
+  （無限ループを避けつつ、次の巡回・次回起動では再挑戦できるようにする）
+
+既存の呼び出し元・既存テスト（スプリント01〜05）を壊さないよう、`Backend` の
+extension に `nextTimelinePost(promptID:)`（`excluding: []` / `autoMarkViewed: true` を
+補う後方互換のデフォルト呼び出し）を用意した。プロトコル本体には既定値を書けないため。
+
+**確認方法**:
+- `TranslationSkipTests.swift`（新規、ユニット5本）: `LocalBackend` レベルで、一時的な失敗は
+  既読にならないこと、`excluding` により同じ巡回内で無限ループしないこと、恒久的な失敗は
+  既読にしてよく以後二度と出てこないこと、`markPostViewed` の冪等性、デフォルトの呼び出しが
+  従来どおり即座に既読にすることを確認
+- `AppSessionTranslationTests.testUntranslatableMarkerNeverAppearsAndIsPermanentlySkipped`:
+  `AppSession` を通した統合確認として、非対応言語の回答が既読になり翻訳可能な回答だけが
+  表示されることを確認
+
+## 自分で確認したこと（このセッション）
+
+- `xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'generic/platform=iOS Simulator' build` 成功
+- 新規ユニットテスト19本（`SessionRequestQueueTests` 5・`TranslatorFakeModeTests` 6・
+  `TranslationSkipTests` 5・`AppSessionTranslationTests` 3）を単独実行し全件成功
+- 新規UIテスト2本（`SprintSixAcceptanceTests`）を単独実行し全件成功。`-SameQFakeTranslate` で
+  実際にアプリを起動し、タイムラインが固着せず読み切りまで進むこと、お題が確定表示に
+  変わることを目視でも確認
+- 他にxcodebuildプロセスが動いていないことを確認したうえで、フルテストスイート
+  （`SameQTests` + `SameQUITests`、既存 + 新規）を実行 → 結果は本ファイル末尾に追記
+
+## 動かし方（evaluator向け・attempt 2で変わった点）
+
+- 追加した起動引数: `-SameQFakeTranslate`（Debug限定）。有効にすると `Translator` は実際の
+  `TranslationSession` を使わず、`[<言語コード>] <原文>` の決定的な変換を返す。シミュレータで
+  「翻訳結果が画面に反映される」「非対応言語（`zxx`）はスキップされる」「同じ端末で2回目
+  以降は待たない（キャッシュが効く）」を確定的に確認するためのモード
+- 例: `-SameQFakeTranslate -SameQResetState`（初回設定からやり直しつつ疑似翻訳を有効化）
+- 端末言語を日本語／英語／韓国語で切り替える手順（`.GlobalPreferences` を書き換えて端末ごと
+  再起動）は attempt 1 の evaluator の手順のまま有効。`-SameQFakeTranslate` と組み合わせれば、
+  Apple Translation が使えないシミュレータでも「その言語での表示」を確定的に確認できる
+  （実際の翻訳文ではなく `[<言語コード>] ` 接頭辞になる点に注意）
+- 実際の `TranslationSession` 経路（`-SameQFakeTranslate` を付けない場合）は、このシミュレータ
+  では引き続き機能しない（Apple Translation Framework のシミュレータ制約）。実機での確認が
+  必要（今回のスコープ外）
+
+## 自分で見つけた弱点（正直に書く）
+
+- **実機検証は今回一切できていない**。1（キュー固着）の修正はフレームワーク非依存の
+  `SessionRequestQueue` レベルでは確実にテストできたが、実際の `TranslationSession` を
+  使った経路（`.translate(_:)` の実行そのもの）がこの待ち行列と正しく協調して動くかは、
+  実機でしか確認できない。次回 evaluator が実機で検証できる際に最優先で見てほしい
+- タイムアウト秒数（45秒）は経験的な値。実機でモデルの初回ダウンロードにこれより長く
+  かかる場合、正当なダウンロード待ちを「一時的な失敗」として打ち切ってしまう可能性がある
+  （ただしこの場合も既読にはならないので、次の巡回で再挑戦できる。無言で固まり続けるより
+  マシ、という位置づけの保険）
+- 3（お題のフォールバック）は「決定を維持」という結論にとどまり、実機での効果測定は
+  できていない
+- `SessionRequestQueue` の `sleep` オーバーライド機構はテスト専用で、本番コードパスには
+  影響しない設計だが、`Translator` 側からは常に既定値（実時間の `Task.sleep`）を使っている
+
+## 提案（今回はやらなかったこと）
+
+- 実機で翻訳モデルの初回ダウンロードにかかる実測時間を確認し、タイムアウト秒数（45秒）を
+  調整する
+- `Translator.textCache` に上限が無い問題（attempt 1 の評価提案、優先度中）は今回も未対応
+  （指摘された4点に集中したため）

@@ -1,7 +1,7 @@
 {
   "currentSprint": "06",
-  "attempt": 1,
-  "status": "needs_fix",
+  "attempt": 2,
+  "status": "awaiting_eval",
   "history": [
     {
       "sprint": "01",
@@ -86,6 +86,12 @@
       "attempt": 1,
       "result": "needs_fix",
       "note": "evaluator が iPhone 17 / iOS 26.5 シミュレータで端末言語を日本語・英語・韓国語の3種に切り替えて実操作検証（独自 XCUITest 9本＋Translation Framework の直接プローブ4本）。受け入れ条件 3/7 で不合格。(1) Translator の待ち行列が、直前と同じ言語ペアの2件目の要求で永久に詰まる（値の等しい TranslationSession.Configuration を代入し直しても .translationTask が再実行されないことを実測。以後どの言語ペアも要求が出せなくなる）。(2) シミュレータでは Apple Translation が全ペアで unsupportedLanguagePairing を返すため、セッション経路が1度も実行されず F18/F21/F22 は実機確認が必須。(3) 英語・韓国語端末でお題が日本語原文のまま。(4) 翻訳できずスキップした回答も既読として焼き付く（viewedPostIDs 31）。翻訳関連UIの不在・非対応言語のスキップ・エラーダイアログを出さないことは確認できた。クラッシュ0、データ整合性OK（schemaVersion 4）、回帰6/6、使用性3。詳細は .product/sprints/06-translation/eval-1.md"
+    },
+    {
+      "sprint": "06",
+      "attempt": 2,
+      "result": "awaiting_eval",
+      "note": "evaluator の指摘4点すべてに対応。(1) 翻訳キューの固着: 待ち行列ロジックを SessionRequestQueue<Session>（新規・Translation非依存のジェネリック型）に切り出し、一度取得できたセッションは言語ペアごとにキャッシュして2回目以降は新規要求を出さない設計に変更（同じ値の Configuration を再代入する経路自体を無くした）。保険として invalidate() の呼び出しと45秒タイムアウトも追加。(2) Debug限定の疑似翻訳モード -SameQFakeTranslate を追加し、シミュレータでも翻訳結果の反映・非対応言語のスキップ・キャッシュをテストできるようにした。(3) お題の翻訳フォールバック方針を検討し、原文へのフォールバックを維持する判断（お題は常に1つだけ有効でスキップの代替が無いため）。(4) Translator.translate の戻り値を TranslationOutcome（.text / .unavailable(permanent:)）に変更し恒久的失敗と一時的失敗を区別。Backend.nextTimelinePost に excluding / autoMarkViewed、新規 markPostViewed(_:) を追加し、一時的な失敗は既読にしないよう修正（既存呼び出し元は後方互換のデフォルト引数で無変更）。ユニット19本＋UIテスト2本を追加（合計 SameQTests 56本 ＋ SameQUITests 33本）、他プロセス非併走の単独実行でフルテスト全件成功。実機検証は今回未実施（ユーザー外出中のためスコープ外、次回evaluatorへ申し送り）。詳細は .product/sprints/06-translation/self-review.md の attempt 2"
     }
   ]
 }

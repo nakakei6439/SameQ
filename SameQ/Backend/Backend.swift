@@ -38,11 +38,22 @@ protocol Backend: Sendable {
     /// タイムラインに次に出す回答を1件だけ引く（F11）。
     ///
     /// 候補は「同一お題／自分以外／表示期限内／BAN外／ブロック外／通報していない」で、
-    /// そのうち**未読だけ**からランダムに1件選ぶ。
-    /// 返した回答はその場で既読として記録・永続化する（F12）ので、同じ回答は
-    /// アプリを再起動しても二度と出てこない。未読が尽きたら `.exhausted`、
-    /// 候補が最初から1件も無ければ `.empty` を返す。
-    func nextTimelinePost(promptID: String) async throws -> TimelineDraw
+    /// そのうち**未読**かつ `excluding` に入っていないものからランダムに1件選ぶ。
+    /// `autoMarkViewed` が true なら返した時点で既読として記録・永続化する（F12・従来どおり）。
+    /// 未読が尽きたら `.exhausted`、候補が最初から1件も無ければ `.empty` を返す。
+    ///
+    /// - Parameters:
+    ///   - excluding: 今回の巡回だけで一時的に除外したい投稿ID（永続化しない）。
+    ///     翻訳が一時的に失敗した回答を、同じ巡回内で無限に引き直さないために使う（バグ4の修正）。
+    ///   - autoMarkViewed: false のときは既読にせず `markPostViewed(_:)` を呼び出し側に任せる。
+    ///     翻訳の成否が確定するまで「見せられるかどうか」が分からない `AppSession` 側が、
+    ///     実際に表示できると確定した時点でだけ既読にできるようにするため（F18〜F22）。
+    func nextTimelinePost(promptID: String, excluding: Set<UUID>, autoMarkViewed: Bool) async throws -> TimelineDraw
+
+    /// `nextTimelinePost(..., autoMarkViewed: false)` で引いた回答を、実際に画面へ出せると
+    /// 確定した時点（翻訳成功、または恒久的に翻訳できないと判定できた時点）で既読にする。
+    /// 一時的な失敗（モデル未取得のタイムアウト等）では呼ばない（バグ4の修正・F12）。
+    func markPostViewed(_ postID: UUID) async throws
 
     /// 既読として記録済みの投稿ID（検証・デバッグ表示用）。
     func viewedPostIDs() async throws -> Set<UUID>
@@ -75,6 +86,15 @@ protocol Backend: Sendable {
 
     /// ブロック中の相手の一覧（新しい順）。設定画面で使う（F15）。
     func blockedAuthors() async throws -> [BlockedAuthor]
+}
+
+extension Backend {
+    /// `excluding` / `autoMarkViewed` を省略した呼び出し（スプリント01〜05から変わらない
+    /// 「引いた時点で既読にする」挙動）。既存の呼び出し元・既存テストをそのまま通すための
+    /// 後方互換のデフォルト（プロトコル本体に既定値は書けないため extension で用意する）。
+    func nextTimelinePost(promptID: String) async throws -> TimelineDraw {
+        try await nextTimelinePost(promptID: promptID, excluding: [], autoMarkViewed: true)
+    }
 }
 
 /// タイムラインから引いた1件の結果（F11 / F12）。
