@@ -216,10 +216,14 @@ struct TodayPromptView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .cardBackground()
 
-            Button("世界の回答を読む") {
+            // モデル未ダウンロードの言語をダウンロードしている間は「準備中…」にして
+            // 連打を防ぐ（受け入れ条件4・attempt 5）。1件もダウンロードが要らなければ
+            // 一瞬も表示されず、いつもどおりすぐタイムラインが開く。
+            Button(session.isPreparingTimeline ? "準備中…" : "世界の回答を読む") {
                 Task { await session.openTimeline() }
             }
-            .buttonStyle(PrimaryButtonStyle())
+            .buttonStyle(PrimaryButtonStyle(enabled: !session.isPreparingTimeline))
+            .disabled(session.isPreparingTimeline)
             .accessibilityIdentifier("today.openTimeline")
         }
     }

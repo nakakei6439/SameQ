@@ -108,4 +108,68 @@ final class TranslatorAvailabilityTests: XCTestCase {
         }
         XCTAssertNotNil(translator.configuration, ".installed のときは .supported と違いセッションを要求するはず")
     }
+
+    // MARK: attempt 5（eval-4.md [1]）: `prepareIfNeeded` は `.supported` を能動的にダウンロードしにいく
+
+    /// `translate(_:)` は `.supported` のとき絶対にセッションを要求しない（上の
+    /// `testSupportedStatusNeverRequestsASessionAndSkipsAsTemporaryFailure` で確認済み）が、
+    /// `prepareIfNeeded(sourceLanguageCode:)` は逆に、`.supported` のときだけ
+    /// `session.prepareTranslation()` のためにセッションを要求する（受け入れ条件4）。
+    /// `AppSession.openTimeline()` はこれを世界タイムラインを開く**前**にしか呼ばないので、
+    /// OSの確認シートが出ても巻き込んで閉じる `fullScreenCover` が存在しない
+    /// （`Translator` クラス冒頭のコメントを参照）。
+    @MainActor
+    func testPrepareIfNeededRequestsASessionWhenSupported() async {
+        let log = CallLog()
+        let availability = FakeAvailability(statusesByLowercasedSourceCode: ["pl": .supported], log: log)
+        let translator = Translator(
+            availability: availability,
+            fakeTranslate: false,
+            preferredLanguageIdentifier: "ja",
+            sessionAcquireTimeoutSeconds: 0.2,
+            modelPrepareJobTimeoutSeconds: 0.2
+        )
+
+        XCTAssertNil(translator.configuration)
+        await translator.prepareIfNeeded(sourceLanguageCode: "pl")
+        XCTAssertNotNil(
+            translator.configuration,
+            ".supported のときは prepareIfNeeded がダウンロードのためにセッションを要求するはず（attempt 4 との違い）"
+        )
+    }
+
+    /// `.installed`（既にダウンロード済み）なら `prepareIfNeeded` は何もしない
+    /// （無駄なセッション要求をしない）。
+    @MainActor
+    func testPrepareIfNeededDoesNothingWhenAlreadyInstalled() async {
+        let log = CallLog()
+        let availability = FakeAvailability(statusesByLowercasedSourceCode: ["en": .installed], log: log)
+        let translator = Translator(
+            availability: availability,
+            fakeTranslate: false,
+            preferredLanguageIdentifier: "ja",
+            sessionAcquireTimeoutSeconds: 0.2,
+            modelPrepareJobTimeoutSeconds: 0.2
+        )
+
+        await translator.prepareIfNeeded(sourceLanguageCode: "en")
+        XCTAssertNil(translator.configuration, ".installed なら準備する必要が無いのでセッションを要求してはいけない")
+    }
+
+    /// `.unsupported`（恒久的に非対応）なら `prepareIfNeeded` は何もしない。
+    @MainActor
+    func testPrepareIfNeededDoesNothingWhenUnsupported() async {
+        let log = CallLog()
+        let availability = FakeAvailability(statusesByLowercasedSourceCode: ["zz": .unsupported], log: log)
+        let translator = Translator(
+            availability: availability,
+            fakeTranslate: false,
+            preferredLanguageIdentifier: "ja",
+            sessionAcquireTimeoutSeconds: 0.2,
+            modelPrepareJobTimeoutSeconds: 0.2
+        )
+
+        await translator.prepareIfNeeded(sourceLanguageCode: "zz")
+        XCTAssertNil(translator.configuration, ".unsupported なら準備しようがないのでセッションを要求してはいけない")
+    }
 }

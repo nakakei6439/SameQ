@@ -32,6 +32,11 @@ final class SprintSixAcceptanceTests: XCTestCase {
     /// 疑似翻訳モードで同梱シード（多言語）をそのまま読み切るまでスワイプする。
     /// 途中で止まらず（＝待ち行列が固着せず）、翻訳された本文（`[<言語コード>] `接頭辞）が
     /// 少なくとも1件は表示され、非対応言語（`zxx`）は一度も現れないことを確認する。
+    ///
+    /// attempt 5（eval-4.md [1]）: モデル未ダウンロード（`.supported`）を模擬する `qtd` は、
+    /// attempt 4 まで「一度も現れない」対象だったが、`AppSession.openTimeline()` が
+    /// 能動的にダウンロードしてから開くようになったため、**この回答は最終的に読めるようになる
+    /// はず**（＝受け入れ条件4）。`zxx`（恒久的に非対応）とは違い、いつかは表示される。
     func test01_fakeTranslateAppliesAcrossTimelineWithoutStalling() {
         let app = launch(arguments: ["-SameQFakeTranslate"], reset: true)
         completeOnboarding(app)
@@ -40,6 +45,7 @@ final class SprintSixAcceptanceTests: XCTestCase {
 
         var seenCount = 0
         var sawTranslatedPrefix = false
+        var sawDownloadPendingMarkerAfterPreparation = false
         for _ in 0..<40 {
             if app.staticTexts["timeline.exhausted"].exists || app.staticTexts["timeline.empty"].exists { break }
             let card = app.staticTexts["timeline.card.body"]
@@ -51,7 +57,12 @@ final class SprintSixAcceptanceTests: XCTestCase {
             }
             guard card.exists else { break }
             XCTAssertFalse(card.label.contains(untranslatableMarker), "非対応言語の回答が表示された: \(card.label)")
-            XCTAssertFalse(card.label.contains(downloadPendingMarker), "モデル未ダウンロードの回答が表示された: \(card.label)")
+            if card.label.contains(downloadPendingMarker) {
+                // ダウンロード（疑似）が済んだあとなので、原文の目印を含みつつ翻訳済み接頭辞
+                // 付きで表示されるはず（スキップされたまま消えてはいけない）。
+                XCTAssertTrue(card.label.hasPrefix("["), "ダウンロード後は翻訳済みの表示になるはず: \(card.label)")
+                sawDownloadPendingMarkerAfterPreparation = true
+            }
             if card.label.hasPrefix("[") && card.label.contains("] ") {
                 sawTranslatedPrefix = true
             }
@@ -64,6 +75,10 @@ final class SprintSixAcceptanceTests: XCTestCase {
         )
         XCTAssertGreaterThan(seenCount, 0, "1件も表示されなかった")
         XCTAssertTrue(sawTranslatedPrefix, "疑似翻訳の接頭辞（[<言語コード>] ）を持つ回答が1件も無かった")
+        XCTAssertTrue(
+            sawDownloadPendingMarkerAfterPreparation,
+            "モデル未ダウンロードの回答が最後まで一度も表示されなかった（受け入れ条件4が満たされていない可能性）"
+        )
     }
 
     // MARK: 受け入れ条件5（お題も端末言語で表示される）＋ バグ3の確認
@@ -93,18 +108,25 @@ final class SprintSixAcceptanceTests: XCTestCase {
     /// このシミュレータでは Apple Translation が全言語ペアで `unsupportedLanguagePairing` を
     /// 返す（evaluator 実測済み）ため、シミュレータ上では全件が恒久的スキップとして
     /// 即座に読み切りになる。どちらの環境でも「固まらない」ことを確認できる点は変わらない。
+    ///
+    /// attempt 5（eval-4.md [1]）: `AppSession.openTimeline()` は、世界タイムラインを開く前に
+    /// モデル未ダウンロードの言語を能動的にダウンロードするようになった（最大90秒の予算）。
+    /// そのぶん1件目が出るまでの待ちが長くなりうるので、1件目だけは長めに待つ。
     func test03_realTranslationReadsWholeSeedWithoutStallingOrOSInterruption() {
         let app = launch(arguments: [], reset: true)
         completeOnboarding(app)
         submitAnswer(app, body: answerBody)
 
         var seenCount = 0
-        for _ in 0..<40 {
+        for index in 0..<40 {
             if app.staticTexts["timeline.exhausted"].exists || app.staticTexts["timeline.empty"].exists { break }
             let card = app.staticTexts["timeline.card.body"]
             // 未ダウンロードのモデルでOSシートに割り込まれて固着していれば、ここで
-            // 確実にタイムアウトする（15秒は実機の実測最大2.5秒/件に対し十分な余裕）。
-            guard card.waitForExistence(timeout: 15)
+            // 確実にタイムアウトする。1件目だけは `openTimeline()` の能動的なダウンロード
+            // （最大90秒の予算・attempt 5）を待つ必要があるので長めに、2件目以降は
+            // 実機の実測最大2.5秒/件に対し十分な余裕（15秒）で待つ。
+            let waitSeconds: TimeInterval = index == 0 ? 100 : 15
+            guard card.waitForExistence(timeout: waitSeconds)
                 || app.staticTexts["timeline.exhausted"].waitForExistence(timeout: 1) else {
                 XCTFail("\(seenCount + 1)件目も読み切りも出ない（OSのダウンロード確認シートに割り込まれ固着した可能性）")
                 break
@@ -122,6 +144,61 @@ final class SprintSixAcceptanceTests: XCTestCase {
         // タイムラインを開いたまま最後まで閉じる操作（`timeline.close`）が生きていることも
         // 確認する（eval-3.md [2]: OSシートに割り込まれるとタイムラインが無言で閉じていた）。
         XCTAssertTrue(app.buttons["timeline.close"].isHittable, "タイムラインが閉じてしまい、閉じる操作が効かない")
+    }
+
+    // MARK: 受け入れ条件4（モデル未取得時は初回のみ準備中表示→完了後に読める）
+
+    /// attempt 5・受け入れ条件4の核心: 読み切ったあとの Debug オーバーレイ（`-SameQDebugOverlay`）
+    /// で `answers N`（候補の総数）と `viewed N`（既読の総数）を比較する。
+    ///
+    /// `AppSession.drawNextPost` の設計上、既読になるのは「実際に表示できた（翻訳成功、または
+    /// 恒久的に非対応と判明した）」時点だけで、モデル未ダウンロードの一時的な失敗は既読に
+    /// **しない**（次回また挑戦できるように）。つまり、もしモデル未ダウンロードの言語が
+    /// 1件でもダウンロードに失敗したまま残っていれば `viewed < answers` のまま読み切りになる
+    /// （attempt 4 の不合格そのもの）。attempt 5 で `openTimeline()` が能動的にダウンロード
+    /// するようになった結果、この実機で `.supported` だった言語（`pl` / `th` / `id` など）も
+    /// ダウンロードが間に合えば表示・既読になり、`viewed == answers` で読み切るはず。
+    func test04_allCandidatesEventuallyBecomeViewedAfterActiveModelDownload() {
+        let app = launch(arguments: ["-SameQDebugOverlay"], reset: true)
+        completeOnboarding(app)
+        submitAnswer(app, body: answerBody)
+
+        // 1件目は `openTimeline()` の能動的なダウンロード（最大90秒の予算・attempt 5）を
+        // 待つ必要があるので長めに待つ。
+        XCTAssertTrue(
+            app.staticTexts["timeline.card.body"].waitForExistence(timeout: 100)
+                || app.staticTexts["timeline.exhausted"].waitForExistence(timeout: 1)
+                || app.staticTexts["timeline.empty"].waitForExistence(timeout: 1),
+            "1件目も読み切りも出ない（ダウンロード予算を使い切っても復帰しない可能性）"
+        )
+        for _ in 0..<40 {
+            if app.staticTexts["timeline.exhausted"].exists || app.staticTexts["timeline.empty"].exists { break }
+            guard app.staticTexts["timeline.card.body"].waitForExistence(timeout: 15) else { break }
+            app.swipeLeft()
+        }
+        XCTAssertTrue(app.staticTexts["timeline.exhausted"].waitForExistence(timeout: 20), "読み切りに到達しない")
+
+        // タイムライン（`fullScreenCover`）と裏の今日のお題画面の両方に Debug オーバーレイが
+        // 乗っており、同時にアクセシビリティツリーへ現れることがあるので `firstMatch` を使う。
+        let status = app.staticTexts.matching(identifier: "debug.status").firstMatch
+        XCTAssertTrue(status.waitForExistence(timeout: 5), "Debug オーバーレイが出ていない")
+        let line = status.label
+        guard let answers = Self.firstInt(after: "answers ", in: line),
+              let viewed = Self.firstInt(after: "viewed ", in: line) else {
+            return XCTFail("Debug オーバーレイから件数を読み取れない: \(line)")
+        }
+        XCTAssertEqual(
+            viewed, answers,
+            "読み切ったのに既読件数(\(viewed))が候補総数(\(answers))に届いていない" +
+            "（モデル未ダウンロードのままダウンロードに失敗した言語が残っている可能性。attempt 4 の不合格そのもの）: \(line)"
+        )
+    }
+
+    private static func firstInt(after prefix: String, in text: String) -> Int? {
+        guard let range = text.range(of: prefix) else { return nil }
+        let rest = text[range.upperBound...]
+        let digits = rest.prefix { $0.isNumber }
+        return Int(digits)
     }
 
     // MARK: ヘルパー

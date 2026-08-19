@@ -80,18 +80,35 @@ extension LanguageAvailability: LanguageAvailabilityProviding {}
 /// 確認シートを勝手に表示し、その下でタイムライン画面（`fullScreenCover`）ごと閉じてしまう
 /// （実機で4回中4回再現・スクリーンショットあり。`eval-3.md` [1]）。
 ///
-/// 対応: `.installed` のときだけ `session.translate(_:)` まで進む。`.supported`
-/// （未ダウンロード）のときは `session.translate(_:)` はおろか `prepareTranslation()` も
-/// 呼ばず、`.unavailable(permanent: false)`（一時的な失敗）として読み飛ばす
-/// （`AppSession.drawNextPost` は既存の仕組みでこれを既読にせず次を引く）。
-/// OSにダウンロード確認シートを一切出させない設計にすることを最優先にした
-/// （eval-3.md の対応方針で提示された2案のうち、`prepareTranslation()` を明示的に呼ぶ案は
-/// 採らなかった。`prepareTranslation()` もモデル未取得なら同じ確認シートを表示するため、
-/// `TranslationHostView` の常駐場所（`RootView` 背景、`fullScreenCover` の外）を変えない限り
-/// 同じ問題が残る。ホスト側の変更は影響範囲が大きく実機でしか検証できないため見送った。
-/// 判断の詳細は `self-review.md` の attempt 4 を参照）。
-/// この結果、対象言語のモデルが端末にまだ無い場合、その回答は表示されない（後述の
-/// `LanguageAvailabilityProviding` を差し替えれば `.supported` をユニットテストで再現できる）。
+/// 対応（attempt 4時点）: `.installed` のときだけ `session.translate(_:)` まで進む。
+/// `.supported`（未ダウンロード）のときは `session.translate(_:)` を呼ばず、
+/// `.unavailable(permanent: false)`（一時的な失敗）として読み飛ばしていた。
+/// この結果、対象言語のモデルが端末に無い回答は永久に表示されず、受け入れ条件4
+/// （モデル未取得時は初回のみ準備中表示→取得後に読める）を満たせないと判定された
+/// （eval-4.md [1]）。
+///
+/// ## attempt 5 での変更（eval-4.md [1] の修正・ユーザー承認済みでダウンロードを能動的に行う）
+/// `.supported` を検出したら `session.prepareTranslation()` を明示的に呼び、モデルを
+/// 能動的にダウンロードしてから翻訳する（`prepareIfNeeded(sourceLanguageCode:)`）。
+///
+/// `prepareTranslation()` はモデル未取得なら `translate(_:)` と同じ「翻訳／必要な
+/// ダウンロード」確認シートを表示しうる（Apple Developer Forums のスレッド783311で
+/// DTSエンジニアが明言: 「すでにインストール済み・ダウンロード中ならシートを出さずに
+/// 返る」＝未取得なら出る、が前提）。この事実自体は attempt 4 の判断（[prepareTranslation()
+/// を呼んでも同じ問題が残る]）どおりで変わっていない。attempt 4 との違いは**呼ぶ場所**:
+/// `AppSession.openTimeline()` が、世界タイムライン（`fullScreenCover`）を**開く前**、
+/// まだ今日のお題画面（非モーダル）にいる段階でこの準備を済ませる設計にした。
+/// シートが出るとしても、そのとき画面上には畳まれて困る `fullScreenCover` が存在しない
+/// （attempt 3 の致命的症状は「シートの下で `fullScreenCover` が閉じる」ことだったので、
+/// その `fullScreenCover` を出す前に片付けてしまえば起こりようがない）。
+/// タイムラインを開いたあとは、その時点で候補に挙がっている全言語のモデル取得を試み終えて
+/// いるはずなので、`drawNextPost` が `.supported` に当たること自体がほぼ無くなる
+/// （待ってもモデルが揃わなかった場合の保険として、`.installed` にならなかった言語は
+/// 従来どおり `.unavailable(permanent: false)` で読み飛ばし、次回の巡回・次回起動で
+/// 再挑戦できるようにする。既読にはしない）。
+/// `session.prepareTranslation()` にも `sessionQueue` のタイムアウト機構
+/// （`modelPrepareJobTimeoutSeconds`、既定60秒）を適用し、ダウンロードが長引く・失敗する
+/// 場合でも画面が固まらないようにする。
 @MainActor
 @Observable
 final class Translator {
@@ -120,6 +137,19 @@ final class Translator {
     /// （毎回同じ理由で数秒待たされるのを防ぐ）。文字ごとの一時的な失敗とは区別するため、
     /// `TranslationError.unsupportedLanguagePairing` 系のときだけ記録する。
     private var unsupportedSourceCodes: Set<String> = []
+    /// 疑似モード（`-SameQFakeTranslate`）専用: `fakePrepareIfNeeded` が「ダウンロード完了」を
+    /// 模擬した言語コード（`qtd`）。実際の `LanguageAvailability` を持たない疑似モードでは
+    /// `statusCache` の代わりにこれで「もう準備中の対象ではない」ことを覚える（attempt 5）。
+    private var fakeDownloadedSourceCodes: Set<String> = []
+
+    /// `sessionQueue` のセッション取得タイムアウト（`translate` にも `prepareIfNeeded` にも
+    /// 共通で使う。ユニットテストでは短く差し替えて、解決されないまま待たされることを防ぐ）。
+    private let sessionAcquireTimeoutSeconds: Double
+    /// `session.translate(_:)` 自体のタイムアウト（従来どおり）。
+    private let sessionJobTimeoutSeconds: Double
+    /// `session.prepareTranslation()`（モデルのダウンロード）自体のタイムアウト。
+    /// ダウンロードは通常の翻訳より時間が掛かりうるため、別の長さを持つ（attempt 5）。
+    private let modelPrepareJobTimeoutSeconds: Double
 
     /// `TranslationSession` の取得を1件ずつさばく待ち行列。新しいセッションが必要になる
     /// たびに（同じ言語ペアでも毎回）`configuration` を更新して `.translationTask` へ知らせる。
@@ -127,6 +157,8 @@ final class Translator {
     /// （SwiftUI の描画には関係しない内部の実装詳細のため、追跡対象からも外してよい）。
     @ObservationIgnored
     private lazy var sessionQueue = SessionRequestQueue<TranslationSession>(
+        acquireTimeoutSeconds: sessionAcquireTimeoutSeconds,
+        jobTimeoutSeconds: sessionJobTimeoutSeconds,
         onNeedsSession: { [weak self] sourceCode in
             guard let self else { return }
             let requestedSource = Locale.Language(identifier: sourceCode)
@@ -157,16 +189,29 @@ final class Translator {
     /// （`translator: Translator = Translator()`）として呼べるようにするため。
     /// 中身はどれも `Sendable` な値の代入だけで、MainActor 隔離のプロパティには触れない。
     ///
-    /// - Parameter preferredLanguageIdentifier: 通常は指定しない（`Locale.preferredLanguages`
-    ///   を読む）。ユニットテストがホスト環境のロケールに関係なく決定的に検証できるように、
-    ///   端末の言語を上書きするための引数。
+    /// - Parameters:
+    ///   - preferredLanguageIdentifier: 通常は指定しない（`Locale.preferredLanguages`
+    ///     を読む）。ユニットテストがホスト環境のロケールに関係なく決定的に検証できるように、
+    ///     端末の言語を上書きするための引数。
+    ///   - sessionAcquireTimeoutSeconds: セッション取得自体のタイムアウト（既定45秒）。
+    ///     ユニットテストは実際の `.translationTask` が無い環境で `.supported` の準備
+    ///     （`prepareIfNeeded`）を検証するため、ここを短く差し替えて待たされないようにする。
+    ///   - modelPrepareJobTimeoutSeconds: `session.prepareTranslation()`（モデルの
+    ///     ダウンロード）自体のタイムアウト（既定60秒。`session.translate(_:)` の既定30秒より
+    ///     長い。ダウンロードは翻訳そのものより時間が掛かりうるため）。
     nonisolated init(
         availability: LanguageAvailabilityProviding = LanguageAvailability(),
         fakeTranslate: Bool = LaunchOptions.current.fakeTranslate,
-        preferredLanguageIdentifier: String? = nil
+        preferredLanguageIdentifier: String? = nil,
+        sessionAcquireTimeoutSeconds: Double = 45,
+        sessionJobTimeoutSeconds: Double = 30,
+        modelPrepareJobTimeoutSeconds: Double = 60
     ) {
         self.availability = availability
         self.fakeTranslateEnabled = fakeTranslate
+        self.sessionAcquireTimeoutSeconds = sessionAcquireTimeoutSeconds
+        self.sessionJobTimeoutSeconds = sessionJobTimeoutSeconds
+        self.modelPrepareJobTimeoutSeconds = modelPrepareJobTimeoutSeconds
         // `Locale.current.language` は使わない。このアプリは Localizable.strings 等の
         // 言語リソースを1つも持たないため、`Locale.current` は端末の言語設定を無視して
         // 開発言語（既定 "en"）に丸められることがある（実機・シミュレータで確認済みの挙動、
@@ -240,6 +285,67 @@ final class Translator {
         return outcome ?? .unavailable(permanent: false)
     }
 
+    /// `sourceLanguageCode` のモデルがこの端末に無い（`.supported`）場合、能動的に
+    /// ダウンロードを試みる（受け入れ条件4・attempt 5）。
+    ///
+    /// 呼び出し元（`AppSession.openTimeline()`）が、世界タイムライン（`fullScreenCover`）を
+    /// **開く前**に呼ぶことを前提にした設計。OSの「翻訳／必要なダウンロード」確認シートが
+    /// 出るとしても、そのときにはまだ畳んで困る `fullScreenCover` が存在しない（クラス冒頭の
+    /// コメントを参照）。
+    ///
+    /// - `.installed`（既にダウンロード済み）・`.unsupported`（恒久的に非対応）・
+    ///   端末言語と同じ、のいずれかならここでは何もしない（無駄なセッション要求をしない）。
+    /// - `.supported` のときだけ `session.prepareTranslation()` を呼ぶ。失敗・タイムアウト
+    ///   （`modelPrepareJobTimeoutSeconds`）してもエラーは投げず、静かに諦める。呼び出し元の
+    ///   `translate(_:sourceLanguageCode:)` は、それでもまだ `.supported` のままなら
+    ///   従来どおり `.unavailable(permanent: false)` で読み飛ばす（既読にしない＝次回また
+    ///   ダウンロードに挑戦できる）。
+    func prepareIfNeeded(sourceLanguageCode: String) async {
+        let sourceCode = sourceLanguageCode.lowercased()
+        guard sourceCode != targetLanguageCode else { return }
+        guard !unsupportedSourceCodes.contains(sourceCode) else { return }
+
+        if fakeTranslateEnabled {
+            await fakePrepareIfNeeded(sourceCode: sourceCode)
+            return
+        }
+
+        guard await availabilityStatus(sourceCode: sourceCode) == .supported else { return }
+        _ = await sessionQueue.perform(
+            key: sourceCode,
+            jobTimeoutSeconds: modelPrepareJobTimeoutSeconds,
+            body: { session -> Bool in
+                do {
+                    try await session.prepareTranslation()
+                    return true
+                } catch {
+                    // ダウンロードの拒否・失敗はエラーを投げずに諦める。`translate(_:)` 側の
+                    // `.supported` チェックが引き続き `.unavailable(permanent: false)` として
+                    // 扱うので、利用者にエラーが見えることはない。
+                    return false
+                }
+            },
+            onJobTimeout: { session in
+                if #available(iOS 26.0, *) {
+                    session.cancel()
+                }
+            }
+        )
+    }
+
+    /// 疑似モード（`-SameQFakeTranslate`）での `prepareIfNeeded` 相当。
+    /// `qtd`（ダウンロード未取得を模擬する検証用マーカー）だけを対象に、実際の
+    /// `TranslationSession` に一切触れず「ダウンロードが完了した」状態を記録する。
+    /// これ以降の `translate(_:sourceLanguageCode:)` 呼び出しは、この言語を通常どおり
+    /// 翻訳できる（＝「初回のみ準備中→完了後に読める」を疑似モードでも確定的に確認できる）。
+    private func fakePrepareIfNeeded(sourceCode: String) async {
+        guard Self.fakeNeedsDownloadSourceCodes.contains(sourceCode),
+              !fakeDownloadedSourceCodes.contains(sourceCode) else { return }
+        // 実際のダウンロード待ちを模した間（本番の「準備中…」表示を確認できる余地）。
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        fakeDownloadedSourceCodes.insert(sourceCode)
+    }
+
     /// 取得済みの `session` で実際に翻訳する。`SessionRequestQueue.resolve` の中（＝
     /// `.translationTask` のクロージャがまだ生きている構造化された非同期スコープの中）から
     /// しか呼ばれない。
@@ -304,10 +410,13 @@ final class Translator {
             return .unavailable(permanent: true)
         }
         // 同梱シードの検証用マーカー（`qtd`）は「この端末では翻訳モデルが未ダウンロード
-        // （`.supported`）」を模擬する（attempt 4）。実際の `TranslationSession` には
-        // 一切触れず、OSのダウンロード確認シートを絶対に出さないことをシミュレータでも
-        // 確定的に確認できるようにする（eval-3.md [1] の再発防止・改善提案[優先度中]）。
-        guard !Self.fakeNeedsDownloadSourceCodes.contains(sourceCode) else {
+        // （`.supported`）」を模擬する（attempt 4）。`fakePrepareIfNeeded` で「ダウンロード
+        // 済み」を記録するまでは、実際の `TranslationSession` には一切触れず、OSのダウンロード
+        // 確認シートを絶対に出さないことをシミュレータでも確定的に確認できるようにする
+        // （eval-3.md [1] の再発防止）。`AppSession.openTimeline()` が能動的にダウンロードを
+        // 試みたあと（attempt 5）は、`fakeDownloadedSourceCodes` に入り、以降は通常の翻訳
+        // として扱う（＝「初回のみ準備中→完了後に読める」の確認）。
+        if Self.fakeNeedsDownloadSourceCodes.contains(sourceCode), !fakeDownloadedSourceCodes.contains(sourceCode) {
             // ダウンロード待ちらしい間を置く（本番の「準備中…」表示を確認できる余地）。
             try? await Task.sleep(nanoseconds: 300_000_000)
             return .unavailable(permanent: false)

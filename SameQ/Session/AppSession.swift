@@ -59,6 +59,10 @@ final class AppSession {
     /// ブロック中の相手（F15）。設定画面の一覧はこれだけを見る。
     private(set) var blockedAuthors: [BlockedAuthor] = []
     private(set) var isTimelinePresented = false
+    /// タイムラインを開く前に、モデル未ダウンロードの言語をダウンロードしている間だけ true
+    /// （受け入れ条件4・attempt 5）。この間は世界タイムラインを開くボタンを「準備中…」にして
+    /// 連打を防ぐ（`TodayPromptView`）。
+    private(set) var isPreparingTimeline = false
     /// 設定（今回はブロック管理のみ）。タイムラインの裏側にある画面から開く。
     var isSettingsPresented = false
     /// アプリが認識している「今」。1秒ごとの `refresh()` で更新する。
@@ -231,8 +235,15 @@ final class AppSession {
 
     /// 有効なお題があり、かつ自分の回答がある場合だけ開く。それ以外では何も起きない。
     /// 開いた時点で1件目を引く。既読は端末に残っているので、開き直しても続きから出る。
+    ///
+    /// タイムライン（`fullScreenCover`）を実際に開く**前**に、まだ読んでいない回答のうち
+    /// この端末にモデルが無い言語があれば能動的にダウンロードしておく（受け入れ条件4・
+    /// attempt 5）。この段階ではまだ今日のお題画面（非モーダル）にいるので、OSの
+    /// ダウンロード確認シートが出たとしても、それに巻き込まれて閉じる `fullScreenCover` が
+    /// 存在しない（attempt 3 の致命的症状の再発防止。詳細は `Translator` クラス冒頭のコメント）。
     func openTimeline() async {
-        guard let prompt, myPost != nil else { return }
+        guard let prompt, myPost != nil, !isPreparingTimeline else { return }
+        await prepareTimelineLanguagesIfNeeded(promptID: prompt.id)
         timelineContent = .loading
         isTimelinePresented = true
         do {
@@ -242,6 +253,37 @@ final class AppSession {
         }
         await drawNextPost()
     }
+
+    /// まだ読んでいない候補の言語のうち、この端末にモデルが無い（`.supported`）ものを
+    /// 順番にダウンロードしておく（受け入れ条件4・attempt 5）。
+    ///
+    /// 1件も無ければ即座に返り、`isPreparingTimeline` を立てない（2回目以降・すでに
+    /// 全言語が揃っている場合に余計な待ちを作らないため。F19「2回目以降は待たない」）。
+    /// 全体の待ちが際限なく伸びないよう、`timelinePreparationBudgetSeconds` を超えたら
+    /// 残りの言語は諦めて進む（諦めた言語は、あとで `drawNextPost` が一時的な失敗として
+    /// 読み飛ばし、次回の巡回・次回起動で再挑戦する）。
+    private func prepareTimelineLanguagesIfNeeded(promptID: String) async {
+        let posts = (try? await backend.timelinePosts(promptID: promptID)) ?? []
+        let viewed = (try? await backend.viewedPostIDs()) ?? []
+        let languages = Set(
+            posts
+                .filter { !viewed.contains($0.id) }
+                .map { $0.bodyLanguage.lowercased() }
+        )
+        guard !languages.isEmpty else { return }
+
+        isPreparingTimeline = true
+        defer { isPreparingTimeline = false }
+        let deadline = Date().addingTimeInterval(Self.timelinePreparationBudgetSeconds)
+        for language in languages {
+            guard Date() < deadline else { break }
+            await translator.prepareIfNeeded(sourceLanguageCode: language)
+        }
+    }
+
+    /// 準備フェーズ全体に掛けてよい時間の上限。未ダウンロードの言語が複数あっても、
+    /// 合計でこれを超えたら残りは諦めて世界タイムラインを開く（画面を固まらせないため）。
+    private static let timelinePreparationBudgetSeconds: TimeInterval = 90
 
     /// 次の1件へ進む。前へ戻る操作は用意しない（置いた前提5）。
     func advanceTimeline() async {

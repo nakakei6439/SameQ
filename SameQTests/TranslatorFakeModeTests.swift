@@ -90,4 +90,31 @@ final class TranslatorFakeModeTests: XCTestCase {
         let outcome = await englishDevice.translate("今日は笑った", sourceLanguageCode: "ja")
         XCTAssertEqual(outcome, .text("[EN] 今日は笑った"))
     }
+
+    /// attempt 5・受け入れ条件4: `prepareIfNeeded` で「ダウンロード」を済ませたあとは、
+    /// `qtd`（モデル未ダウンロードを模擬する検証用マーカー）も通常どおり翻訳できるようになる
+    /// （＝「初回のみ準備中→完了後に読める」）。`prepareIfNeeded` を呼ぶ**前**は、これまでどおり
+    /// 一時的な失敗のままであることも合わせて確認する。
+    @MainActor
+    func testPrepareIfNeededMakesMarkerLanguageTranslatableAfterward() async {
+        let translator = makeTranslator(target: "ja")
+
+        let before = await translator.translate("sameQ_download_pending_test_marker", sourceLanguageCode: "qtd")
+        XCTAssertEqual(before, .unavailable(permanent: false), "準備前は従来どおり一時的な失敗のはず")
+
+        await translator.prepareIfNeeded(sourceLanguageCode: "qtd")
+
+        let after = await translator.translate("sameQ_download_pending_test_marker", sourceLanguageCode: "qtd")
+        XCTAssertEqual(after, .text("[JA] sameQ_download_pending_test_marker"), "準備後は通常の翻訳と同じように読めるはず")
+    }
+
+    /// `prepareIfNeeded` は `qtd` 以外（疑似モードで「ダウンロード不要」の言語）には何もしない
+    /// （余計な待ちを作らない。F19「2回目以降は待たない」の前提）。
+    @MainActor
+    func testPrepareIfNeededIsNoOpForLanguagesThatDoNotNeedDownload() async {
+        let translator = makeTranslator(target: "ja")
+        await translator.prepareIfNeeded(sourceLanguageCode: "en")
+        let outcome = await translator.translate("Hello there", sourceLanguageCode: "en")
+        XCTAssertEqual(outcome, .text("[JA] Hello there"), "ダウンロード不要な言語は prepareIfNeeded の前後で挙動が変わらないはず")
+    }
 }

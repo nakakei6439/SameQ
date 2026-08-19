@@ -33,7 +33,7 @@ SwiftUI Viewにハードコードされた日本語文字列）は一切ロー�
   既にあるので、UI文字列の切り替えにも同じ言語判定を使い回せる可能性がある
 
 ## 現在の状態
-- **フェーズ**: スプリント06（投稿本文とお題の自動翻訳）**attempt 4 評価済み・不合格（needs_fix）**（2026-08-19。受け入れ条件 5/7。attempt 3 の致命的問題（未ダウンロード言語でOSシートが割り込みタイムラインが固着）は実機で解消を確認したが、**受け入れ条件4（モデル未取得時に準備中表示→取得後に読める）が未実装**の1点で不合格。モデル未ダウンロードの言語の回答は永久に読めないままスキップされ続ける。詳細は [`eval-4.md`](.product/sprints/06-translation/eval-4.md)）
+- **フェーズ**: スプリント06（投稿本文とお題の自動翻訳）**attempt 5 実装済み・再評価待ち**（2026-08-20。eval-4.md の不合格理由（受け入れ条件4未実装）に対応し、`AppSession.openTimeline()` がタイムラインを開く前に能動的に `session.prepareTranslation()` でモデルをダウンロードする設計に変更。実機で1言語（`id`）はダウンロード→読めるようになることを確認できたが、他の2言語（`pl`/`th`）は90秒の予算内で完了せず、指でのOS確認シートへの応答が必要な可能性があり、そこは今回のXCUITest automation mode不調（実機ロック検知不能の既知の問題）のため確認できていない。詳細は [`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 5」）
 - **並行タスク**: ユーザー確定済みのUI変更3点（お題を世界タイムラインでも常時表示／✕ボタン削除・操作はスワイプ＋いいねのみ／いいねボタンの位置・見た目の調整）。スプリント06とは独立したタイムライン画面の変更（詳細は「並行タスク: タイムラインUI調整」節）。2026-08-19、evaluator 検証で合格・完了（受け入れ条件3/3、クラッシュ0、データ整合性OK、回帰90/90＋抜き取り6件、使用性4）。合否に影響しない改善提案4件は [`eval-1.md`](.product/sprints/timeline-ui-adjustment/eval-1.md) に記載。**同日、優先度高の改善提案[A][C]をスプリント外の小さな修正として対応済み**（カード外の余白でもスワイプが効くよう `.contentShape(Rectangle())` を追加、`SprintFiveAcceptanceTests` の検証漏れ2箇所を修正）。フルテスト90/90成功。**同日、evaluator の再確認でも合格**（前回の無反応座標 y=0.25 / y=0.68 が両方とも反応、余白スワイプのみで読み切り到達、いいね誤爆0、回帰90/90＋抜き取り4件、使用性4）。残った改善提案は [`eval-2.md`](.product/sprints/timeline-ui-adjustment/eval-2.md) に記載。**本タスクは完了**。
 - **スプリント06 attempt 1 の実装内容（generator、2026-08-18）**: Apple Translation Framework のみを使い（外部翻訳API・フォールバックは無し、サーバーへ本文を送らない）投稿本文とお題本文を端末言語へ変換して表示。`TranslationSession` は `.translationTask` からしか作れないため、`RootView` の背景に常駐させた不可視の `TranslationHostView` がセッションを供給し、`Translator`（`SameQ/Backend/Translator.swift`）が要求をさばく。お題・投稿とも翻訳が確定するまで表示せず「準備中…」を出すことで「ちらつき」を防止（F21）。同梱シードに `promptLanguage` を追加し、多言語投稿での翻訳確認ができるようにした。この attempt 1 は evaluator の検証で受け入れ条件3/7の不合格となり（詳細下記）、attempt 2 で4点を修正した。
 - **スプリント06 attempt 2 の修正内容（generator、2026-08-18）**: evaluatorの指摘4点すべてに対応。詳細は [`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 2」を参照。
@@ -49,7 +49,50 @@ SwiftUI Viewにハードコードされた日本語文字列）は一切ロー�
   - **[要修正] `invalidate()` の保険が効いていない**。`configuration?.invalidate()` の直後に同値の `Configuration` で上書きしているため `.translationTask` は再実行されず、一度タイムアウトした言語はそのプロセスの間ずっと復帰できない（`fireCount` で実測）。
   - attempt 1 の指摘のうち、**2（シミュレータでの検証手段）・3（お題が原文のまま）・4（スキップした回答の既読化）は解消を確認**。一時的な失敗が既読にならないことは `state.json` を直接読んで検証済み。回帰5/5、データ整合性OK（schemaVersion 4、翻訳結果は永続化されない）。使用性2。
 - **スプリント06 attempt 3 の修正内容（generator、2026-08-18）**: eval-2.mdの指摘[1][2]に対応。①`SessionRequestQueue` からセッションキャッシュを撤去し、取得したセッションは `.translationTask` のクロージャが生きているスコープの中で `session.translate(_:)` まで完結させる設計に変更（セッションを外へ持ち出す経路を型的に廃止）。`Configuration` の差し替えも「新規インスタンス」ではなく「既存インスタンスへの `invalidate()` + `source`/`target` 書き換え」に修正（新規インスタンス差し替えだとSwiftUIが再実行を検知できないことがattempt 2の直接原因だった）。②`session.translate(_:)` 自体にもタイムアウトを追加（`withTaskGroup` で競走、タイムアウト時は `session.cancel()` で中断）。シミュレータでのフルテストスイート（`SameQTests` + `SameQUITests`）**90/90 全件成功**。実機向けビルド・インストールも成功。詳細は [`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 3」。
-- **次にやること**: **スプリント06 attempt 5（generator の修正）**。直すのは1点だけ: [`eval-4.md`](.product/sprints/06-translation/eval-4.md) の指摘[1]（受け入れ条件4の未実装）。方針は2択で、(a) `TranslationHostView` を「いま最前面の画面（お題 / タイムライン）に応じて付け替える」設計にしたうえで `.supported` のとき `prepareTranslation()` を呼び、準備中の表示を出してから読ませる、(b) この受け入れ条件自体を見直す（＝ユーザーの判断が要る。evaluator は閾値を緩めない）。attempt 4 で入った修正（`availabilityStatus` の3値判定・`LanguageAvailabilityProviding`・`qtd` の疑似検証）はそのまま維持してよい。**次に実機を触る前に、端末のロックを解除し自動ロックを「なし」にしておくこと**（今回、実機が施錠され1時間・計6回すべて `The device is passcode protected.` で XCUITest が起動できなかった）。受け入れ条件7（機内モード）はユーザー自身の操作が必要で引き続き未確認。
+- **次にやること**: **スプリント06 attempt 5 の evaluator 再評価**。実装内容は下記のとおり。
+  受け入れ条件4の「準備中→読める」は実機で部分的にしか証明できていない（1言語は成功、
+  2言語は90秒予算内で未完了）。**もし evaluator が指でOSの確認シートに応答できる状況で
+  検証できるなら、シートが出た場合に実際にタップして先へ進めるか・その後タイムラインが
+  正しく開くか（閉じたり固まったりしないか）を最優先で見てほしい**。受け入れ条件7
+  （機内モード）はユーザー自身の操作が必要で引き続き未確認。
+- **スプリント06 attempt 5 の修正内容（generator、2026-08-20）**: eval-4.md の指摘[1]
+  （受け入れ条件4の未実装）に対応。詳細は [`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 5」を参照。
+  1. **`AppSession.openTimeline()` が、世界タイムライン（`fullScreenCover`）を開く前に、
+     まだ読んでいない候補の言語のうち `.supported`（モデル未ダウンロード）のものを
+     `Translator.prepareIfNeeded(sourceLanguageCode:)` で能動的にダウンロードする**設計に
+     変更（`prepareTimelineLanguagesIfNeeded`、予算90秒）。この時点ではまだ今日のお題画面
+     （非モーダル）にいるため、OSの確認シートが出ても閉じて困る `fullScreenCover` が無い
+     （attempt 3 の致命的症状の再発防止）。ダウンロード中は「世界の回答を読む」ボタンを
+     「準備中…」にする（`AppSession.isPreparingTimeline`）。ダウンロードが間に合わなかった
+     言語は従来どおり一時的な失敗として読み飛ばし、既読にしない（次回また挑戦できる）。
+  2. **【最重要】実機で `SessionRequestQueue` の致命的な欠陥を発見・修正**。
+     `session.prepareTranslation()` を呼ぶ経路を実機で試したところ、`perform` の呼び出しが
+     15分待っても一度も返らない現象に遭遇。原因は `runWithJobTimeout` が `withTaskGroup`
+     （構造化並行性。キャンセル済みでも子タスクの完了を必ず待つ）を使っていたため、
+     `session.translate(_:)` と違い `cancel()` に応答しない `prepareTranslation()` では
+     `jobTimeoutSeconds` が名目だけになっていたこと（attempt 3 から存在した潜在バグ。
+     `translate()` では実害が無かったため今回まで見つからなかった）。`body` を独立した
+     非構造化 `Task` として起動し、タイムアウト用の別 `Task` と「どちらが先に解決するか」
+     だけで競走させる設計に変更し、呼び出し元が確実に解放されるようにした。
+     `SessionRequestQueueTests` に新規1本追加（計7本）、既存6本も全通過。
+  3. Apple Developer Forums（スレッド783311）を調査し、`prepareTranslation()` も
+     モデル未取得ならOSの確認シートを出しうることを確認（「シートを完全に無くす方法」は
+     無いという attempt 4 の判断は正しかった）。そのため「シートを出させない」のではなく
+     「シートが出ても実害の無い場所・タイミングで出す」方針にした。
+  - **フルテスト実行結果（他プロセス非併走の単独実行、シミュレータ）**: ユニット72本＋UIテスト35本（新規: `SessionRequestQueueTests` 1本、`TranslatorAvailabilityTests` 3本、`TranslatorFakeModeTests` 2本、`AppSessionTranslationTests` 3本、`SprintSixAcceptanceTests` 1本）、**合計107件すべて成功**。
+  - **実機での確認（部分的）**: XCUITest の automation mode が2回とも `Timed out while
+    enabling automation mode.` で有効化できず（eval-3.md・eval-4.md と同じ既知の問題）、
+    指でのタップ操作の自動確認はできなかった。代わりにホストアプリのプロセス内で本物の
+    `TranslationHostView` を実ウインドウに載せ `AppSession` でタイムラインを読み切る手法
+    （一時テスト・確認後削除）で2回検証。`SessionRequestQueue` の修正前は15分・10分待っても
+    応答が無く、修正後は2回とも63〜75秒で `openTimeline()` が完了し10秒程度で28件を
+    固着0で読み切った。この実機で `.supported` だった `pl`/`th`/`id` のうち、**`id` は
+    2回ともダウンロードに成功し実際に読めるようになった**（受け入れ条件4が機能した実例）。
+    **`pl`/`th` は2回とも90秒の予算内で完了せず未読のまま残った**（既読にはしていないので
+    次回再挑戦できる設計どおり）。OSの確認シートが実際に画面に出たかどうか、出た場合に
+    シートが残ったまま `fullScreenCover` を開こうとしたときの挙動は、自動化ツールでは
+    画面を見る手段が無く**確認できていない**（`devicectl` は実機のスクリーンショット取得
+    に非対応）。この最後の1点は人による実機操作でしか確認できない。
 - **スプリント05（BAN・投稿頻度制限・スパム対策）は合格済み（attempt 2、2026-08-18）**。1お題1投稿の担保、直近投稿と同一本文の連投拒否、空白・改行のみ／同一文字の過剰な繰り返しの拒否、いいね・通報の連打制限、BAN状態のアカウント締め出し、BANされた投稿者の非表示化を実装。受け入れ条件6/6・回帰10/10。詳細は [`self-review.md`](.product/sprints/05-ban-spam/self-review.md) / [`eval-2.md`](.product/sprints/05-ban-spam/eval-2.md)。
   - スプリント05の評価で挙がった改善提案（合否には影響しないが、着手時に踏まえる）:
     - **[A] 空白だけを入力しているとき、文字数カウンタが「8/140」と出る**（拒否メッセージは出るようになったので実害は消えたが、押す前は空欄に見えるのに入力済みに見える矛盾が残る）。trim 後の文字数を数える等。
@@ -135,6 +178,7 @@ SwiftUI Viewにハードコードされた日本語文字列）は一切ロー�
 - [x] 評価（evaluator、attempt 3）— 2026-08-19 **不合格**。受け入れ条件 2/7（1件は評価不能、4件は未達）。iPhone 17 Pro Max 実機で `-SameQFakeTranslate` を付けずに検証（独自 XCUITest D01〜D06 ＋ `LanguageAvailability` の直接プローブ2本）。**実機で翻訳そのものは正しく動く**（ja端末で独語・伊語の回答が自然な日本語に、en端末で21件すべて自然な英語に。原文のまま出た回答は0件、ちらつき0件、`zxx` は0回表示、お題も端末言語に追従）。attempt 2 の致命的エラー `Attempted to use TranslationSession after the view…` は1度も観測せず、セッションのキャッシュ撤去は効いている。**しかしタイムラインは4回中4回とも途中で固着し読み切りに到達しない**（ja: 5件/6件/7件で停止、en: 21件で停止。90秒待っても復帰しない）。原因は `Translator.isSupported` が `.supported`（モデル未ダウンロード）を `.installed` と同じ扱いにしていること。実機の実測では ar/pl/ru/th が ja/en いずれ向けも未ダウンロードで、同梱シードにこの4言語が各1件ずつ入っているため必ず踏む。踏むとOSの「翻訳／必要なダウンロード」シートが出てタイムラインが閉じ、投稿の言語名（「ポーランド語」）まで画面に出る。クラッシュ0、データ整合性OK（実機の `state.json` を直接確認。schemaVersion 4、翻訳結果は永続化されない）、回帰は実機5/5＋シミュレータ90/90、使用性2。[`eval-3.md`](.product/sprints/06-translation/eval-3.md) / スクリーンショット [`eval-3-stall.png`](.product/sprints/06-translation/eval-3-stall.png)
 - [x] 修正（generator / attempt 4）— 2026-08-19。**修正済み・再評価待ち**。eval-3.md の[1][2]に対応。(1) `Translator.isSupported(sourceCode:)`（`Bool` 1軸）を廃止し、`LanguageAvailability.Status` を3値のまま扱う `availabilityStatus(sourceCode:)` に変更。`translate()` は `.installed` のときだけ `sessionQueue.perform`（実際の `session.translate(_:)`）へ進み、`.supported`（モデル未ダウンロード）のときは `session.translate(_:)` はおろか `prepareTranslation()` も一切呼ばず `.unavailable(permanent: false)`（一時的な失敗。既読にしない）として読み飛ばす。`prepareTranslation()` を明示的に呼ぶ案（eval-3.md のもう1つの提案）は、それもモデル未取得ならOSシートを表示する点は同じで、シートを正しい階層（`fullScreenCover` の中）から出すには `TranslationHostView` の常駐位置の設計変更が要り実機でしか検証できないリスクがあるため見送った（判断理由は self-review.md 参照）。これにより受け入れ条件4の前半（アプリが能動的にダウンロードして見せる）は未実装のまま。(2) `LanguageAvailability.status` を差し替え可能にする `LanguageAvailabilityProviding` プロトコルを追加し、`TranslatorAvailabilityTests`（新規4本）で `.supported` のとき `translator.configuration` が一度も更新されない（＝セッションを一切要求しない）ことを直接確認。`-SameQFakeTranslate` にも疑似言語コード `qtd`（`sameQ_download_pending_test_marker`）を追加し同梱シードに1件追加。ユニット6本・UIテスト1本を新規追加（`SameQTests` 63本 ＋ `SameQUITests` 34本）。シミュレータのフルテストスイート **97/97 全件成功**。実機（iPhone 17 Pro Max）向けビルド・インストール成功、ロック解除済みを確認したうえで、`-SameQFakeTranslate` を付けない `SprintSixAcceptanceTests`（3本、うち新規の実機ストール再現テスト含む）を実機で実行し **3/3 全件成功**（本物の Apple Translation Framework で32件の同梱シードを82秒で読み切り、`timeline.close` が押せる状態のままでタイムラインが閉じることは一度も起きなかった）。実機でユニット63本、コア/BAN回帰（`SprintOneAcceptanceTests`・`SprintFiveAcceptanceTests`）12本も実行し全件成功。詳細は [`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 4」。
 - [x] 評価（evaluator、attempt 4）— 2026-08-19 **不合格**。受け入れ条件 5/7（1件未達・1件評価不能）。iPhone 17 Pro Max 実機（iOS 26.6）で `-SameQFakeTranslate` を付けずに本物の Apple Translation Framework を実行し、`TranslationHostView` を実ウインドウに載せて `AppSession` でタイムラインを読み切る独自テスト（実機が施錠されXCUITestが起動できなかったため、タッチ操作の代わりにホストアプリ内でアプリの実処理を実行）＋ `LanguageAvailability` の直接プローブ4本、シミュレータで画面操作テスト8本とフルスイート97/97で検証。**attempt 3 の不合格理由は解消**（OSの「翻訳／必要なダウンロード」シートは1度も出ず、実機で ja 28件・en 26件を固着0で読み切り。1件あたり0.41〜1.57秒、ちらつき0、`zxx`/`qtd`/BAN投稿0回表示、アラート0、`Attempted to use TranslationSession after the view…` 0回）。**残る不合格理由は受け入れ条件4（spec.md 197行「翻訳モデルが端末に無い場合は初回のみ準備中の表示が出て完了後に読め」）が未実装であること1点**。モデル未ダウンロードの言語（この実機では ja端末で pl/th、en端末で ar/pl/ru/th）の回答は準備中表示もダウンロードも無いまま毎回スキップされ、実機の `state.json` でも未読のまま残る（＝永久に読めない）。spec.md は条件3（恒久的に翻訳できない）と条件4（モデルが無いだけ）を書き分けているため、「スキップ」を条件4の充足とは解釈しない判断。モデルが1つも入っていない端末では外国語の回答がほぼ全滅する点も理由。クラッシュ0、データ整合性OK（恒久スキップは既読・一時スキップは未読、翻訳結果は非永続、schemaVersion 4）、回帰は抜き取り8件＋フルスイート97/97、使用性3。受け入れ条件7（機内モード）は端末設定の変更のため評価不能。[`eval-4.md`](.product/sprints/06-translation/eval-4.md)
+- [x] 修正（generator / attempt 5）— 2026-08-20。**修正済み・再評価待ち**。eval-4.md の指摘[1]（受け入れ条件4の未実装）に対応。`AppSession.openTimeline()` が世界タイムラインを開く前に `.supported`（モデル未ダウンロード）の言語を能動的に `session.prepareTranslation()` でダウンロードする設計に変更（開く前＝まだ非モーダルなお題画面にいるため、OSの確認シートが出ても閉じて困る `fullScreenCover` が無い）。実機で `SessionRequestQueue` の致命的な欠陥（`withTaskGroup` のタイムアウトが `prepareTranslation()` には実効を持たない）を発見・修正。フルテスト107本（ユニット72＋UI35）全件成功。実機での確認は部分的（1言語のダウンロード成功を確認できたが、他2言語は90秒予算内で未完了。XCUITest automation mode不調のため指でのOS確認シート応答は未確認）。詳細は [`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 5」。
 
 ### 並行タスク: タイムラインUI調整（スプリント外、ユーザー確定・2026-08-18/19）
 仕様書のスプリント計画には無い、ユーザーからの直接フィードバックに基づく変更。スプリント06の

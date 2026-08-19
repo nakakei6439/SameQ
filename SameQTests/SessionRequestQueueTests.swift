@@ -207,4 +207,46 @@ final class SessionRequestQueueTests: XCTestCase {
         XCTAssertEqual(secondResult, "session-ko")
         XCTAssertEqual(needsSessionCalls, ["en", "ko"])
     }
+
+    /// attempt 5: `perform(key:jobTimeoutSeconds:body:onJobTimeout:)` に渡した値は、
+    /// インスタンスの既定 `jobTimeoutSeconds` を上書きする（`Translator.prepareIfNeeded` が
+    /// `session.translate(_:)` より長いタイムアウトで `session.prepareTranslation()` を
+    /// 待てるようにするための変更）。
+    @MainActor
+    func testPerformJobTimeoutSecondsOverridesInstanceDefault() async {
+        var jobTimeoutSecondsSeen: [Double] = []
+        let queue = SessionRequestQueue<String>(
+            jobTimeoutSeconds: 30,
+            sleep: { key, seconds in
+                if key.isEmpty {
+                    jobTimeoutSecondsSeen.append(seconds)
+                    try? await Task.sleep(nanoseconds: 5_000_000)
+                } else {
+                    try? await Task.sleep(nanoseconds: 5_000_000_000)
+                }
+            },
+            onNeedsSession: { _ in }
+        )
+
+        var onJobTimeoutCalledWith: String?
+        async let result: String? = queue.perform(
+            key: "en",
+            jobTimeoutSeconds: 90,
+            body: { _ in
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                return "should-not-reach-here"
+            },
+            onJobTimeout: { session in onJobTimeoutCalledWith = session }
+        )
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        await queue.resolve(session: "en-session")
+
+        let value = await result
+        XCTAssertNil(value, "body がタイムアウトしたら nil を返す")
+        XCTAssertEqual(onJobTimeoutCalledWith, "en-session")
+        XCTAssertEqual(
+            jobTimeoutSecondsSeen, [90],
+            "perform(jobTimeoutSeconds:) を渡すと、そのジョブだけインスタンスの既定値(30)ではなくこちらを使うはず"
+        )
+    }
 }

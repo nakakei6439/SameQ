@@ -153,12 +153,19 @@ final class AppSessionTranslationTests: XCTestCase {
         XCTAssertTrue(viewed.contains(translatable.id))
     }
 
-    /// attempt 4（eval-3.md [1]）: モデル未ダウンロード（`.supported`）の回答は
-    /// タイムラインに一度も現れず、**恒久的な非対応（`zxx`）とは違い既読にもならない**
-    /// （あとでユーザーが端末にモデルを入れれば再挑戦できるようにするため）。
+    /// attempt 4（eval-3.md [1]）→ attempt 5（eval-4.md [1]）: モデル未ダウンロード
+    /// （`.supported`）の回答は、ダウンロードに（実際には・このテストでは擬似的に）失敗・
+    /// タイムアウトした場合、タイムラインに一度も現れず、**恒久的な非対応（`zxx`）とは違い
+    /// 既読にもならない**（あとで再挑戦できるようにするため）。
     /// `-SameQFakeTranslate` は `.supported` を再現できない（`LanguageAvailability` の
     /// 実機挙動そのものが必要なため）ので、`LanguageAvailabilityProviding` を差し替えた
     /// 本番経路（`fakeTranslate: false`）で確認する。
+    ///
+    /// attempt 5 で `AppSession.openTimeline()` が `.supported` を能動的にダウンロード
+    /// しようとするようになった（`Translator.prepareIfNeeded`）ため、この単体テスト環境
+    /// （実際の `.translationTask` を持たない）ではセッション取得自体が解決されずタイムアウト
+    /// する。テストが45秒も待たされないよう、`sessionAcquireTimeoutSeconds` を短く差し替える
+    /// （ダウンロードを試みて失敗した、という状況を高速に再現する）。
     private struct NeedsDownloadAvailability: LanguageAvailabilityProviding {
         func status(from source: Locale.Language, to target: Locale.Language?) async -> LanguageAvailability.Status {
             .supported
@@ -166,7 +173,7 @@ final class AppSessionTranslationTests: XCTestCase {
     }
 
     @MainActor
-    func testNeedsDownloadPostNeverAppearsAndIsNotMarkedViewed() async throws {
+    func testNeedsDownloadPostNeverAppearsAndIsNotMarkedViewedWhenDownloadNeverResolves() async throws {
         let reference = Date()
         let prompt = Prompt(
             id: "p1",
@@ -186,7 +193,9 @@ final class AppSessionTranslationTests: XCTestCase {
         let translator = Translator(
             availability: NeedsDownloadAvailability(),
             fakeTranslate: false,
-            preferredLanguageIdentifier: "ja"
+            preferredLanguageIdentifier: "ja",
+            sessionAcquireTimeoutSeconds: 0.2,
+            modelPrepareJobTimeoutSeconds: 0.2
         )
         let session = AppSession(backend: backend, clock: AppClock(offset: 0), translator: translator)
 
@@ -194,13 +203,158 @@ final class AppSessionTranslationTests: XCTestCase {
         await session.completeOnboarding(emoji: "🌙", nickname: nil)
         await session.submit(body: "自分の回答")
 
-        // 唯一の候補がモデル未ダウンロードなので、読み切り扱いになるはず
-        // （固まったり、OSのシートを待つ経路には一切入らない）。
+        // 唯一の候補がモデル未ダウンロードで、ダウンロードの試み（セッション要求）自体が
+        // 解決されないので、読み切り扱いになるはず（固まったり、OSのシートを待つ経路には
+        // 一切入らない）。
         if case .exhausted = session.timelineContent {} else {
             XCTFail("モデル未ダウンロードの回答しか無いので読み切りになるはず: \(session.timelineContent)")
         }
 
         let viewed = try await backend.viewedPostIDs()
         XCTAssertFalse(viewed.contains(needsDownload.id), "モデル未ダウンロードは一時的な失敗なので既読にしてはいけない")
+    }
+
+    /// attempt 5・受け入れ条件4の核心: `AppSession.openTimeline()` は、モデル未ダウンロード
+    /// （`.supported`）の言語を検出したら実際に `TranslationSession` を要求してダウンロードを
+    /// 試みる（attempt 4 は一切要求しなかった。`eval-4.md` [1]）。
+    /// `Translator.configuration` が `nil` から非 `nil` に変わることで、「ダウンロードを
+    /// 能動的に試みた」ことを確認する（この単体テスト環境には実際の `.translationTask` が
+    /// 無いので、要求そのものが解決されないことは上のテストで確認済み）。
+    @MainActor
+    func testOpenTimelineActivelyRequestsASessionToDownloadMissingModel() async throws {
+        let reference = Date()
+        let prompt = Prompt(
+            id: "p1",
+            text: "お題",
+            startsAt: reference.addingTimeInterval(-3600),
+            endsAt: reference.addingTimeInterval(Prompt.defaultDuration - 3600),
+            language: "ja"
+        )
+        let needsDownload = makePost(
+            promptID: prompt.id,
+            body: "sameQ_download_pending_test_marker",
+            bodyLanguage: "pl",
+            expiresAt: prompt.endsAt
+        )
+        let schedule = PromptSchedule(prompts: [prompt], posts: [needsDownload])
+        let backend = LocalBackend(store: makeStore(), clock: AppClock(offset: 0), schedule: schedule, options: LaunchOptions())
+        let translator = Translator(
+            availability: NeedsDownloadAvailability(),
+            fakeTranslate: false,
+            preferredLanguageIdentifier: "ja",
+            sessionAcquireTimeoutSeconds: 0.2,
+            modelPrepareJobTimeoutSeconds: 0.2
+        )
+        let session = AppSession(backend: backend, clock: AppClock(offset: 0), translator: translator)
+
+        await session.start()
+        await session.completeOnboarding(emoji: "🌙", nickname: nil)
+        XCTAssertNil(translator.configuration, "投稿する前はまだ何も要求していない")
+        // `submit(body:)` は内部で `openTimeline()` を呼ぶ（ここでダウンロードの試みが起きる）。
+        await session.submit(body: "自分の回答")
+
+        XCTAssertNotNil(
+            translator.configuration,
+            "attempt 4 は .supported を検出しても一切セッションを要求しなかった。attempt 5 は能動的にダウンロードを試みるはず"
+        )
+    }
+
+    /// attempt 5・受け入れ条件4の全体像: モデル未ダウンロード（`.supported`）を模擬する
+    /// `qtd` の回答が、タイムラインを開く前にダウンロードされ、開いたあとは通常どおり
+    /// 翻訳されて読める（＝「初回のみ準備中→完了後に読める」を一連の流れとして確認する）。
+    /// `-SameQFakeTranslate` は `.supported` を再現できないので、`Translator.fakePrepareIfNeeded`
+    /// が `qtd` を対象に「ダウンロード完了」を模擬する仕組みを使う。
+    @MainActor
+    func testDownloadPendingMarkerBecomesReadableAfterActivePreparation() async throws {
+        let reference = Date()
+        let prompt = Prompt(
+            id: "p1",
+            text: "お題",
+            startsAt: reference.addingTimeInterval(-3600),
+            endsAt: reference.addingTimeInterval(Prompt.defaultDuration - 3600),
+            language: "ja"
+        )
+        let needsDownload = makePost(
+            promptID: prompt.id,
+            body: "sameQ_download_pending_test_marker",
+            bodyLanguage: "qtd",
+            expiresAt: prompt.endsAt
+        )
+        let schedule = PromptSchedule(prompts: [prompt], posts: [needsDownload])
+        let backend = LocalBackend(store: makeStore(), clock: AppClock(offset: 0), schedule: schedule, options: LaunchOptions())
+        let translator = Translator(fakeTranslate: true, preferredLanguageIdentifier: "ja")
+        let session = AppSession(backend: backend, clock: AppClock(offset: 0), translator: translator)
+
+        await session.start()
+        await session.completeOnboarding(emoji: "🌙", nickname: nil)
+        // `submit(body:)` が内部で `openTimeline()` を呼ぶ。ここでダウンロード（疑似）が
+        // 完了してから draw するので、テスト側でポーリングする必要はない。
+        await session.submit(body: "自分の回答")
+
+        guard case .post(let post) = session.timelineContent else {
+            return XCTFail("ダウンロードが完了したあとは読めるようになるはず: \(session.timelineContent)")
+        }
+        XCTAssertEqual(post.id, needsDownload.id)
+        XCTAssertTrue(post.body.contains("sameQ_download_pending_test_marker"), "翻訳結果に原文の目印が残っているはず: \(post.body)")
+        XCTAssertTrue(post.body.hasPrefix("[JA] "), "疑似翻訳済みの表示になっているはず: \(post.body)")
+
+        let viewed = try await backend.viewedPostIDs()
+        XCTAssertTrue(viewed.contains(needsDownload.id), "ダウンロード後に表示できた回答は既読になるはず")
+    }
+
+    /// attempt 5・受け入れ条件4: `AppSession.isPreparingTimeline` は、モデルのダウンロードを
+    /// 試みている間だけ true になる（`TodayPromptView` はこれを見て「世界の回答を読む」ボタンを
+    /// 「準備中…」にする）。ダウンロードの試みが終われば（成功・失敗いずれでも）false に戻る。
+    @MainActor
+    func testIsPreparingTimelineTogglesWhileDownloadingMissingModel() async throws {
+        let reference = Date()
+        let prompt = Prompt(
+            id: "p1",
+            text: "お題",
+            startsAt: reference.addingTimeInterval(-3600),
+            endsAt: reference.addingTimeInterval(Prompt.defaultDuration - 3600),
+            language: "ja"
+        )
+        let needsDownload = makePost(
+            promptID: prompt.id,
+            body: "sameQ_download_pending_test_marker",
+            bodyLanguage: "pl",
+            expiresAt: prompt.endsAt
+        )
+        let schedule = PromptSchedule(prompts: [prompt], posts: [needsDownload])
+        let backend = LocalBackend(store: makeStore(), clock: AppClock(offset: 0), schedule: schedule, options: LaunchOptions())
+        let translator = Translator(
+            availability: NeedsDownloadAvailability(),
+            fakeTranslate: false,
+            preferredLanguageIdentifier: "ja",
+            sessionAcquireTimeoutSeconds: 1.0,
+            modelPrepareJobTimeoutSeconds: 1.0
+        )
+        let session = AppSession(backend: backend, clock: AppClock(offset: 0), translator: translator)
+
+        await session.start()
+        await session.completeOnboarding(emoji: "🌙", nickname: nil)
+        XCTAssertFalse(session.isPreparingTimeline)
+
+        // `submit(body:)` は内部で `openTimeline()` を呼ぶ。この単体テスト環境では
+        // セッション要求が解決されないので、`isPreparingTimeline` が立っている間に
+        // ポーリングで捕まえられる（`sessionAcquireTimeoutSeconds` を1秒に伸ばしてあるので、
+        // 5ms間隔・最大200回のポーリングなら十分間に合う）。
+        let submitTask = Task { await session.submit(body: "自分の回答") }
+        var attempts = 0
+        while !session.isPreparingTimeline, attempts < 200 {
+            try await Task.sleep(nanoseconds: 5_000_000)
+            attempts += 1
+        }
+        XCTAssertTrue(
+            session.isPreparingTimeline,
+            "ダウンロードを試みている間は準備中のはず（今日のお題画面の上でボタンを『準備中…』にする）"
+        )
+
+        await submitTask.value
+        XCTAssertFalse(
+            session.isPreparingTimeline,
+            "ダウンロードの試み（成功・失敗いずれも）が終わったら準備中は解除されるはず"
+        )
     }
 }

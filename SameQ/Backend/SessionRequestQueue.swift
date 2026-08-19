@@ -34,6 +34,30 @@ import Foundation
 /// - `jobTimeoutSeconds`: セッションは取得できたが `body`（`session.translate(_:)`）が
 ///   返ってこない場合。`onJobTimeout` を呼んでから諦める（`Translator` はここで
 ///   `session.cancel()` を呼び、応答不能な呼び出しへ中断を伝える）。
+///   `perform(key:jobTimeoutSeconds:body:onJobTimeout:)` の `jobTimeoutSeconds` を渡すと、
+///   その呼び出しだけインスタンスの既定値を上書きできる（attempt 5: `session.translate(_:)`
+///   よりずっと時間の掛かりうる `session.prepareTranslation()` に、別の長さのタイムアウトを
+///   与えるため）。
+///
+/// ## attempt 5 で見つけた `jobTimeoutSeconds` の落とし穴（`withTaskGroup` は子タスクを待つ）
+/// 当初（attempt 3）の実装は `withTaskGroup` で `body` とタイムアウト用の `sleep` を競走させ、
+/// タイムアウトが勝ったら `onJobTimeout` を呼んで `cancelAll()` していた。しかし
+/// `withTaskGroup` は**クロージャを抜ける前に、キャンセル済みでも残っている子タスクの完了を
+/// 必ず待つ**（Swift の構造化並行性の仕様）。`session.translate(_:)` は `cancel()` を呼ぶと
+/// 実際にすぐ例外を投げて終わることを attempt 3 で確認していたので実害は無かったが、
+/// `session.prepareTranslation()`（attempt 5 で新規に呼ぶようになった、モデルの
+/// ダウンロード）は**`cancel()` を呼んでも終わらず、実機で15分待っても `perform` 自体が
+/// 一度も返ってこない**ことを実機で直接確認した（`onNeedsSession` 経由でセッション自体は
+/// 取得できていたので、詰まっていたのは `body` の実行、＝`prepareTranslation()` 自体）。
+/// `withTaskGroup` を使う限り、`jobTimeoutSeconds` は「タイムアウトしたことにする」だけで
+/// **呼び出し元を実際には解放できない**、という設計上の欠陥だった。
+///
+/// 対応: `withTaskGroup`（構造化）をやめ、`body` を独立した `Task`（非構造化）として起動し、
+/// `perform` 自体は `body` とタイムアウト用 `Task` のどちらが先に `continuation.resume` を
+/// 呼ぶかだけで決着させる。タイムアウトが勝った場合、`body` を実行している `Task` は
+/// バックグラウンドに取り残されたまま（いずれ終わる・あるいは永久に終わらない）になるが、
+/// `perform` の呼び出し元は待たされずに `nil` を受け取れる。これで `jobTimeoutSeconds` が
+/// 名実ともに呼び出し元の待ち時間の上限になる。
 ///
 /// `Session` をジェネリックにしているのは、`TranslationSession`（実機/対応シミュレータでしか
 /// 取得できない）に依存せずに、この待ち行列のロジックだけをユニットテストで直接検証できる
@@ -49,14 +73,6 @@ final class SessionRequestQueue<Session> {
     /// `key` を渡すのは、ユニットテストが「このキーだけ即座にタイムアウトさせ、他のキーは
     /// 手動で `resolve` するまで待たせる」という制御をできるようにするため。
     private let sleep: (String, Double) async -> Void
-
-    /// タイムアウトしても `body` の完了自体は待つ設計（`withTaskGroup` の仕様上、スコープを
-    /// 抜ける前に残っている子タスクの完了を待つため）なので、`.finished` と `.timedOut` を
-    /// 区別できる型にしておく。
-    private enum RaceOutcome<R> {
-        case finished(R)
-        case timedOut
-    }
 
     /// 1件の要求。`resolve` はセッションが来たとき（`session` が非nil）はそのセッションで
     /// ジョブを実行して結果を返し、タイムアウトしたとき（`session` が nil）は何もせず
@@ -88,23 +104,31 @@ final class SessionRequestQueue<Session> {
     /// `key` のセッションを新規に要求し、取得できたら `body` を**そのセッションが有効な
     /// あいだに**実行して結果を返す。
     /// - セッションの取得自体が `acquireTimeoutSeconds` を超えたら `body` を呼ばずに `nil`。
-    /// - `body` の実行が `jobTimeoutSeconds` を超えたら `onJobTimeout(session)` を呼んで
-    ///   `nil` を返す（`body` 自体は `withTaskGroup` の仕様によりバックグラウンドで完了を
-    ///   待ち続ける。`onJobTimeout` 側で実際に中断させる手段があるならそこで行う）。
+    /// - `body` の実行が `jobTimeoutSeconds`（省略時はインスタンスの既定値）を超えたら
+    ///   `onJobTimeout(session)` を呼んで `nil` を返す（`body` 自体は `withTaskGroup` の
+    ///   仕様によりバックグラウンドで完了を待ち続ける。`onJobTimeout` 側で実際に中断させる
+    ///   手段があるならそこで行う）。
     /// - このキューは常に1件ずつしか処理しない。同じキーであっても要求はコアレスしない
     ///   （毎回、翻訳したいテキストが異なりうるため）。
     func perform<Result>(
         key: String,
+        jobTimeoutSeconds: Double? = nil,
         body: @escaping (Session) async -> Result,
         onJobTimeout: ((Session) -> Void)? = nil
     ) async -> Result? {
-        await withCheckedContinuation { (continuation: CheckedContinuation<Result?, Never>) in
+        let effectiveJobTimeoutSeconds = jobTimeoutSeconds ?? self.jobTimeoutSeconds
+        return await withCheckedContinuation { (continuation: CheckedContinuation<Result?, Never>) in
             let job = Job(key: key, resolve: { [weak self] session in
                 guard let self, let session else {
                     continuation.resume(returning: nil)
                     return
                 }
-                let result = await self.runWithJobTimeout(session: session, body: body, onJobTimeout: onJobTimeout)
+                let result = await self.runWithJobTimeout(
+                    session: session,
+                    timeoutSeconds: effectiveJobTimeoutSeconds,
+                    body: body,
+                    onJobTimeout: onJobTimeout
+                )
                 continuation.resume(returning: result)
             })
             pendingJobs.append(job)
@@ -126,38 +150,39 @@ final class SessionRequestQueue<Session> {
         startNextIfNeeded()
     }
 
+    /// `body` を非構造化 `Task` として起動し、タイムアウト用 `Task` と「どちらが先に
+    /// `continuation` を解決するか」だけで競走させる（attempt 5 の修正。クラス冒頭の
+    /// コメントを参照）。`@MainActor` のクラスなので、2つの `Task` が同時に `hasSettled`
+    /// を読み書きすることは無い（MainActor が直列化する）。
     private func runWithJobTimeout<Result>(
         session: Session,
+        timeoutSeconds: Double,
         body: @escaping (Session) async -> Result,
         onJobTimeout: ((Session) -> Void)?
     ) async -> Result? {
-        guard jobTimeoutSeconds > 0 else { return await body(session) }
-        let seconds = jobTimeoutSeconds
+        guard timeoutSeconds > 0 else { return await body(session) }
+        let seconds = timeoutSeconds
         let sleep = self.sleep
-        let outcome = await withTaskGroup(of: RaceOutcome<Result>.self) { group -> RaceOutcome<Result> in
-            group.addTask {
-                .finished(await body(session))
+        return await withCheckedContinuation { (continuation: CheckedContinuation<Result?, Never>) in
+            var hasSettled = false
+            // `body`（実際には `session.translate(_:)` や `session.prepareTranslation()`）は
+            // ここでは待たない。終わり次第、まだ未解決なら結果を返す。
+            Task { @MainActor in
+                let result = await body(session)
+                guard !hasSettled else { return }
+                hasSettled = true
+                continuation.resume(returning: result)
             }
-            group.addTask {
+            // タイムアウトが先に来たら、`body` の完了を待たずに `nil` で解決する。
+            // `body` を実行している `Task` はバックグラウンドに取り残されるが（`cancel()` が
+            // 効かない呼び出しは終わらないこともある）、呼び出し元はもう待たされない。
+            Task { @MainActor in
                 await sleep("", seconds)
-                return .timedOut
-            }
-            let first = await group.next() ?? .timedOut
-            if case .timedOut = first {
-                // まだ走っている `body`（実際には `session.translate(_:)`）へできるだけ早く
-                // 中断を伝える。`withTaskGroup` はこのクロージャを抜ける前に残っている
-                // 子タスクの完了を待つ仕様なので、ここで何もしないとタイムアウトの意味が
-                // 薄れる（使い捨てスクリプトで実際に確認済み）。
+                guard !hasSettled else { return }
+                hasSettled = true
                 onJobTimeout?(session)
+                continuation.resume(returning: nil)
             }
-            group.cancelAll()
-            return first
-        }
-        switch outcome {
-        case .finished(let result):
-            return result
-        case .timedOut:
-            return nil
         }
     }
 

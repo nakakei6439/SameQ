@@ -1,7 +1,7 @@
 {
   "currentSprint": "06",
-  "attempt": 4,
-  "status": "needs_fix",
+  "attempt": 5,
+  "status": "awaiting_eval",
   "history": [
     {
       "sprint": "01",
@@ -134,6 +134,12 @@
       "attempt": 4,
       "result": "needs_fix",
       "note": "evaluator が iPhone 17 Pro Max 実機（iOS 26.6）で -SameQFakeTranslate を付けず本物の Apple Translation を実行して検証。受け入れ条件 5/7 で不合格（条件4が未達、条件7は評価不能）。実機は23:00以降ずっと施錠され XCUITest が 'The device is passcode protected.' で起動できなかったため（計6回試行）、ホストアプリのプロセス内で本物の TranslationHostView を実ウインドウに載せ AppSession でタイムラインを読み切る方法に切り替えて検証した（翻訳・スキップ・既読の実処理は本番と同じ経路。画面操作の確認はシミュレータ）。attempt 3 の不合格理由（OSの『翻訳／必要なダウンロード』シートの割り込みでタイムラインが固着・自動で閉じる）は解消を確認: ja端末28件・en端末26件を固着0で読み切り、OSシート0回・アラート0・ちらつき0、1件あたり0.41〜1.57秒、お題も端末言語（ja 0.11s / en 1.23s）、Attempted to use TranslationSession… も0回。LanguageAvailability の実測（P4）で .supported（未DL）はセッションを一切要求しないことも直接確認。不合格の理由は受け入れ条件4（spec.md 197行『翻訳モデルが端末に無い場合は初回のみ準備中の表示が出て完了後に読め』）の未実装1点。モデル未ダウンロードの言語（この実機では ja端末で pl/th、en端末で ar/pl/ru/th）の回答は準備中表示もダウンロードもなく毎回スキップされ、実機の state.json でも未読のまま残る（＝永久に読めない）。spec.md が条件3（恒久的に翻訳できない）と条件4（モデルが無いだけ）を書き分けていること、モデルが1つも入っていない端末では外国語の回答がほぼ全滅しスプリントの目的が成立しないことから、『スキップ』を条件4の充足とは解釈しない判断。クラッシュ0、データ整合性OK（恒久スキップ＝既読 / 一時スキップ＝未読、翻訳結果は非永続、schemaVersion 4）、回帰は抜き取り8件＋シミュレータのフルスイート97/97、使用性3。詳細は .product/sprints/06-translation/eval-4.md"
+    },
+    {
+      "sprint": "06",
+      "attempt": 5,
+      "result": "awaiting_eval",
+      "note": "eval-4.mdの指摘[1]（受け入れ条件4の未実装）に対応。AppSession.openTimeline()が世界タイムライン（fullScreenCover）を開く前に、.supported（モデル未ダウンロード）の言語をTranslator.prepareIfNeeded(sourceLanguageCode:)で能動的にダウンロードする設計に変更（prepareTimelineLanguagesIfNeeded、予算90秒）。開く前＝まだ非モーダルなお題画面にいるため、OSの「翻訳／必要なダウンロード」確認シートが出ても閉じて困るfullScreenCoverが無い（attempt3の致命的症状の再発防止）。ダウンロード中は「世界の回答を読む」ボタンを「準備中…」にする（isPreparingTimeline）。ダウンロードが90秒の予算内に間に合わなかった言語は従来どおり一時的な失敗として読み飛ばし既読にしない（次回再挑戦できる）。Apple Developer Forumsを調査しprepareTranslation()もモデル未取得ならシートを出しうることを確認（シートを完全に無くす方法は無いというattempt4の判断は正しかった）。実機検証中にSessionRequestQueueの致命的な欠陥を発見・修正: runWithJobTimeoutがwithTaskGroup（構造化並行性。キャンセル済みでも子タスクの完了を必ず待つ）を使っており、cancel()に応答しないprepareTranslation()ではjobTimeoutSecondsが名目だけになっていた（attempt3から存在した潜在バグ、session.translate(_:)では実害が無く今回まで未発見）。bodyを非構造化Taskとして起動しタイムアウト用Taskと競走させる設計に変更し呼び出し元を確実に解放できるようにした。ユニット72本＋UIテスト35本（新規: SessionRequestQueueTests 1本・TranslatorAvailabilityTests 3本・TranslatorFakeModeTests 2本・AppSessionTranslationTests 3本・SprintSixAcceptanceTests test04 1本）、シミュレータのフルテストスイート107/107全件成功（他プロセス非併走の単独実行）。実機（iPhone 17 Pro Max）ではXCUITestのautomation modeが2回とも `Timed out while enabling automation mode.` で有効化できず（eval-3.md・eval-4.mdと同じ既知の問題）、指でのタップ操作の自動確認はできなかった。代わりにホストアプリのプロセス内で本物のTranslationHostViewを実ウインドウに載せAppSessionでタイムラインを読み切る手法（一時テスト、確認後削除）で2回検証。SessionRequestQueue修正前は15分・10分待っても応答が無く、修正後は2回とも63〜75秒でopenTimeline()が完了し10秒程度で28件を固着0で読み切った。この実機で.supportedだったpl/th/idのうち、idは2回ともダウンロードに成功し実際に読めるようになった（受け入れ条件4が機能した実例）。pl/thは2回とも90秒の予算内で完了せず未読のまま残った（既読にしていないので次回再挑戦できる設計どおり）。OSの確認シートが実際に画面に出たか、シートが残ったままfullScreenCoverを開こうとした場合の挙動は自動化ツールでは画面を見る手段が無く未確認（devicectlは実機のスクリーンショット取得に非対応）。この最後の1点は人による実機操作でしか確認できない。詳細は .product/sprints/06-translation/self-review.md の attempt 5"
     }
   ]
 }
