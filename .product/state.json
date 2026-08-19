@@ -1,7 +1,7 @@
 {
   "currentSprint": "06",
   "attempt": 4,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "01",
@@ -128,6 +128,12 @@
       "attempt": 4,
       "result": "awaiting_eval",
       "note": "eval-3.md の指摘[1][2]に対応。(1) Translator.isSupported（status != .unsupported の1軸判定）を廃止し、LanguageAvailability.Status を3値のまま扱う availabilityStatus(sourceCode:) に変更。translate() は .installed のときだけ session.translate(_:) へ進み、.supported（モデル未ダウンロード）のときは session.translate(_:) も prepareTranslation() も一切呼ばず .unavailable(permanent: false) として読み飛ばす設計にした（OSのダウンロード確認シートを一切出させない）。prepareTranslation() を明示的に呼ぶ案は、それもモデル未取得ならシートを出す点は同じで、シートを正しい階層（fullScreenCoverの中）から出すには TranslationHostView の常駐位置の設計変更が要り実機でしか検証できないリスクがあるため見送った（受け入れ条件4の前半は未実装のまま。判断理由は self-review.md 参照）。(2) LanguageAvailability.status を差し替え可能にする LanguageAvailabilityProviding プロトコルを新設し、TranslatorAvailabilityTests（新規4本）で .supported のとき configuration が一度も更新されない（セッションを一切要求しない）ことを直接確認。-SameQFakeTranslate にも疑似言語コード qtd を追加し同梱シードに1件追加。ユニット6本・UIテスト1本を新規追加（SameQTests 63本 + SameQUITests 34本）。シミュレータのフルテストスイート97/97全件成功。実機（iPhone 17 Pro Max）は devicectl device process launch でロック解除済みを確認したうえで、-SameQFakeTranslate を付けない SprintSixAcceptanceTests（3本、新規の実機ストール再現テスト含む）を実行し3/3全件成功（本物の Apple Translation で32件の同梱シード ar/pl/ru/th 込みを82秒で読み切り、timeline.close が押せる状態のままタイムラインが一度も閉じなかった）。実機でユニット63本、コア/BAN回帰12本（SprintOneAcceptanceTests・SprintFiveAcceptanceTests）も実行し全件成功。詳細は .product/sprints/06-translation/self-review.md の attempt 4"
+    },
+    {
+      "sprint": "06",
+      "attempt": 4,
+      "result": "needs_fix",
+      "note": "evaluator が iPhone 17 Pro Max 実機（iOS 26.6）で -SameQFakeTranslate を付けず本物の Apple Translation を実行して検証。受け入れ条件 5/7 で不合格（条件4が未達、条件7は評価不能）。実機は23:00以降ずっと施錠され XCUITest が 'The device is passcode protected.' で起動できなかったため（計6回試行）、ホストアプリのプロセス内で本物の TranslationHostView を実ウインドウに載せ AppSession でタイムラインを読み切る方法に切り替えて検証した（翻訳・スキップ・既読の実処理は本番と同じ経路。画面操作の確認はシミュレータ）。attempt 3 の不合格理由（OSの『翻訳／必要なダウンロード』シートの割り込みでタイムラインが固着・自動で閉じる）は解消を確認: ja端末28件・en端末26件を固着0で読み切り、OSシート0回・アラート0・ちらつき0、1件あたり0.41〜1.57秒、お題も端末言語（ja 0.11s / en 1.23s）、Attempted to use TranslationSession… も0回。LanguageAvailability の実測（P4）で .supported（未DL）はセッションを一切要求しないことも直接確認。不合格の理由は受け入れ条件4（spec.md 197行『翻訳モデルが端末に無い場合は初回のみ準備中の表示が出て完了後に読め』）の未実装1点。モデル未ダウンロードの言語（この実機では ja端末で pl/th、en端末で ar/pl/ru/th）の回答は準備中表示もダウンロードもなく毎回スキップされ、実機の state.json でも未読のまま残る（＝永久に読めない）。spec.md が条件3（恒久的に翻訳できない）と条件4（モデルが無いだけ）を書き分けていること、モデルが1つも入っていない端末では外国語の回答がほぼ全滅しスプリントの目的が成立しないことから、『スキップ』を条件4の充足とは解釈しない判断。クラッシュ0、データ整合性OK（恒久スキップ＝既読 / 一時スキップ＝未読、翻訳結果は非永続、schemaVersion 4）、回帰は抜き取り8件＋シミュレータのフルスイート97/97、使用性3。詳細は .product/sprints/06-translation/eval-4.md"
     }
   ]
 }
