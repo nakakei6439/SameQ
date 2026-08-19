@@ -1,7 +1,7 @@
 {
   "currentSprint": "06",
-  "attempt": 3,
-  "status": "needs_fix",
+  "attempt": 4,
+  "status": "awaiting_eval",
   "history": [
     {
       "sprint": "01",
@@ -122,6 +122,12 @@
       "attempt": 3,
       "result": "needs_fix",
       "note": "evaluator が iPhone 17 Pro Max 実機で -SameQFakeTranslate を付けずに実操作検証（独自 XCUITest EvalSixDeviceTests D01〜D06 ＋ LanguageAvailability の直接プローブ2本、端末言語は ja と -AppleLanguages (en)）。受け入れ条件 2/7 で不合格。実機で翻訳そのものは正しく動く（ja端末で独語・伊語の回答が自然な日本語に、en端末で21件すべて自然な英語に。原文のまま表示0件・ちらつき0件・zxx 0回表示・お題も端末言語に追従・1件あたり最大2.5秒）。attempt 2 の致命的エラー Attempted to use TranslationSession after the view… は1度も観測せず、セッションのキャッシュ撤去は効いている。しかしタイムラインは4回中4回とも途中で固着し読み切りに到達しない（ja: 5件/6件/7件、en: 21件で停止。60秒＋追加30秒待っても復帰しない）。原因は Translator.isSupported が status != .unsupported で判定しており、.supported（この端末ではモデル未ダウンロード）を .installed と同じ扱いで session.translate(_:) に渡していること。実機プローブの実測で ar/pl/ru/th が ja向け・en向けとも supported(未ダウンロード)、同梱シードにこの4言語が各1件ずつ入っているため必ず踏む。踏むとOSの『翻訳／必要なダウンロード』シートが出てタイムラインが勝手に閉じ（あるいは空白のまま残り）、投稿の言語名『ポーランド語』まで画面に出る（spec.md 195行が禁じる投稿言語ラベルの露出）。30秒のジョブタイムアウト＋session.cancel() はこの状況を救えていない。アプリ自身の翻訳関連UIは1つも無い（D04）。クラッシュ0、アプリ由来のアラート0、データ整合性OK（実機の state.json を devicectl で吸い出して直接確認。schemaVersion 4、翻訳結果は永続化されず myPosts は原文）、回帰は実機5/5＋シミュレータのフルスイート90/90、使用性2。受け入れ条件7（機内モード）は端末設定の変更にあたるため評価不能。詳細は .product/sprints/06-translation/eval-3.md、スクリーンショットは eval-3-stall.png"
+    },
+    {
+      "sprint": "06",
+      "attempt": 4,
+      "result": "awaiting_eval",
+      "note": "eval-3.md の指摘[1][2]に対応。(1) Translator.isSupported（status != .unsupported の1軸判定）を廃止し、LanguageAvailability.Status を3値のまま扱う availabilityStatus(sourceCode:) に変更。translate() は .installed のときだけ session.translate(_:) へ進み、.supported（モデル未ダウンロード）のときは session.translate(_:) も prepareTranslation() も一切呼ばず .unavailable(permanent: false) として読み飛ばす設計にした（OSのダウンロード確認シートを一切出させない）。prepareTranslation() を明示的に呼ぶ案は、それもモデル未取得ならシートを出す点は同じで、シートを正しい階層（fullScreenCoverの中）から出すには TranslationHostView の常駐位置の設計変更が要り実機でしか検証できないリスクがあるため見送った（受け入れ条件4の前半は未実装のまま。判断理由は self-review.md 参照）。(2) LanguageAvailability.status を差し替え可能にする LanguageAvailabilityProviding プロトコルを新設し、TranslatorAvailabilityTests（新規4本）で .supported のとき configuration が一度も更新されない（セッションを一切要求しない）ことを直接確認。-SameQFakeTranslate にも疑似言語コード qtd を追加し同梱シードに1件追加。ユニット6本・UIテスト1本を新規追加（SameQTests 63本 + SameQUITests 34本）。シミュレータのフルテストスイート97/97全件成功。実機（iPhone 17 Pro Max）は devicectl device process launch でロック解除済みを確認したうえで、-SameQFakeTranslate を付けない SprintSixAcceptanceTests（3本、新規の実機ストール再現テスト含む）を実行し3/3全件成功（本物の Apple Translation で32件の同梱シード ar/pl/ru/th 込みを82秒で読み切り、timeline.close が押せる状態のままタイムラインが一度も閉じなかった）。実機でユニット63本、コア/BAN回帰12本（SprintOneAcceptanceTests・SprintFiveAcceptanceTests）も実行し全件成功。詳細は .product/sprints/06-translation/self-review.md の attempt 4"
     }
   ]
 }

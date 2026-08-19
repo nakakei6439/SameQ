@@ -354,3 +354,173 @@ extension に `nextTimelinePost(promptID:)`（`excluding: []` / `autoMarkViewed:
 
 - 実機で `jobTimeoutSeconds` / `acquireTimeoutSeconds` の実測値を確認し、必要なら調整する
 - `Translator.textCache` に上限が無い問題（attempt 1 から継続、優先度中）は今回も未対応
+
+---
+
+# attempt 4（eval-3.md [1][2] の修正）
+
+## 直した点
+
+### [1]【最重要】モデル未ダウンロード（`.supported`）をダウンロード済み（`.installed`）と
+同じ扱いにしていたため、OSの「翻訳／必要なダウンロード」確認シートが割り込みタイムラインが
+閉じる
+
+**原因**: `Translator.isSupported(sourceCode:)` が `LanguageAvailability.Status` を
+`status != .unsupported` の1軸でしか見ておらず、`.installed`（モデルあり）と
+`.supported`（言語ペアは対応だがこの端末にモデルが無い）を区別せず、どちらも
+「翻訳できる」として `session.translate(_:)` を呼んでいた。`.supported` の状態で
+`translate(_:)` を呼ぶと、Apple Translation Framework がOSの「翻訳／必要なダウンロード」
+確認シートを自動的に表示する。このシートは `TranslationHostView`（`RootView` の背景、
+`fullScreenCover` で表示中のタイムラインより下の階層）に紐づいて出るため、シートを
+出そうとした時点でタイムライン（`fullScreenCover`）が閉じてしまい、二度と復帰しない
+（evaluator が実機・iPhone 17 Pro Max で4回中4回再現、スクリーンショットあり。
+`eval-3-stall.png`）。
+
+**対応方針の検討**: eval-3.md は2案を提示していた。(a) `TranslationSession.prepareTranslation()`
+を明示的に呼んでダウンロードしてから翻訳する、(b) 取得しない方針にして
+`.unavailable(permanent: false)` として読み飛ばす。**(b) を採用した。**
+
+理由: (a) を検証したところ、`prepareTranslation()` も「モデル未取得なら確認シートを表示する」
+という点は `translate(_:)` の暗黙のダウンロードと同じ（Apple公式ドキュメント
+"You can call the `prepareTranslation()` function explicitly to ask the framework to
+present a system UI to prompt the user to install those languages" のとおり、明示的に
+呼んでもシート自体は出る）。つまり (a) を選んでも、**シートが出る場所
+（`TranslationHostView` の常駐位置）を変えない限り、同じ「タイムラインが閉じる」問題が
+残る可能性が高い**。シートを正しく `fullScreenCover` の中から出すには、`TranslationHostView`
+を「いま最前面に出ている画面（お題 or タイムライン）に応じて動的に付け替える」設計へ
+変更する必要があり、これは `RootView.swift` の構造そのものに手を入れる比較的大きな
+変更になる。しかも「本当にシートが正しい階層から出て `fullScreenCover` を巻き込まずに
+済むか」は実機の同じOSシートを踏む場面でしか検証できず、attempt 2・3で経験した
+「シミュレータでは再現できない不具合が実機で初めて分かる」というリスクパターンに
+再び当てはまる。**「指摘された問題の修正に集中する」「同じ指摘で3回落ちたら止まる」**
+という制約のもとでは、**OSにシートを一切出させない（b）の方が確実性が高く、検証も
+シンプル**と判断した。
+
+**実装**: `Translator.isSupported` を廃止し、`availabilityStatus(sourceCode:)`
+（`LanguageAvailability.Status` を直接返す）に置き換えた。`translate(_:sourceLanguageCode:)`
+は次の3分岐にした:
+- `.unsupported` → 従来どおり `.unavailable(permanent: true)`（恒久的にスキップ、既読にしてよい）
+- `.supported`（未ダウンロード）→ `session.translate(_:)` はおろか `prepareTranslation()` も
+  一切呼ばず、`.unavailable(permanent: false)`（一時的な失敗）として読み飛ばす。
+  `AppSession.drawNextPost` は既存の仕組み（`excluding` / 既読にしない）でそのまま対応でき、
+  変更不要だった
+- `.installed` のときだけ、従来どおり `sessionQueue.perform` へ進んで実際に翻訳する
+
+`.supported` はキャッシュしない（`.installed`/`.unsupported` はこの端末では変わらない前提で
+キャッシュするが、`.supported` はユーザーが後で設定アプリ側でモデルをダウンロードすれば
+`.installed` に変わりうるため、毎回問い合わせる）。
+
+`LanguageAvailability.status(from:to:)` の呼び出しをユニットテストで差し替えられるよう、
+`LanguageAvailabilityProviding` プロトコル（新規）を導入し、実際の `Translation.LanguageAvailability`
+をこれに準拠させた（`Translator.init(availability:)` の型をプロトコルへ変更）。
+
+**受け入れ条件4への影響（正直に書く）**: この方針により、受け入れ条件4「翻訳モデルが端末に
+無い場合は初回のみ準備中の表示が出て完了後に読める」の**前半（アプリが能動的にダウンロードして
+見せる）は実装していない**。モデル未ダウンロードの回答は、アプリがOSシートを出さない限り
+スキップされ続ける（後半の「2回目以降は待たない」は、待つこと自体が発生しないので自明に
+満たす）。これは eval-3.md 自身が「取得しない方針を採るなら `.unavailable(permanent: false)`
+にしてスキップする」という選択肢を明示的に提示しており、その範囲内の判断である。
+モデルを実際に入れるには、利用者が端末の設定アプリ側（設定 > 一般 > 言語と地域、または
+翻訳アプリ）でダウンロードする必要がある。ダウンロード後は `.installed` になるので、
+このアプリは何もしなくても次回から翻訳が効くようになる。
+
+### [2] 固着したときタイムラインが無言で閉じる／空白のまま残る
+
+[1] の直接の結果として発生していた症状だったため、[1] を直したことで解消するはずという
+判断で、**この症状自体に対する個別の対処（例: ユーザー向けの案内文の追加）はしていない**。
+[1] によりOSシートが一切出なくなり、`.supported` の投稿は既存の「一時的な失敗」の仕組み
+（既読にせず次を引く。既存のUI状態のまま進む、アラートも出さない）でそのまま流れるため、
+「無言で閉じる」「空白のまま残る」のどちらも構造的に起こらないはず。
+
+## シミュレータでの疑似検証手段（eval-3.md 改善提案[優先度中]への対応）
+
+`-SameQFakeTranslate`（疑似翻訳モード）は従来 `availabilityStatus` を一切通らずバイパスして
+いたため、`.supported` を再現できなかった（eval-3.md の指摘どおり）。同梱シードの検証用
+言語コード `qtd`（ISO 639-2 私用コード、`sameQ_download_pending_test_marker`）を追加し、
+疑似モードでもこのコードだけは「モデル未ダウンロード」と同じ `.unavailable(permanent: false)`
+を返すようにした（実際の `TranslationSession` には一切触れない）。`SeedData.json` の
+prompt_001 に1件追加した（既存の `zxx` 検証用投稿の直後）。
+
+より根本的な検証は `LanguageAvailabilityProviding` を差し替えたユニットテスト
+（`TranslatorAvailabilityTests.swift`、新規）で行った。実際の `Translation.LanguageAvailability`
+がこの端末で返す値と同じ形（`.installed` / `.supported` / `.unsupported`）を注入し、
+**`.supported` のときは `translator.configuration` が一度も更新されない（＝
+`.translationTask` へ一度もセッションを要求しない）ことを直接確認**した。これが
+「OSにダウンロード確認シートを一切出させない」設計になっていることの、最も直接的な保証。
+
+## 自分で確認したこと（このセッション）
+
+- `xcodegen generate` → `xcodebuild -destination 'platform=iOS Simulator,name=iPhone 17' build`
+  成功
+- 新規ユニットテスト6本（`TranslatorAvailabilityTests` 4・`TranslatorFakeModeTests` +1・
+  `AppSessionTranslationTests` +1）を含む `SameQTests` を単独実行し、**63/63 全件成功**
+- 新規UIテスト1本を含む `SprintSixAcceptanceTests`（3本）を単独実行し全件成功
+- 他にxcodebuildプロセスが動いていないことを確認したうえで、シミュレータ
+  （iPhone 17 / iOS 26.5）でフルテストスイート（`SameQTests` 63 + `SameQUITests` 34）を実行 →
+  **97/97 全件成功**（`xcresulttool` の `test-results summary` で確認: `failedTests: 0`）
+- 実機（iPhone 17 Pro Max、`B7121EA8-8AED-5E66-B696-511BFFC729E2`）向けビルド・
+  `devicectl device install app` 成功。実機の画面ロック状態を `devicectl device process launch`
+  で確認してから（ロック解除済み・自動ロック無効のまま）進めた
+- **実機で `SprintSixAcceptanceTests` を単独実行し、3/3 全件成功。**
+  最重要の `test03_realTranslationReadsWholeSeedWithoutStallingOrOSInterruption`
+  （新規・`-SameQFakeTranslate` を付けず本物の Apple Translation Framework を使う）が
+  82秒で完走し、`timeline.exhausted` に到達、`timeline.close` が押せる状態のまま
+  （＝OSシートに割り込まれてタイムラインが閉じることが一度も起きなかった）ことを確認した。
+  この実機は attempt 3 の evaluator 評価で `ar`/`pl`/`ru`/`th` が未ダウンロード
+  （`.supported`）だったのと同じ実機・同じ端末状態（アプリを都度 `-SameQResetState` で
+  リセットしているのみで、OS側の言語モデル状態はいじっていない）で検証している
+- 実機で `SameQTests`（ユニット、63本）を単独実行し全件成功
+- 実機で回帰確認として `SprintOneAcceptanceTests`（5本）・`SprintFiveAcceptanceTests`（7本）を
+  単独実行し、計12/12全件成功（コア導線・オンボーディング・BAN・スパム対策が壊れていない
+  ことを確認）
+- 全97本のフルスイートを実機で通す時間の余裕は無かったため、実機では上記
+  （翻訳まわり3本＋ユニット63本＋コア/BAN回帰12本＝計78本）に絞った。翻訳に無関係な
+  他のスイート（通報・ブロック・お題ライフサイクル等）はシミュレータのフルスイートで
+  97/97確認済みであり、今回の変更は `Translator.swift` / `SeedData.json`（投稿1件追加）/
+  テストファイルのみで、それらのロジックには触れていない
+
+## 動かし方（evaluator向け・attempt 4で変わった点）
+
+- 起動引数・UIに変更なし。`-SameQFakeTranslate` に新しい疑似言語コード `qtd`
+  （`sameQ_download_pending_test_marker`）が1件追加された（同梱シードに1件追加）以外は
+  従来どおり
+- 実機確認手順（変更なし。PROGRESS.md のとおり）:
+  ```
+  xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'id=B7121EA8-8AED-5E66-B696-511BFFC729E2' -allowProvisioningUpdates build
+  xcrun devicectl device install app --device B7121EA8-8AED-5E66-B696-511BFFC729E2 <ビルドしたSameQ.appのパス>
+  xcrun devicectl device process launch --device B7121EA8-8AED-5E66-B696-511BFFC729E2 com.nakakei6439.SameQ -- -SameQResetState -SameQDebugOverlay
+  ```
+- `-SameQFakeTranslate` を**付けない**ことで、本物の Apple Translation を使ってタイムラインを
+  最後まで読み切れることを確認できる（この実機ではモデル未ダウンロードの `ar`/`pl`/`ru`/`th`
+  の4件はスキップされ、それ以外の言語は実際に翻訳されて表示される）
+
+## 自分で見つけた弱点（正直に書く）
+
+- **受け入れ条件4の前半（アプリが能動的にモデルをダウンロードして見せる）は実装していない**。
+  上記の判断理由のとおり、OSシートを一切出させないことを優先した結果である。evaluator が
+  これを「未達」と判定する可能性はあるが、[1]（最重要・タイムラインの完走）を確実に通す
+  ことを優先した
+- `TranslationHostView` の常駐位置（`RootView` 背景、`fullScreenCover` の外）を変えていない。
+  今回はこの位置を変えずに済む方針（OSシートを出させない）を選んだが、**もし将来
+  受け入れ条件4の前半（能動的なダウンロード）に対応する場合は、この常駐位置の設計を
+  見直す必要がある**（対応方針の検討の節に詳細を記載）
+- `qtd` のような私用言語コードは実機の実際の `Translation.LanguageAvailability` に渡すと
+  おそらく `.unsupported` を返す（`.supported` にはならない）。そのため `-SameQFakeTranslate`
+  無しの実機では `qtd` の投稿は「モデル未ダウンロード」ではなく「恒久的に非対応」として
+  スキップされる。実害は無い（どちらにしてもOSシートは出ず、スキップされる）が、
+  `.supported` の実機相当の検証は `TranslatorAvailabilityTests`（`LanguageAvailabilityProviding`
+  の差し替え）に一本化されている
+- `TranslatorAvailabilityTests.testInstalledStatusProceedsToRequestASession` は、実際の
+  `TranslationSession` を取得できないユニットテスト環境の制約上、`translate()` の完了を
+  待たずに `Task` を投げっぱなしにしている（`configuration` が更新されるまでの短時間だけ
+  ポーリングし、その後の待ち行列のタイムアウト（既定45秒）はバックグラウンドで走ったまま
+  テストを終える設計）。テストの実行結果には影響しないが、行儀の良い実装ではない
+
+## 提案（今回はやらなかったこと）
+
+- 受け入れ条件4の前半（能動的なモデルダウンロード）に対応する場合、`TranslationHostView`
+  を「いま最前面の画面（お題 or タイムライン）に応じて動的に付け替える」設計への変更を検討する
+- 実機で `ar`/`pl`/`ru`/`th` を意図的にダウンロード済みにした状態（設定アプリ側で
+  ダウンロードしてから）でタイムラインを読み、それらの投稿が実際に翻訳されて表示される
+  ことを確認する（今回は「未ダウンロードのままスキップされる」ことのみ確認した）
+- `Translator.textCache` に上限が無い問題（attempt 1 から継続、優先度中）は今回も未対応

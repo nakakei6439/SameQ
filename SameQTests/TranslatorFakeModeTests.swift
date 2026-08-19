@@ -51,6 +51,16 @@ final class TranslatorFakeModeTests: XCTestCase {
         XCTAssertEqual(secondOutcome, .unavailable(permanent: true))
     }
 
+    /// 同梱シードの検証用マーカー（`qtd`）は疑似モードでも「モデル未ダウンロード
+    /// （`.supported`）」と同じ**一時的な失敗**を返す（attempt 4: eval-3.md [1] の
+    /// 再発防止）。恒久的な非対応（`zxx`）と違い `permanent: false` になる点が異なる。
+    @MainActor
+    func testFakeTranslateTreatsMarkerLanguageAsTemporarilyUnavailable() async {
+        let translator = makeTranslator(target: "ja")
+        let outcome = await translator.translate("sameQ_download_pending_test_marker", sourceLanguageCode: "qtd")
+        XCTAssertEqual(outcome, .unavailable(permanent: false))
+    }
+
     /// F19（同じ端末で2回目以降は待ちが発生しない）: 同じ原文・同じ言語ペアなら
     /// 2回目はキャッシュから返る（`translate` 内でキャッシュ判定が疑似モードの分岐より
     /// 先にあるため、本番経路と全く同じキャッシュ機構を共有している）。

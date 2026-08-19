@@ -17,6 +17,10 @@ final class SprintSixAcceptanceTests: XCTestCase {
     /// 検証用に仕込まれた、翻訳できない言語コード（`zxx`）の回答に含まれる目印。
     private let untranslatableMarker = "sameQ_untranslatable_test_marker"
 
+    /// 検証用に仕込まれた、モデル未ダウンロード（`.supported`）を模擬する言語コード
+    /// （`qtd`）の回答に含まれる目印（attempt 4）。
+    private let downloadPendingMarker = "sameQ_download_pending_test_marker"
+
     override func setUp() {
         super.setUp()
         continueAfterFailure = false
@@ -47,6 +51,7 @@ final class SprintSixAcceptanceTests: XCTestCase {
             }
             guard card.exists else { break }
             XCTAssertFalse(card.label.contains(untranslatableMarker), "非対応言語の回答が表示された: \(card.label)")
+            XCTAssertFalse(card.label.contains(downloadPendingMarker), "モデル未ダウンロードの回答が表示された: \(card.label)")
             if card.label.hasPrefix("[") && card.label.contains("] ") {
                 sawTranslatedPrefix = true
             }
@@ -74,6 +79,49 @@ final class SprintSixAcceptanceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["today.promptText"].waitForExistence(timeout: 10), "お題の表示が確定しない（準備中のまま固まった可能性）")
         XCTAssertFalse(app.otherElements["today.promptLoading"].exists, "確定後も準備中の表示が残っている")
         XCTAssertFalse(app.staticTexts["today.promptText"].label.isEmpty)
+    }
+
+    // MARK: 受け入れ条件1・3・4・6（実機の本物の Apple Translation Framework）
+    //       ＋ attempt 4（eval-3.md [1][2]）の再発防止
+
+    /// `-SameQFakeTranslate` を付けず、同梱シード（`ar`/`pl`/`ru`/`th` を含む）をそのまま
+    /// 読み切るまでスワイプする。実機ではこの4言語が翻訳モデル未ダウンロード
+    /// （`.supported`）だったため、OSの「翻訳／必要なダウンロード」確認シートが表示され
+    /// タイムライン画面ごと閉じて二度と復帰しなかった（eval-3.md [1]、90秒待っても復帰なし）。
+    /// この端末が既にモデルをダウンロード済みなら普通に翻訳されて表示されるはずで、
+    /// いずれにせよ「途中で固まらない・OSシートに割り込まれない」ことを確認する。
+    /// このシミュレータでは Apple Translation が全言語ペアで `unsupportedLanguagePairing` を
+    /// 返す（evaluator 実測済み）ため、シミュレータ上では全件が恒久的スキップとして
+    /// 即座に読み切りになる。どちらの環境でも「固まらない」ことを確認できる点は変わらない。
+    func test03_realTranslationReadsWholeSeedWithoutStallingOrOSInterruption() {
+        let app = launch(arguments: [], reset: true)
+        completeOnboarding(app)
+        submitAnswer(app, body: answerBody)
+
+        var seenCount = 0
+        for _ in 0..<40 {
+            if app.staticTexts["timeline.exhausted"].exists || app.staticTexts["timeline.empty"].exists { break }
+            let card = app.staticTexts["timeline.card.body"]
+            // 未ダウンロードのモデルでOSシートに割り込まれて固着していれば、ここで
+            // 確実にタイムアウトする（15秒は実機の実測最大2.5秒/件に対し十分な余裕）。
+            guard card.waitForExistence(timeout: 15)
+                || app.staticTexts["timeline.exhausted"].waitForExistence(timeout: 1) else {
+                XCTFail("\(seenCount + 1)件目も読み切りも出ない（OSのダウンロード確認シートに割り込まれ固着した可能性）")
+                break
+            }
+            guard card.exists else { break }
+            XCTAssertFalse(card.label.contains(untranslatableMarker), "非対応言語の回答が表示された: \(card.label)")
+            XCTAssertFalse(card.label.contains(downloadPendingMarker), "モデル未ダウンロードの回答が表示された: \(card.label)")
+            seenCount += 1
+            app.swipeLeft()
+        }
+        XCTAssertTrue(
+            app.staticTexts["timeline.exhausted"].waitForExistence(timeout: 20),
+            "読み切りに到達しない（OSのダウンロード確認シートに割り込まれ固着した可能性）"
+        )
+        // タイムラインを開いたまま最後まで閉じる操作（`timeline.close`）が生きていることも
+        // 確認する（eval-3.md [2]: OSシートに割り込まれるとタイムラインが無言で閉じていた）。
+        XCTAssertTrue(app.buttons["timeline.close"].isHittable, "タイムラインが閉じてしまい、閉じる操作が効かない")
     }
 
     // MARK: ヘルパー

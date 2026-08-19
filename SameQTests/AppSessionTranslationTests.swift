@@ -1,4 +1,5 @@
 import XCTest
+import Translation
 @testable import SameQ
 
 /// `AppSession` を通した翻訳の一連の流れ（F18〜F22）を、疑似翻訳モード
@@ -150,5 +151,56 @@ final class AppSessionTranslationTests: XCTestCase {
         let viewed = try await backend.viewedPostIDs()
         XCTAssertTrue(viewed.contains(untranslatable.id), "非対応言語は恒久的スキップとして既読になっているはず")
         XCTAssertTrue(viewed.contains(translatable.id))
+    }
+
+    /// attempt 4（eval-3.md [1]）: モデル未ダウンロード（`.supported`）の回答は
+    /// タイムラインに一度も現れず、**恒久的な非対応（`zxx`）とは違い既読にもならない**
+    /// （あとでユーザーが端末にモデルを入れれば再挑戦できるようにするため）。
+    /// `-SameQFakeTranslate` は `.supported` を再現できない（`LanguageAvailability` の
+    /// 実機挙動そのものが必要なため）ので、`LanguageAvailabilityProviding` を差し替えた
+    /// 本番経路（`fakeTranslate: false`）で確認する。
+    private struct NeedsDownloadAvailability: LanguageAvailabilityProviding {
+        func status(from source: Locale.Language, to target: Locale.Language?) async -> LanguageAvailability.Status {
+            .supported
+        }
+    }
+
+    @MainActor
+    func testNeedsDownloadPostNeverAppearsAndIsNotMarkedViewed() async throws {
+        let reference = Date()
+        let prompt = Prompt(
+            id: "p1",
+            text: "お題",
+            startsAt: reference.addingTimeInterval(-3600),
+            endsAt: reference.addingTimeInterval(Prompt.defaultDuration - 3600),
+            language: "ja"
+        )
+        let needsDownload = makePost(
+            promptID: prompt.id,
+            body: "sameQ_download_pending_test_marker",
+            bodyLanguage: "pl",
+            expiresAt: prompt.endsAt
+        )
+        let schedule = PromptSchedule(prompts: [prompt], posts: [needsDownload])
+        let backend = LocalBackend(store: makeStore(), clock: AppClock(offset: 0), schedule: schedule, options: LaunchOptions())
+        let translator = Translator(
+            availability: NeedsDownloadAvailability(),
+            fakeTranslate: false,
+            preferredLanguageIdentifier: "ja"
+        )
+        let session = AppSession(backend: backend, clock: AppClock(offset: 0), translator: translator)
+
+        await session.start()
+        await session.completeOnboarding(emoji: "🌙", nickname: nil)
+        await session.submit(body: "自分の回答")
+
+        // 唯一の候補がモデル未ダウンロードなので、読み切り扱いになるはず
+        // （固まったり、OSのシートを待つ経路には一切入らない）。
+        if case .exhausted = session.timelineContent {} else {
+            XCTFail("モデル未ダウンロードの回答しか無いので読み切りになるはず: \(session.timelineContent)")
+        }
+
+        let viewed = try await backend.viewedPostIDs()
+        XCTAssertFalse(viewed.contains(needsDownload.id), "モデル未ダウンロードは一時的な失敗なので既読にしてはいけない")
     }
 }

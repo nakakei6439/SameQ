@@ -15,6 +15,24 @@ enum TranslationOutcome: Equatable {
     case unavailable(permanent: Bool)
 }
 
+/// `LanguageAvailability.status(from:to:)` の窓口。`Translator` からユニットテストで
+/// 差し替えられるようにするための最小限のプロトコル（attempt 4）。
+///
+/// 実機の `Translation.LanguageAvailability.Status` には3種類あり、`.installed`
+/// （この端末に翻訳モデルがダウンロード済み）と `.supported`（言語ペア自体は対応しているが
+/// この端末にはまだモデルが無い）を区別する必要がある。区別せずどちらも「翻訳できる」として
+/// `session.translate(_:)` を呼ぶと、OSが「翻訳／必要なダウンロード」の確認シートを
+/// 勝手に表示し、そのシートの下でタイムライン画面（`fullScreenCover`）が閉じてしまう
+/// （attempt 3 の evaluator が実機で確認・スクリーンショットあり。`eval-3.md` [1]）。
+/// この不具合はシミュレータ・疑似翻訳モードでは再現できない（`.supported` という状態自体を
+/// 実際の `Translation.LanguageAvailability` からしか得られなかったため）。ユニットテストが
+/// `.supported` を注入して検証できるよう、実装をプロトコルの背後に置く。
+protocol LanguageAvailabilityProviding {
+    func status(from source: Locale.Language, to target: Locale.Language?) async -> LanguageAvailability.Status
+}
+
+extension LanguageAvailability: LanguageAvailabilityProviding {}
+
 /// 投稿本文とお題本文を端末言語へ変換する窓口（F18 / F20 / F21 / F22）。
 ///
 /// Apple Translation Framework のみを使う（外部翻訳API・フォールバックは使わない。
@@ -52,6 +70,28 @@ enum TranslationOutcome: Equatable {
 /// `session.translate(_:)` 自体にもタイムアウトを設けている（`SessionRequestQueue` の
 /// `jobTimeoutSeconds`）。タイムアウトした場合は `session.cancel()`（iOS 26+）を呼び、
 /// 応答不能な呼び出しへ中断を伝える。
+///
+/// ## attempt 4 での変更（evaluator 指摘 [1][2] の修正）
+/// attempt 3 まではセッションの持ち出しは無くなったが、`isSupported(sourceCode:)` が
+/// `LanguageAvailability.Status` の `.installed`（この端末にモデルあり）と
+/// `.supported`（言語ペアには対応しているが、この端末にはまだモデルが無い）を
+/// 区別せず、どちらも「翻訳できる」として `session.translate(_:)` を呼んでいた。
+/// `.supported` の状態で `translate(_:)` を呼ぶと、OSが「翻訳／必要なダウンロード」の
+/// 確認シートを勝手に表示し、その下でタイムライン画面（`fullScreenCover`）ごと閉じてしまう
+/// （実機で4回中4回再現・スクリーンショットあり。`eval-3.md` [1]）。
+///
+/// 対応: `.installed` のときだけ `session.translate(_:)` まで進む。`.supported`
+/// （未ダウンロード）のときは `session.translate(_:)` はおろか `prepareTranslation()` も
+/// 呼ばず、`.unavailable(permanent: false)`（一時的な失敗）として読み飛ばす
+/// （`AppSession.drawNextPost` は既存の仕組みでこれを既読にせず次を引く）。
+/// OSにダウンロード確認シートを一切出させない設計にすることを最優先にした
+/// （eval-3.md の対応方針で提示された2案のうち、`prepareTranslation()` を明示的に呼ぶ案は
+/// 採らなかった。`prepareTranslation()` もモデル未取得なら同じ確認シートを表示するため、
+/// `TranslationHostView` の常駐場所（`RootView` 背景、`fullScreenCover` の外）を変えない限り
+/// 同じ問題が残る。ホスト側の変更は影響範囲が大きく実機でしか検証できないため見送った。
+/// 判断の詳細は `self-review.md` の attempt 4 を参照）。
+/// この結果、対象言語のモデルが端末にまだ無い場合、その回答は表示されない（後述の
+/// `LanguageAvailabilityProviding` を差し替えれば `.supported` をユニットテストで再現できる）。
 @MainActor
 @Observable
 final class Translator {
@@ -66,9 +106,11 @@ final class Translator {
     /// たびに（同じ言語ペアでも毎回）更新する。詳細は `sessionQueue` の `onNeedsSession` を参照。
     private(set) var configuration: TranslationSession.Configuration?
 
-    private let availability: LanguageAvailability
-    /// 言語ペアごとの対応可否のキャッシュ（同じ問い合わせを繰り返さない）。
-    private var statusCache: [String: Bool] = [:]
+    private let availability: LanguageAvailabilityProviding
+    /// 言語ペアごとの対応状況のキャッシュ（同じ問い合わせを繰り返さない）。
+    /// `.supported`（未ダウンロード）はキャッシュしない。ユーザーが後で設定アプリ側で
+    /// 言語をダウンロードした場合、次回の問い合わせで `.installed` に変わりうるため。
+    private var statusCache: [String: LanguageAvailability.Status] = [:]
     /// 原文ごとの翻訳結果のキャッシュ。同じ回答を既読解除やスワイプで再び引いたときに
     /// 待たせないための、プロセス内だけの効果（F19: 同じ端末で2回目以降は待たせない）。
     /// モデル自体の再ダウンロードが起きないのは OS 側の仕組みによる。
@@ -119,7 +161,7 @@ final class Translator {
     ///   を読む）。ユニットテストがホスト環境のロケールに関係なく決定的に検証できるように、
     ///   端末の言語を上書きするための引数。
     nonisolated init(
-        availability: LanguageAvailability = LanguageAvailability(),
+        availability: LanguageAvailabilityProviding = LanguageAvailability(),
         fakeTranslate: Bool = LaunchOptions.current.fakeTranslate,
         preferredLanguageIdentifier: String? = nil
     ) {
@@ -156,9 +198,22 @@ final class Translator {
             return await fakeTranslate(text, sourceCode: sourceCode, cacheKey: cacheKey)
         }
 
-        guard await isSupported(sourceCode: sourceCode) else {
+        switch await availabilityStatus(sourceCode: sourceCode) {
+        case .unsupported:
             unsupportedSourceCodes.insert(sourceCode)
             return .unavailable(permanent: true)
+        case .supported:
+            // モデル未ダウンロード。`session.translate(_:)`（や `prepareTranslation()`）を
+            // ここで呼ぶと、OSが「翻訳／必要なダウンロード」の確認シートを勝手に表示し、
+            // その下でタイムライン画面ごと閉じてしまう（実機で確認済み。eval-3.md [1]、
+            // クラス冒頭のコメントを参照）。恒久的な非対応とは違い、あとでユーザーが
+            // 設定アプリ側でモデルをダウンロードすれば `.installed` になりうるので、
+            // 既読にしない一時的な失敗として読み飛ばす。
+            return .unavailable(permanent: false)
+        case .installed:
+            break
+        @unknown default:
+            return .unavailable(permanent: false)
         }
 
         // `perform` は毎回新しいセッションを要求し、取得できたセッションは
@@ -206,15 +261,19 @@ final class Translator {
         }
     }
 
-    private func isSupported(sourceCode: String) async -> Bool {
+    /// `sourceCode` から `targetLanguage` への対応状況。`.installed` と `.unsupported` は
+    /// この端末では変わらない前提でキャッシュする。`.supported`（未ダウンロード）は
+    /// キャッシュしない（ユーザーが後でモデルをダウンロードすれば変わりうるため）。
+    private func availabilityStatus(sourceCode: String) async -> LanguageAvailability.Status {
         if let cached = statusCache[sourceCode] { return cached }
         let status = await availability.status(
             from: Locale.Language(identifier: sourceCode),
             to: targetLanguage
         )
-        let supported = status != .unsupported
-        statusCache[sourceCode] = supported
-        return supported
+        if status != .supported {
+            statusCache[sourceCode] = status
+        }
+        return status
     }
 
     /// `TranslationHostView` が新しいセッションを受け取ったら呼ぶ。`await` している間、
@@ -244,6 +303,15 @@ final class Translator {
             unsupportedSourceCodes.insert(sourceCode)
             return .unavailable(permanent: true)
         }
+        // 同梱シードの検証用マーカー（`qtd`）は「この端末では翻訳モデルが未ダウンロード
+        // （`.supported`）」を模擬する（attempt 4）。実際の `TranslationSession` には
+        // 一切触れず、OSのダウンロード確認シートを絶対に出さないことをシミュレータでも
+        // 確定的に確認できるようにする（eval-3.md [1] の再発防止・改善提案[優先度中]）。
+        guard !Self.fakeNeedsDownloadSourceCodes.contains(sourceCode) else {
+            // ダウンロード待ちらしい間を置く（本番の「準備中…」表示を確認できる余地）。
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            return .unavailable(permanent: false)
+        }
         // 実際の翻訳のような非同期の間（＝「準備中…」表示を確認できる余地）を残す。
         try? await Task.sleep(nanoseconds: 50_000_000)
         let translated = "[\(targetLanguageCode.uppercased())] \(text)"
@@ -254,4 +322,9 @@ final class Translator {
     /// 疑似モードでも「翻訳できない言語」を再現するための固定リスト。
     /// 同梱シードの `zxx`（`sameQ_untranslatable_test_marker`）に合わせている。
     private static let fakeUnsupportedSourceCodes: Set<String> = ["zxx"]
+
+    /// 疑似モードでも「モデル未ダウンロード（`.supported`）」を再現するための固定リスト。
+    /// 同梱シードの `qtd`（`sameQ_download_pending_test_marker`、ISO 639-2 私用コード）に
+    /// 合わせている（attempt 4）。
+    private static let fakeNeedsDownloadSourceCodes: Set<String> = ["qtd"]
 }
