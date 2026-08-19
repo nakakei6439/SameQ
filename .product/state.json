@@ -1,7 +1,7 @@
 {
   "currentSprint": "06",
   "attempt": 3,
-  "status": "blocked",
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "01",
@@ -120,8 +120,8 @@
     {
       "sprint": "06",
       "attempt": 3,
-      "result": "blocked",
-      "note": "evaluator が attempt 3 の実機評価を試みたが**評価不能**（合否は出していない）。実機向けビルド（-destination 'id=B7121EA8-…' -allowProvisioningUpdates）・devicectl device install app・build-for-testing はいずれも成功し、17:32 に devicectl device process launch で1度だけ起動もできた。しかし17:38以降は端末が施錠されたままで、xcodebuild test が Failed to start remote service \"com.apple.mobile.notification_proxy\" on device … The device is passcode protected. を繰り返し、Test Case の行が1件も出ない（テストが1本も開始されない）。devicectl device process launch も BSErrorCodeDescription = Locked で失敗。17:49〜18:19の約30分、20秒間隔で試し続けたが一度も解除されなかった。受け入れ条件1〜7はすべて実機で未確認。シミュレータ（iPhone 17）でのフルスイートは現在の作業ツリーでも 90/90 全通過（SameQTests 57 + SameQUITests 33、failures 0）だが、attempt 2 の不合格理由（実機でのみ再現する固着）は -SameQFakeTranslate が通らない実セッション経路の問題なので、これは修正が効いた証拠にならない。再開にはユーザーによる①ロック解除②自動ロックを一時的に「なし」にする、の2点が必要。evaluator 用の一時 XCUITest SameQUITests/EvalSixDeviceTests.swift（D01〜D05）を用意済み・未コミット。詳細は .product/sprints/06-translation/eval-3.md"
+      "result": "needs_fix",
+      "note": "evaluator が iPhone 17 Pro Max 実機で -SameQFakeTranslate を付けずに実操作検証（独自 XCUITest EvalSixDeviceTests D01〜D06 ＋ LanguageAvailability の直接プローブ2本、端末言語は ja と -AppleLanguages (en)）。受け入れ条件 2/7 で不合格。実機で翻訳そのものは正しく動く（ja端末で独語・伊語の回答が自然な日本語に、en端末で21件すべて自然な英語に。原文のまま表示0件・ちらつき0件・zxx 0回表示・お題も端末言語に追従・1件あたり最大2.5秒）。attempt 2 の致命的エラー Attempted to use TranslationSession after the view… は1度も観測せず、セッションのキャッシュ撤去は効いている。しかしタイムラインは4回中4回とも途中で固着し読み切りに到達しない（ja: 5件/6件/7件、en: 21件で停止。60秒＋追加30秒待っても復帰しない）。原因は Translator.isSupported が status != .unsupported で判定しており、.supported（この端末ではモデル未ダウンロード）を .installed と同じ扱いで session.translate(_:) に渡していること。実機プローブの実測で ar/pl/ru/th が ja向け・en向けとも supported(未ダウンロード)、同梱シードにこの4言語が各1件ずつ入っているため必ず踏む。踏むとOSの『翻訳／必要なダウンロード』シートが出てタイムラインが勝手に閉じ（あるいは空白のまま残り）、投稿の言語名『ポーランド語』まで画面に出る（spec.md 195行が禁じる投稿言語ラベルの露出）。30秒のジョブタイムアウト＋session.cancel() はこの状況を救えていない。アプリ自身の翻訳関連UIは1つも無い（D04）。クラッシュ0、アプリ由来のアラート0、データ整合性OK（実機の state.json を devicectl で吸い出して直接確認。schemaVersion 4、翻訳結果は永続化されず myPosts は原文）、回帰は実機5/5＋シミュレータのフルスイート90/90、使用性2。受け入れ条件7（機内モード）は端末設定の変更にあたるため評価不能。詳細は .product/sprints/06-translation/eval-3.md、スクリーンショットは eval-3-stall.png"
     }
   ]
 }
