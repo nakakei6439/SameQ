@@ -1,7 +1,7 @@
 {
   "currentSprint": "06",
   "attempt": 5,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "01",
@@ -140,6 +140,12 @@
       "attempt": 5,
       "result": "awaiting_eval",
       "note": "eval-4.mdの指摘[1]（受け入れ条件4の未実装）に対応。AppSession.openTimeline()が世界タイムライン（fullScreenCover）を開く前に、.supported（モデル未ダウンロード）の言語をTranslator.prepareIfNeeded(sourceLanguageCode:)で能動的にダウンロードする設計に変更（prepareTimelineLanguagesIfNeeded、予算90秒）。開く前＝まだ非モーダルなお題画面にいるため、OSの「翻訳／必要なダウンロード」確認シートが出ても閉じて困るfullScreenCoverが無い（attempt3の致命的症状の再発防止）。ダウンロード中は「世界の回答を読む」ボタンを「準備中…」にする（isPreparingTimeline）。ダウンロードが90秒の予算内に間に合わなかった言語は従来どおり一時的な失敗として読み飛ばし既読にしない（次回再挑戦できる）。Apple Developer Forumsを調査しprepareTranslation()もモデル未取得ならシートを出しうることを確認（シートを完全に無くす方法は無いというattempt4の判断は正しかった）。実機検証中にSessionRequestQueueの致命的な欠陥を発見・修正: runWithJobTimeoutがwithTaskGroup（構造化並行性。キャンセル済みでも子タスクの完了を必ず待つ）を使っており、cancel()に応答しないprepareTranslation()ではjobTimeoutSecondsが名目だけになっていた（attempt3から存在した潜在バグ、session.translate(_:)では実害が無く今回まで未発見）。bodyを非構造化Taskとして起動しタイムアウト用Taskと競走させる設計に変更し呼び出し元を確実に解放できるようにした。ユニット72本＋UIテスト35本（新規: SessionRequestQueueTests 1本・TranslatorAvailabilityTests 3本・TranslatorFakeModeTests 2本・AppSessionTranslationTests 3本・SprintSixAcceptanceTests test04 1本）、シミュレータのフルテストスイート107/107全件成功（他プロセス非併走の単独実行）。実機（iPhone 17 Pro Max）ではXCUITestのautomation modeが2回とも `Timed out while enabling automation mode.` で有効化できず（eval-3.md・eval-4.mdと同じ既知の問題）、指でのタップ操作の自動確認はできなかった。代わりにホストアプリのプロセス内で本物のTranslationHostViewを実ウインドウに載せAppSessionでタイムラインを読み切る手法（一時テスト、確認後削除）で2回検証。SessionRequestQueue修正前は15分・10分待っても応答が無く、修正後は2回とも63〜75秒でopenTimeline()が完了し10秒程度で28件を固着0で読み切った。この実機で.supportedだったpl/th/idのうち、idは2回ともダウンロードに成功し実際に読めるようになった（受け入れ条件4が機能した実例）。pl/thは2回とも90秒の予算内で完了せず未読のまま残った（既読にしていないので次回再挑戦できる設計どおり）。OSの確認シートが実際に画面に出たか、シートが残ったままfullScreenCoverを開こうとした場合の挙動は自動化ツールでは画面を見る手段が無く未確認（devicectlは実機のスクリーンショット取得に非対応）。この最後の1点は人による実機操作でしか確認できない。詳細は .product/sprints/06-translation/self-review.md の attempt 5"
+    },
+    {
+      "sprint": "06",
+      "attempt": 5,
+      "result": "needs_fix",
+      "note": "evaluator が実機（iPhone 17 Pro Max / iOS 26.6・端末言語ja）とシミュレータで検証。不合格。受け入れ条件4が未達（モデル未DLのpl/thは60秒待っても読めるようにならず、2回目のopenTimelineも61.3秒待たされた。generatorのidの実例は、idがprompt_002にしか無いため成立しない）。基準5（使用性）も2点：submit()がopenTimeline()を待つため投稿ボタンが約60秒「送信中…」のまま。回帰は抜き取り5件+フルスイート107/107で問題なし。実機が施錠されXCUITestのautomation modeを有効化できず、OSの確認シートを指でタップする確認は今回もできていない。詳細は .product/sprints/06-translation/eval-5.md"
     }
   ]
 }
