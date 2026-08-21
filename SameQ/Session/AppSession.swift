@@ -76,6 +76,10 @@ final class AppSession {
     var alertMessage: String?
 
     var isSubmitting = false
+    /// `submit()` が投稿完了後に裏で起動した `openTimeline()` の `Task`（attempt 6）。
+    /// `@Observable` の追跡対象にする必要が無い内部実装詳細。
+    @ObservationIgnored
+    private var pendingOpenTimelineTask: Task<Void, Never>?
 
     /// いま有効なお題。お題待ちのあいだは nil。
     var prompt: Prompt? { promptState.prompt }
@@ -215,20 +219,40 @@ final class AppSession {
     // MARK: 回答投稿（F04）
 
     /// 投稿に成功したら世界タイムラインを開く。
+    ///
+    /// **attempt 6（eval-5.md [2] の修正）**: `openTimeline()` の完了は待たない。
+    /// `openTimeline()` はモデル未ダウンロードの言語があると数十秒かかりうるが、
+    /// 投稿そのもの（`submitPost`）はそれとは独立した処理のはずなので、投稿ボタンは
+    /// `submitPost` が終わり次第すぐ解放する（`isSubmitting` を戻す）。投稿完了直後は
+    /// `myPost` が入って画面が自動的に「あなたの回答」＋「世界の回答を読む」ボタンへ
+    /// 切り替わるので、その裏で始まる準備は `isPreparingTimeline`（「準備中…」表示）で
+    /// 見える。ダウンロードが要らなければ、そのままいつもどおりタイムラインが開く。
     func submit(body: String) async {
         guard let prompt, !isSubmitting else { return }
         isSubmitting = true
         defer { isSubmitting = false }
         do {
             myPost = try await backend.submitPost(promptID: prompt.id, body: body)
-            await openTimeline()
         } catch {
             alertMessage = error.localizedDescription
             // 投稿しようとした瞬間にお題が終わっていた場合は、お題待ちへ落とす。
             if let backendError = error as? BackendError, backendError == .promptNotActive {
                 await refresh()
             }
+            return
         }
+        pendingOpenTimelineTask?.cancel()
+        pendingOpenTimelineTask = Task { [weak self] in
+            await self?.openTimeline()
+        }
+    }
+
+    /// `submit()` が裏で開始したタイムラインの準備・オープンが終わるまで待つ。
+    /// 通常のUIコードは呼ぶ必要が無い（`isPreparingTimeline` / `timelineContent` を
+    /// 監視すれば足りる）。ユニットテストが「投稿後に実際にタイムラインが開くこと」を
+    /// 確定的に検証するために公開している（attempt 6）。
+    func waitForPendingTimelineOpen() async {
+        await pendingOpenTimelineTask?.value
     }
 
     // MARK: 世界タイムライン（F06 / F11 / F12）
@@ -259,6 +283,14 @@ final class AppSession {
     ///
     /// 1件も無ければ即座に返り、`isPreparingTimeline` を立てない（2回目以降・すでに
     /// 全言語が揃っている場合に余計な待ちを作らないため。F19「2回目以降は待たない」）。
+    ///
+    /// **attempt 6**: 候補の言語がまだ残っていても、`translator.needsPreparation(_:)` で
+    /// 「実際に試みる価値があるか（＝クールダウン中でないか）」を先に確認する。直近で
+    /// 試して `.supported` のまま完了しなかった言語は、`Translator` 側のクールダウンが
+    /// 明けるまで対象から外す。試みる言語が1件も無ければ `isPreparingTimeline` すら
+    /// 立てず、即座に返る（eval-5.md [1]: タイムラインを開くたびに毎回60〜120秒待たされる
+    /// 問題の修正）。
+    ///
     /// 全体の待ちが際限なく伸びないよう、`timelinePreparationBudgetSeconds` を超えたら
     /// 残りの言語は諦めて進む（諦めた言語は、あとで `drawNextPost` が一時的な失敗として
     /// 読み飛ばし、次回の巡回・次回起動で再挑戦する）。
@@ -272,10 +304,18 @@ final class AppSession {
         )
         guard !languages.isEmpty else { return }
 
+        var languagesToPrepare: [String] = []
+        for language in languages {
+            if await translator.needsPreparation(sourceLanguageCode: language) {
+                languagesToPrepare.append(language)
+            }
+        }
+        guard !languagesToPrepare.isEmpty else { return }
+
         isPreparingTimeline = true
         defer { isPreparingTimeline = false }
         let deadline = Date().addingTimeInterval(Self.timelinePreparationBudgetSeconds)
-        for language in languages {
+        for language in languagesToPrepare {
             guard Date() < deadline else { break }
             await translator.prepareIfNeeded(sourceLanguageCode: language)
         }

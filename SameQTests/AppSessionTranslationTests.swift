@@ -87,9 +87,12 @@ final class AppSessionTranslationTests: XCTestCase {
 
         await session.start()
         await session.completeOnboarding(emoji: "🌙", nickname: nil)
-        // `submit(body:)` は成功すると内部で `openTimeline()` を呼ぶ（1件目の draw を含む）ので、
+        // `submit(body:)` は成功すると裏で `openTimeline()` を起動する（1件目の draw を含む）ので、
         // ここで重ねて `openTimeline()` を呼ばない（呼ぶと2連続で draw して1件を見落とす）。
+        // attempt 6: `submit()` は `openTimeline()` の完了を待たなくなったので、
+        // `waitForPendingTimelineOpen()` で完了まで待つ。
         await session.submit(body: "自分の回答")
+        await session.waitForPendingTimelineOpen()
 
         // 未読からランダムに1件ずつ引くので順序は保証されない（F11）。
         // ここでは「毎回、疑似翻訳済みの本文が表示され、途中で止まらず全件出せる」ことだけを見る。
@@ -135,8 +138,9 @@ final class AppSessionTranslationTests: XCTestCase {
 
         await session.start()
         await session.completeOnboarding(emoji: "🌙", nickname: nil)
-        // `submit(body:)` が内部で `openTimeline()` を呼ぶ（上のテストと同じ理由で重ねて呼ばない）。
+        // `submit(body:)` が裏で `openTimeline()` を起動する（上のテストと同じ理由で重ねて呼ばない）。
         await session.submit(body: "自分の回答")
+        await session.waitForPendingTimelineOpen()
 
         guard case .post(let post) = session.timelineContent else {
             return XCTFail("翻訳可能な回答が表示されるはず: \(session.timelineContent)")
@@ -202,6 +206,7 @@ final class AppSessionTranslationTests: XCTestCase {
         await session.start()
         await session.completeOnboarding(emoji: "🌙", nickname: nil)
         await session.submit(body: "自分の回答")
+        await session.waitForPendingTimelineOpen()
 
         // 唯一の候補がモデル未ダウンロードで、ダウンロードの試み（セッション要求）自体が
         // 解決されないので、読み切り扱いになるはず（固まったり、OSのシートを待つ経路には
@@ -250,8 +255,9 @@ final class AppSessionTranslationTests: XCTestCase {
         await session.start()
         await session.completeOnboarding(emoji: "🌙", nickname: nil)
         XCTAssertNil(translator.configuration, "投稿する前はまだ何も要求していない")
-        // `submit(body:)` は内部で `openTimeline()` を呼ぶ（ここでダウンロードの試みが起きる）。
+        // `submit(body:)` は裏で `openTimeline()` を起動する（ここでダウンロードの試みが起きる）。
         await session.submit(body: "自分の回答")
+        await session.waitForPendingTimelineOpen()
 
         XCTAssertNotNil(
             translator.configuration,
@@ -287,9 +293,10 @@ final class AppSessionTranslationTests: XCTestCase {
 
         await session.start()
         await session.completeOnboarding(emoji: "🌙", nickname: nil)
-        // `submit(body:)` が内部で `openTimeline()` を呼ぶ。ここでダウンロード（疑似）が
-        // 完了してから draw するので、テスト側でポーリングする必要はない。
+        // `submit(body:)` が裏で `openTimeline()` を起動する。`waitForPendingTimelineOpen()` で
+        // ダウンロード（疑似）の完了と draw まで待つ（attempt 6: submit() 自体は待たなくなった）。
         await session.submit(body: "自分の回答")
+        await session.waitForPendingTimelineOpen()
 
         guard case .post(let post) = session.timelineContent else {
             return XCTFail("ダウンロードが完了したあとは読めるようになるはず: \(session.timelineContent)")
@@ -336,11 +343,12 @@ final class AppSessionTranslationTests: XCTestCase {
         await session.completeOnboarding(emoji: "🌙", nickname: nil)
         XCTAssertFalse(session.isPreparingTimeline)
 
-        // `submit(body:)` は内部で `openTimeline()` を呼ぶ。この単体テスト環境では
-        // セッション要求が解決されないので、`isPreparingTimeline` が立っている間に
+        // attempt 6: `submit(body:)` は `openTimeline()` の完了を待たなくなったので、
+        // `await session.submit(...)` 自体はすぐ返る。裏で起動した準備が `isPreparingTimeline`
+        // を立てるまで、この単体テスト環境（実際のセッション要求が解決されない）でも
         // ポーリングで捕まえられる（`sessionAcquireTimeoutSeconds` を1秒に伸ばしてあるので、
         // 5ms間隔・最大200回のポーリングなら十分間に合う）。
-        let submitTask = Task { await session.submit(body: "自分の回答") }
+        await session.submit(body: "自分の回答")
         var attempts = 0
         while !session.isPreparingTimeline, attempts < 200 {
             try await Task.sleep(nanoseconds: 5_000_000)
@@ -351,10 +359,125 @@ final class AppSessionTranslationTests: XCTestCase {
             "ダウンロードを試みている間は準備中のはず（今日のお題画面の上でボタンを『準備中…』にする）"
         )
 
-        await submitTask.value
+        await session.waitForPendingTimelineOpen()
         XCTAssertFalse(
             session.isPreparingTimeline,
             "ダウンロードの試み（成功・失敗いずれも）が終わったら準備中は解除されるはず"
         )
+    }
+
+    /// attempt 6・eval-5.md [1] の核心: 直近でダウンロードを試みて `.supported` のまま
+    /// 完了しなかった言語は、クールダウン（既定5分）が明けるまで**再試行そのものをしない**。
+    /// そのため2回目の `openTimeline()` は1回目よりはっきり速い（＝タイムラインを開くたびに
+    /// 毎回60〜120秒待たされる問題が起きない）。
+    @MainActor
+    func testSecondOpenTimelineIsFasterThanFirstBecauseItSkipsRetryingWithinCooldown() async throws {
+        let reference = Date()
+        let prompt = Prompt(
+            id: "p1",
+            text: "お題",
+            startsAt: reference.addingTimeInterval(-3600),
+            endsAt: reference.addingTimeInterval(Prompt.defaultDuration - 3600),
+            language: "ja"
+        )
+        let needsDownload = makePost(
+            promptID: prompt.id,
+            body: "sameQ_download_pending_test_marker",
+            bodyLanguage: "pl",
+            expiresAt: prompt.endsAt
+        )
+        let schedule = PromptSchedule(prompts: [prompt], posts: [needsDownload])
+        let backend = LocalBackend(store: makeStore(), clock: AppClock(offset: 0), schedule: schedule, options: LaunchOptions())
+        // セッション要求自体を意図的に短く（0.3秒）タイムアウトさせ、「ダウンロードを試みたが
+        // 完了しなかった」状況を確定的に再現する（実機でモデルが未取得のまま完了しない状況を模す）。
+        let translator = Translator(
+            availability: NeedsDownloadAvailability(),
+            fakeTranslate: false,
+            preferredLanguageIdentifier: "ja",
+            sessionAcquireTimeoutSeconds: 0.3,
+            modelPrepareJobTimeoutSeconds: 0.3
+        )
+        let session = AppSession(backend: backend, clock: AppClock(offset: 0), translator: translator)
+
+        await session.start()
+        await session.completeOnboarding(emoji: "🌙", nickname: nil)
+
+        let firstStart = Date()
+        await session.submit(body: "自分の回答")
+        await session.waitForPendingTimelineOpen()
+        let firstElapsed = Date().timeIntervalSince(firstStart)
+        XCTAssertGreaterThanOrEqual(
+            firstElapsed, 0.25,
+            "1回目はモデル未ダウンロードの言語に対して実際にダウンロードを試みて待つはず"
+        )
+
+        // 2回目: `pl` はまだ `.supported` のまま（ダウンロードは完了しなかった）で候補に残る。
+        // クールダウン（既定5分）の間なので `prepareIfNeeded` は一切呼ばれず、即座に返るはず。
+        let secondStart = Date()
+        await session.openTimeline()
+        let secondElapsed = Date().timeIntervalSince(secondStart)
+
+        XCTAssertLessThan(
+            secondElapsed, 0.1,
+            "2回目はクールダウン中なので再試行を待たず、ほぼ即座に開くはず"
+        )
+        XCTAssertLessThan(
+            secondElapsed, firstElapsed / 2,
+            "2回目は1回目よりはっきり速いはず（再試行のたびに毎回待たされてはいけない。eval-5.md [1]）"
+        )
+        XCTAssertFalse(session.isPreparingTimeline, "クールダウン中は isPreparingTimeline すら立たないはず")
+    }
+
+    /// 仮想時計として使う `Date` の可変な入れ物。`Translator` の `now` 差し替え口に渡す。
+    private final class MutableClock: @unchecked Sendable {
+        var value: Date
+        init(_ value: Date) { self.value = value }
+    }
+
+    /// attempt 6: クールダウンが明ければ、また再試行できる（「一度失敗したら二度と試さない」に
+    /// してしまうと、その言語は永久に読めなくなってしまう。eval-5.md の依頼どおり、
+    /// 「毎回待たせる」と「二度と試さない」の中間を取っていることを確認する）。
+    @MainActor
+    func testPreparationRetriesAgainAfterCooldownElapses() async throws {
+        let reference = Date()
+        let prompt = Prompt(
+            id: "p1",
+            text: "お題",
+            startsAt: reference.addingTimeInterval(-3600),
+            endsAt: reference.addingTimeInterval(Prompt.defaultDuration - 3600),
+            language: "ja"
+        )
+        let needsDownload = makePost(
+            promptID: prompt.id,
+            body: "sameQ_download_pending_test_marker",
+            bodyLanguage: "pl",
+            expiresAt: prompt.endsAt
+        )
+        let schedule = PromptSchedule(prompts: [prompt], posts: [needsDownload])
+        let backend = LocalBackend(store: makeStore(), clock: AppClock(offset: 0), schedule: schedule, options: LaunchOptions())
+        let clock = MutableClock(reference)
+        let translator = Translator(
+            availability: NeedsDownloadAvailability(),
+            fakeTranslate: false,
+            preferredLanguageIdentifier: "ja",
+            sessionAcquireTimeoutSeconds: 0.2,
+            modelPrepareJobTimeoutSeconds: 0.2,
+            modelDownloadRetryCooldownSeconds: 60,
+            now: { clock.value }
+        )
+        let session = AppSession(backend: backend, clock: AppClock(offset: 0), translator: translator)
+
+        await session.start()
+        await session.completeOnboarding(emoji: "🌙", nickname: nil)
+
+        await session.submit(body: "自分の回答")
+        await session.waitForPendingTimelineOpen()
+        let stillCoolingDown = await translator.needsPreparation(sourceLanguageCode: "pl")
+        XCTAssertFalse(stillCoolingDown, "試みた直後はクールダウン中なので、まだ再試行の対象ではないはず")
+
+        // クールダウン（60秒）を過ぎたことにする。
+        clock.value = clock.value.addingTimeInterval(61)
+        let readyAgain = await translator.needsPreparation(sourceLanguageCode: "pl")
+        XCTAssertTrue(readyAgain, "クールダウンが明けたら、また再試行できるはず（永久に読めなくなってはいけない）")
     }
 }

@@ -172,4 +172,32 @@ final class TranslatorAvailabilityTests: XCTestCase {
         await translator.prepareIfNeeded(sourceLanguageCode: "zz")
         XCTAssertNil(translator.configuration, ".unsupported なら準備しようがないのでセッションを要求してはいけない")
     }
+
+    // MARK: attempt 6（eval-5.md [1]）: 直近で試して駄目だった言語はクールダウンの間、再試行しない
+
+    /// `prepareIfNeeded` を呼んで（セッション取得がタイムアウトして）失敗した直後は、
+    /// `needsPreparation` が false を返す（＝クールダウン中は `AppSession` が
+    /// `prepareIfNeeded` を呼び直さない）。これが「タイムラインを開くたびに毎回同じだけ
+    /// 待たされる」問題（eval-5.md [1]）の直接の修正。
+    @MainActor
+    func testPrepareIfNeededSkipsRetryWithinCooldownAfterUnresolvedAttempt() async {
+        let log = CallLog()
+        let availability = FakeAvailability(statusesByLowercasedSourceCode: ["pl": .supported], log: log)
+        let translator = Translator(
+            availability: availability,
+            fakeTranslate: false,
+            preferredLanguageIdentifier: "ja",
+            sessionAcquireTimeoutSeconds: 0.2,
+            modelPrepareJobTimeoutSeconds: 0.2,
+            modelDownloadRetryCooldownSeconds: 300
+        )
+
+        let needsBefore = await translator.needsPreparation(sourceLanguageCode: "pl")
+        XCTAssertTrue(needsBefore, "まだ一度も試していないので再試行の対象のはず")
+
+        await translator.prepareIfNeeded(sourceLanguageCode: "pl")
+
+        let needsAfter = await translator.needsPreparation(sourceLanguageCode: "pl")
+        XCTAssertFalse(needsAfter, "直近で試みたばかりなので、クールダウン中は再試行の対象ではないはず")
+    }
 }

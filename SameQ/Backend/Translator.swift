@@ -109,6 +109,23 @@ extension LanguageAvailability: LanguageAvailabilityProviding {}
 /// `session.prepareTranslation()` にも `sessionQueue` のタイムアウト機構
 /// （`modelPrepareJobTimeoutSeconds`、既定60秒）を適用し、ダウンロードが長引く・失敗する
 /// 場合でも画面が固まらないようにする。
+///
+/// ## attempt 6 での変更（eval-5.md [1][2] の修正）
+/// attempt 5 は「試して失敗した」を一切覚えなかったため、モデル未ダウンロードの言語が
+/// 候補に残っている限り、**タイムラインを開くたびに毎回**同じ60〜120秒の待ちが発生した
+/// （実機実測: round1 62.1秒 / round2 61.3秒。`eval-5.md` [1]）。
+/// `lastPrepareAttemptAt` に「この言語を最後に試みた時刻」を記録し、
+/// `modelDownloadRetryCooldownSeconds`（既定5分）以内の再試行は行わない
+/// （`shouldAttemptPreparation`）。「毎回律儀に試す」と「一度失敗したら二度と試さない」の
+/// 中間を取った: 5分経てば次にタイムラインを開いたときに再挑戦できるので、モデルの
+/// ダウンロードが裏で完了していれば（あるいは電波状況が変わっていれば）いずれ読めるように
+/// なる可能性を残しつつ、直後の再オープンでは待たせない。
+/// `AppSession.prepareTimelineLanguagesIfNeeded` はこの判定を `needsPreparation` で
+/// 事前に確認し、実際に試みる言語が1つも無ければ `isPreparingTimeline` すら立てない
+/// （ボタンの「準備中…」が一瞬もちらつかない）。
+///
+/// また `submit()`（`AppSession`）が `openTimeline()` の完了を待たなくなったため、
+/// 投稿ボタンがモデルダウンロードの待ち時間を背負わなくなった（詳細は `AppSession.submit`）。
 @MainActor
 @Observable
 final class Translator {
@@ -141,6 +158,10 @@ final class Translator {
     /// 模擬した言語コード（`qtd`）。実際の `LanguageAvailability` を持たない疑似モードでは
     /// `statusCache` の代わりにこれで「もう準備中の対象ではない」ことを覚える（attempt 5）。
     private var fakeDownloadedSourceCodes: Set<String> = []
+    /// 言語ごとに「最後にダウンロードを試みた時刻」。`.supported` のままダウンロードが
+    /// 完了しなかった言語を、`modelDownloadRetryCooldownSeconds` の間は再試行しないために使う
+    /// （eval-5.md [1]: 毎回ゼロから同じ待ちを繰り返す問題の修正。attempt 6）。
+    private var lastPrepareAttemptAt: [String: Date] = [:]
 
     /// `sessionQueue` のセッション取得タイムアウト（`translate` にも `prepareIfNeeded` にも
     /// 共通で使う。ユニットテストでは短く差し替えて、解決されないまま待たされることを防ぐ）。
@@ -150,6 +171,13 @@ final class Translator {
     /// `session.prepareTranslation()`（モデルのダウンロード）自体のタイムアウト。
     /// ダウンロードは通常の翻訳より時間が掛かりうるため、別の長さを持つ（attempt 5）。
     private let modelPrepareJobTimeoutSeconds: Double
+    /// ダウンロードを試みて `.supported` のまま完了しなかった言語を、次に再試行するまで
+    /// 空ける間隔（既定5分）。この間はダウンロードを試みず、既存の一時的失敗として
+    /// 静かに読み飛ばす（eval-5.md [1]。attempt 6）。
+    private let modelDownloadRetryCooldownSeconds: Double
+    /// 「今」を読む窓口。ユニットテストが `lastPrepareAttemptAt` との経過時間を制御できるように
+    /// 差し替え可能にしている（既定は実時計）。
+    private let now: () -> Date
 
     /// `TranslationSession` の取得を1件ずつさばく待ち行列。新しいセッションが必要になる
     /// たびに（同じ言語ペアでも毎回）`configuration` を更新して `.translationTask` へ知らせる。
@@ -199,19 +227,28 @@ final class Translator {
     ///   - modelPrepareJobTimeoutSeconds: `session.prepareTranslation()`（モデルの
     ///     ダウンロード）自体のタイムアウト（既定60秒。`session.translate(_:)` の既定30秒より
     ///     長い。ダウンロードは翻訳そのものより時間が掛かりうるため）。
+    ///   - modelDownloadRetryCooldownSeconds: ダウンロードを試みて `.supported` のまま
+    ///     完了しなかった言語を、次に再試行するまで空ける間隔（既定5分）。ユニットテストは
+    ///     `now` と合わせて短く／制御可能にして、クールダウンの境界を確定的に検証する。
+    ///   - now: 「今」を読む窓口（既定は実時計）。ユニットテストが `lastPrepareAttemptAt`
+    ///     からの経過時間を仮想的に進められるようにするための差し替え口。
     nonisolated init(
         availability: LanguageAvailabilityProviding = LanguageAvailability(),
         fakeTranslate: Bool = LaunchOptions.current.fakeTranslate,
         preferredLanguageIdentifier: String? = nil,
         sessionAcquireTimeoutSeconds: Double = 45,
         sessionJobTimeoutSeconds: Double = 30,
-        modelPrepareJobTimeoutSeconds: Double = 60
+        modelPrepareJobTimeoutSeconds: Double = 60,
+        modelDownloadRetryCooldownSeconds: Double = 300,
+        now: @escaping () -> Date = Date.init
     ) {
         self.availability = availability
         self.fakeTranslateEnabled = fakeTranslate
         self.sessionAcquireTimeoutSeconds = sessionAcquireTimeoutSeconds
         self.sessionJobTimeoutSeconds = sessionJobTimeoutSeconds
         self.modelPrepareJobTimeoutSeconds = modelPrepareJobTimeoutSeconds
+        self.modelDownloadRetryCooldownSeconds = modelDownloadRetryCooldownSeconds
+        self.now = now
         // `Locale.current.language` は使わない。このアプリは Localizable.strings 等の
         // 言語リソースを1つも持たないため、`Locale.current` は端末の言語設定を無視して
         // 開発言語（既定 "en"）に丸められることがある（実機・シミュレータで確認済みの挙動、
@@ -295,22 +332,26 @@ final class Translator {
     ///
     /// - `.installed`（既にダウンロード済み）・`.unsupported`（恒久的に非対応）・
     ///   端末言語と同じ、のいずれかならここでは何もしない（無駄なセッション要求をしない）。
-    /// - `.supported` のときだけ `session.prepareTranslation()` を呼ぶ。失敗・タイムアウト
-    ///   （`modelPrepareJobTimeoutSeconds`）してもエラーは投げず、静かに諦める。呼び出し元の
-    ///   `translate(_:sourceLanguageCode:)` は、それでもまだ `.supported` のままなら
-    ///   従来どおり `.unavailable(permanent: false)` で読み飛ばす（既読にしない＝次回また
-    ///   ダウンロードに挑戦できる）。
+    /// - `.supported` かつ、直近 `modelDownloadRetryCooldownSeconds` 以内に
+    ///   このコードを試していなければ `session.prepareTranslation()` を呼ぶ。
+    ///   クールダウン中なら**何も試みず即座に返る**（eval-5.md [1]: タイムラインを開くたびに
+    ///   毎回ゼロから同じ待ちを繰り返す問題の修正。attempt 6）。
+    /// - 失敗・タイムアウト（`modelPrepareJobTimeoutSeconds`）してもエラーは投げず、静かに
+    ///   諦める。呼び出し元の `translate(_:sourceLanguageCode:)` は、それでもまだ
+    ///   `.supported` のままなら従来どおり `.unavailable(permanent: false)` で読み飛ばす
+    ///   （既読にしない＝クールダウンが明ければまた挑戦できる）。
     func prepareIfNeeded(sourceLanguageCode: String) async {
         let sourceCode = sourceLanguageCode.lowercased()
-        guard sourceCode != targetLanguageCode else { return }
-        guard !unsupportedSourceCodes.contains(sourceCode) else { return }
+        guard await shouldAttemptPreparation(sourceCode: sourceCode) else { return }
 
         if fakeTranslateEnabled {
             await fakePrepareIfNeeded(sourceCode: sourceCode)
             return
         }
 
-        guard await availabilityStatus(sourceCode: sourceCode) == .supported else { return }
+        // 実際に試みる直前に記録する（成功・失敗・タイムアウトのいずれでも「試した」ことに
+        // なる。ここを更新しないと、失敗するたびに次のクールダウン判定が効かない）。
+        lastPrepareAttemptAt[sourceCode] = now()
         _ = await sessionQueue.perform(
             key: sourceCode,
             jobTimeoutSeconds: modelPrepareJobTimeoutSeconds,
@@ -331,6 +372,34 @@ final class Translator {
                 }
             }
         )
+    }
+
+    /// `sourceLanguageCode` のダウンロードを**いま試みる価値があるか**を、実際には試みずに
+    /// 判定する（`.supported` かつクールダウン中でない）。
+    ///
+    /// `AppSession.prepareTimelineLanguagesIfNeeded` はタイムラインを開く前に、この関数で
+    /// 事前に「本当に試みる言語」を絞り込んでから `isPreparingTimeline` を立てる。全言語が
+    /// クールダウン中（＝直近で試して駄目だった）なら `isPreparingTimeline` すら一度も
+    /// true にならず、「世界の回答を読む」ボタンが「準備中…」に一瞬も変わらない
+    /// （eval-5.md [1] の副次対応。attempt 6）。
+    func needsPreparation(sourceLanguageCode: String) async -> Bool {
+        await shouldAttemptPreparation(sourceCode: sourceLanguageCode.lowercased())
+    }
+
+    private func shouldAttemptPreparation(sourceCode: String) async -> Bool {
+        guard sourceCode != targetLanguageCode else { return false }
+        guard !unsupportedSourceCodes.contains(sourceCode) else { return false }
+
+        if fakeTranslateEnabled {
+            return Self.fakeNeedsDownloadSourceCodes.contains(sourceCode) && !fakeDownloadedSourceCodes.contains(sourceCode)
+        }
+
+        guard await availabilityStatus(sourceCode: sourceCode) == .supported else { return false }
+        if let lastAttempt = lastPrepareAttemptAt[sourceCode],
+           now().timeIntervalSince(lastAttempt) < modelDownloadRetryCooldownSeconds {
+            return false
+        }
+        return true
     }
 
     /// 疑似モード（`-SameQFakeTranslate`）での `prepareIfNeeded` 相当。
