@@ -525,8 +525,6 @@ prompt_001 に1件追加した（既存の `zxx` 検証用投稿の直後）。
   ことを確認する（今回は「未ダウンロードのままスキップされる」ことのみ確認した）
 - `Translator.textCache` に上限が無い問題（attempt 1 から継続、優先度中）は今回も未対応
 
----
-
 # attempt 5（eval-4.md [1] の修正・ユーザー承認済みで能動的なモデルダウンロードを実装）
 
 ## 経緯
@@ -701,3 +699,65 @@ automation mode が2回とも有効化できなかったため、指でタップ
 - 90秒の予算を超えても諦めずに待ち続ける代替設計（例えばアプリがバックグラウンドに回っても
   ダウンロードを継続し、次回起動時に反映する）は今回検討していない
 - `Translator.textCache` に上限が無い問題（attempt 1 から継続、優先度中）は今回も未対応
+
+---
+
+# スプリント06 自己評価（attempt 6）
+
+## 今回直した点
+
+eval-5.md の不合格理由 [1]（モデル未ダウンロード言語を毎回ゼロから準備して待たせる）と
+[3]（投稿ボタンが `openTimeline()` の完了まで「送信中…」になる）だけを対象にした。
+
+- `Translator` に言語別の最終準備試行時刻と5分の再試行クールダウンを追加した。
+  `.supported` のまま準備が完了しなかった言語は、クールダウン中の
+  `prepareIfNeeded` が何もせず即座に返る。`needsPreparation` を通じて
+  `AppSession` も実際に試す価値がある言語だけを準備対象にするため、直後の2回目は
+  `isPreparingTimeline` を立てず、同じ60〜120秒の待ちを繰り返さない。
+- `submit(body:)` は `submitPost` の成功後、`openTimeline()` を
+  `pendingOpenTimelineTask` として開始するだけにし、その完了を待たずに返るようにした。
+  これにより投稿ボタンの「送信中…」は投稿処理の完了時点で解除され、翻訳モデル準備の
+  待ち時間を背負わない。テスト用に `waitForPendingTimelineOpen()` を用意した。
+- 上記の契約に合わせて `AppSessionTranslationTests` と
+  `TranslatorAvailabilityTests` を更新し、直後の再試行を抑止することと、クールダウン後には
+  再試行可能になることを確定的に検証するテストを追加した。
+- 一時的な実機確認用スクラッチだった
+  `SameQUITests/TempAttempt6DeviceProbeTests.swift` を削除し、`xcodegen generate` で
+  `SameQ.xcodeproj/project.pbxproj` を再生成した。再生成後、ファイル参照が残っていないことを
+  `rg` で確認した。
+
+## コードレベルでの再確認
+
+eval-5.md [1] に対しては、実際の準備を始める直前に言語別の試行時刻を記録するため、失敗・
+タイムアウト後も直後の再オープンでは `needsPreparation == false` となる。全候補が
+クールダウン中なら準備表示そのものを立てずにタイムライン表示へ進む。
+
+eval-5.md [3] に対しては、`submit()` の `defer { isSubmitting = false }` が
+バックグラウンドの `openTimeline()` 完了を待たずに実行される構造になっている。
+投稿失敗時は従来どおりアラート処理を行い、タイムラインTaskを開始しない。
+
+## ビルド・テスト結果
+
+- `xcodegen generate`: 成功（codexのsandbox内で一度、coordinatorのセッションでもう一度実行し、
+  差分が出ないことを確認済み）。
+- codex（sandbox環境）では `xcodebuild ... build` がCoreSimulatorServiceへ接続できず
+  Asset Catalog処理で失敗し、フルテストスイートも実行できなかった。この制約を受け、
+  coordinatorがsandbox外（通常のXcode実行環境）で改めてビルドとフルテストを実行した。
+- `xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'generic/platform=iOS Simulator' build`:
+  **BUILD SUCCEEDED**。
+- `xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'platform=iOS Simulator,id=12050FBD-587B-4910-8812-696BB91BE051' test`
+  （他プロセス非併走の単独実行）: **TEST SUCCEEDED**。ユニット75件・UIテスト35件、
+  合計110件すべて成功（0 failures）。所要約1151秒。attempt 5の107件から、
+  クールダウンの新規ユニットテスト追加とスクラッチファイル
+  `TempAttempt6DeviceProbeTests.swift`（1本）削除の差分で110件になった。
+
+## 弱点・持ち越し事項
+
+- 受け入れ条件4の前半（OSの「翻訳／必要なダウンロード」確認シートに人が応答し、準備完了後に
+  実際に読めること）は今回も実機で確認できていない。過去5回と同様、実機の施錠により
+  XCUITestのautomation modeを有効化できておらず、このセッションでも指タップ確認は行っていない。
+  **実機での完全な確認は次回以降に持ち越す。** クールダウン導入は、この確認ができない／利用者が
+  シートに応答しない場合でも毎回同じ長時間待ちを繰り返させないための、eval-5.md 提案(a)に
+  沿った対処である。
+- eval-5.md の「改善提案（合否には影響しない）」にある他項目、および90秒予算や
+  `textCache` などスコープ外の項目には一切変更を加えていない。

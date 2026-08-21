@@ -1,7 +1,7 @@
 {
   "currentSprint": "06",
-  "attempt": 5,
-  "status": "needs_fix",
+  "attempt": 6,
+  "status": "awaiting_eval",
   "history": [
     {
       "sprint": "01",
@@ -146,6 +146,12 @@
       "attempt": 5,
       "result": "needs_fix",
       "note": "evaluator が実機（iPhone 17 Pro Max / iOS 26.6・端末言語ja）とシミュレータで検証。不合格。受け入れ条件4が未達（モデル未DLのpl/thは60秒待っても読めるようにならず、2回目のopenTimelineも61.3秒待たされた。generatorのidの実例は、idがprompt_002にしか無いため成立しない）。基準5（使用性）も2点：submit()がopenTimeline()を待つため投稿ボタンが約60秒「送信中…」のまま。回帰は抜き取り5件+フルスイート107/107で問題なし。実機が施錠されXCUITestのautomation modeを有効化できず、OSの確認シートを指でタップする確認は今回もできていない。詳細は .product/sprints/06-translation/eval-5.md"
+    },
+    {
+      "sprint": "06",
+      "attempt": 6,
+      "result": "awaiting_eval",
+      "note": "eval-5.mdの指摘[1][3]に対応。モデル未ダウンロード言語の準備失敗を言語別に5分間クールダウンし、直後の再オープンで同じ60〜120秒待ちを繰り返さないようにした。submit()は投稿完了後のopenTimeline()をバックグラウンドTaskへ分離し、投稿ボタンが翻訳準備を待たない構造に変更。回帰ユニットテストを追加し、一時実機プローブ(TempAttempt6DeviceProbeTests.swift)を削除してxcodegen generateを実行。codexのsandboxではCoreSimulatorServiceに接続できずビルド・テストが未実行だったため、coordinatorがsandbox外で改めて実行: 指定ビルドBUILD SUCCEEDED、シミュレータのフルスイート(他プロセス非併走の単独実行)でユニット75件+UI35件=110件全件成功。実機でOS確認シートへ応答して準備完了後に読めることの完全確認は、過去5回と同様に実機施錠でXCUITestのautomation modeを有効化できず、次回以降へ持ち越し。詳細は .product/sprints/06-translation/self-review.md の attempt 6"
     }
   ]
 }
