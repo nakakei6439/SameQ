@@ -1,7 +1,7 @@
 {
   "currentSprint": "06",
   "attempt": 6,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "01",
@@ -152,6 +152,12 @@
       "attempt": 6,
       "result": "awaiting_eval",
       "note": "eval-5.mdの指摘[1][3]に対応。モデル未ダウンロード言語の準備失敗を言語別に5分間クールダウンし、直後の再オープンで同じ60〜120秒待ちを繰り返さないようにした。submit()は投稿完了後のopenTimeline()をバックグラウンドTaskへ分離し、投稿ボタンが翻訳準備を待たない構造に変更。回帰ユニットテストを追加し、一時実機プローブ(TempAttempt6DeviceProbeTests.swift)を削除してxcodegen generateを実行。codexのsandboxではCoreSimulatorServiceに接続できずビルド・テストが未実行だったため、coordinatorがsandbox外で改めて実行: 指定ビルドBUILD SUCCEEDED、シミュレータのフルスイート(他プロセス非併走の単独実行)でユニット75件+UI35件=110件全件成功。実機でOS確認シートへ応答して準備完了後に読めることの完全確認は、過去5回と同様に実機施錠でXCUITestのautomation modeを有効化できず、次回以降へ持ち越し。詳細は .product/sprints/06-translation/self-review.md の attempt 6"
+    },
+    {
+      "sprint": "06",
+      "attempt": 6,
+      "result": "needs_fix",
+      "note": "evaluatorがiPhone 17 Pro Max実機（今回初めて画面ロックが解除されXCUITestのautomation modeが機能した）とシミュレータで検証。不合格。eval-5.mdの指摘[3]（投稿ボタンが最大約120秒無反応）は解決を確認（投稿から『あなたの回答』表示まで約2秒）。指摘[1]（2回目以降も毎回待たされる）は同一アプリプロセス内では解決（61.33秒→1.62秒→1.63秒）したが、アプリを終了して数秒後に開き直すと実時間ではクールダウン期間内（5分未満）にもかかわらず67.41秒の待ちが再発することを実機で実測・再現した。原因はTranslator.lastPrepareAttemptAt（クールダウンの記録）がアプリプロセス内メモリのみに保持され state.json 等へ永続化されておらず、アプリ再起動のたびにTranslatorが作り直されて記録が失われるため。iOSがバックグラウンドアプリを頻繁に終了させる実運用を踏まえ、『同じ端末で2回目以降は待ちが発生しない』（spec.md 197行）はまだ満たされていないと判断。改善提案として lastPrepareAttemptAt を PersistedState へ永続化することを提示。安定性（クラッシュ0）・データ整合性（実機state.jsonを直接確認）・回帰（実機2件+シミュレータ5件）は合格基準を満たす。使用性は2点（閾値3未満、『準備中…』が高頻度で60秒超残るため）。受け入れ条件7（機内モード）は評価不能。詳細は .product/sprints/06-translation/eval-6.md"
     }
   ]
 }
