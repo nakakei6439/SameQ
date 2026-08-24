@@ -305,6 +305,21 @@ actor LocalBackend: Backend {
         state.blockedAuthors.sorted { $0.blockedAt > $1.blockedAt }
     }
 
+    // MARK: 翻訳モデルのダウンロード試行の永続化（受け入れ条件4・attempt 7）
+
+    /// `Translator` のクールダウン判定用。アクター内なので他の書き込みと競合しない。
+    func lastModelPrepareAttempt(sourceLanguageCode: String) async throws -> Date? {
+        state.lastPrepareAttemptAt[sourceLanguageCode.lowercased()]
+    }
+
+    /// `Translator` が実際にダウンロードを試みた直後に呼ばれる。
+    func recordModelPrepareAttempt(sourceLanguageCode: String, at date: Date) async throws {
+        var next = state
+        next.lastPrepareAttemptAt[sourceLanguageCode.lowercased()] = date
+        try store.save(next)
+        state = next
+    }
+
     // MARK: 期限切れの掃除（F10）
 
     /// 表示期限を過ぎた自分の回答と、そこに紐づくいいね・既読を保存から落とす。

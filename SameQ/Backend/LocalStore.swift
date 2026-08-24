@@ -16,9 +16,22 @@ struct PersistedState: Codable, Sendable {
     /// 直近に投稿した本文（F17: 同一文面の連投拒否）。
     /// `myPosts` は投稿の表示期限が切れると掃除されるが、こちらはお題をまたいで残す。
     var lastPostBody: String?
+    /// 言語コード（小文字）ごとに「最後に翻訳モデルのダウンロードを試みた時刻」
+    /// （受け入れ条件4・attempt 7: eval-6.md [1] の修正）。
+    ///
+    /// attempt 6 まではこれと同じ役割の `Translator.lastPrepareAttemptAt` がアプリの
+    /// プロセス内メモリにしか無く、`Translator` は起動のたびに（`AppSession` が
+    /// 既定引数で作り直すため）ゼロから作られていた。そのため、実時間ではまだ
+    /// クールダウン中（既定5分未満）でもアプリを終了して開き直すと記録が消え、
+    /// モデル未ダウンロードの言語があるたびに毎回60秒超の「準備中…」を再び待たされる
+    /// ことが実機で確認された（eval-6.md「実測2」）。ここに永続化することで、
+    /// `Translator` が新しいインスタンスとして作り直されても、同じ `Backend`
+    /// （＝同じ `state.json`）を通じて直近の試行時刻を引き継げる。
+    var lastPrepareAttemptAt: [String: Date]
 
-    /// 2 で `viewedPostIDs`、3 で `reports` / `blockedAuthors`、4 で `lastPostBody` を追加した。
-    static let currentSchemaVersion = 4
+    /// 2 で `viewedPostIDs`、3 で `reports` / `blockedAuthors`、4 で `lastPostBody`、
+    /// 5 で `lastPrepareAttemptAt` を追加した。
+    static let currentSchemaVersion = 5
 
     static let empty = PersistedState(
         schemaVersion: currentSchemaVersion,
@@ -28,7 +41,8 @@ struct PersistedState: Codable, Sendable {
         viewedPostIDs: [],
         reports: [],
         blockedAuthors: [],
-        lastPostBody: nil
+        lastPostBody: nil,
+        lastPrepareAttemptAt: [:]
     )
 
     init(
@@ -39,7 +53,8 @@ struct PersistedState: Codable, Sendable {
         viewedPostIDs: [UUID],
         reports: [Report] = [],
         blockedAuthors: [BlockedAuthor] = [],
-        lastPostBody: String? = nil
+        lastPostBody: String? = nil,
+        lastPrepareAttemptAt: [String: Date] = [:]
     ) {
         self.schemaVersion = schemaVersion
         self.user = user
@@ -49,9 +64,10 @@ struct PersistedState: Codable, Sendable {
         self.reports = reports
         self.blockedAuthors = blockedAuthors
         self.lastPostBody = lastPostBody
+        self.lastPrepareAttemptAt = lastPrepareAttemptAt
     }
 
-    /// 旧バージョン（schemaVersion 1〜3）の保存ファイルにはキーが無いので、
+    /// 旧バージョン（schemaVersion 1〜4）の保存ファイルにはキーが無いので、
     /// 欠けている項目は空として読む。アカウントを消さずに移行するため。
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -63,6 +79,7 @@ struct PersistedState: Codable, Sendable {
         reports = try container.decodeIfPresent([Report].self, forKey: .reports) ?? []
         blockedAuthors = try container.decodeIfPresent([BlockedAuthor].self, forKey: .blockedAuthors) ?? []
         lastPostBody = try container.decodeIfPresent(String.self, forKey: .lastPostBody)
+        lastPrepareAttemptAt = try container.decodeIfPresent([String: Date].self, forKey: .lastPrepareAttemptAt) ?? [:]
     }
 }
 

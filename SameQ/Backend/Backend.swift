@@ -1,10 +1,32 @@
 import Foundation
 
+/// 言語コードごとに「最後に翻訳モデルのダウンロードを試みた時刻」を永続化する窓口。
+///
+/// `Translator`（`SameQ/Backend/Translator.swift`）のクールダウン判定
+/// （`modelDownloadRetryCooldownSeconds`）は、アプリのプロセス内メモリだけでなく
+/// ここを通じて `state.json` へ永続化することで、アプリの終了・再起動をまたいでも
+/// 「直近で試したばかりか」を正しく判定できるようにする（受け入れ条件4・attempt 7:
+/// eval-6.md [1] の修正）。
+///
+/// `Backend` に含めているのは、書き込みを常に単一のアクター（`LocalBackend`）へ
+/// 集約するため。`Translator` が独自に `LocalStore` へ読み書きすると、`LocalBackend`
+/// が保持する `state`（メモリ上のスナップショット）と競合し、どちらかの書き込みが
+/// 失われる恐れがある（`LocalBackend` はアクターなので、その内部だけなら
+/// 呼び出しは直列化される）。
+protocol TranslationAttemptPersisting: Sendable {
+    /// `sourceLanguageCode`（小文字化はここでは求めない。実装側が正規化する）について、
+    /// 最後にダウンロードを試みた時刻。一度も試みていなければ nil。
+    func lastModelPrepareAttempt(sourceLanguageCode: String) async throws -> Date?
+
+    /// `sourceLanguageCode` のダウンロードを `date` の時点で試みたことを記録する。
+    func recordModelPrepareAttempt(sourceLanguageCode: String, at date: Date) async throws
+}
+
 /// アプリが必要とするデータ操作の全体。
 ///
 /// 実装は今のところ `LocalBackend`（端末内）だけだが、Supabase へ差し替えられるように
 /// すべて `async throws` にしてある。UI 層はこのプロトコルしか知らない。
-protocol Backend: Sendable {
+protocol Backend: Sendable, TranslationAttemptPersisting {
     // MARK: アカウント（F02）
 
     /// 保存済みの匿名アカウント。まだ初回設定が完了していなければ nil。

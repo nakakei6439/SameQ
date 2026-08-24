@@ -126,6 +126,22 @@ extension LanguageAvailability: LanguageAvailabilityProviding {}
 ///
 /// また `submit()`（`AppSession`）が `openTimeline()` の完了を待たなくなったため、
 /// 投稿ボタンがモデルダウンロードの待ち時間を背負わなくなった（詳細は `AppSession.submit`）。
+///
+/// ## attempt 7 での変更（eval-6.md [1] の修正）
+/// attempt 6 の `lastPrepareAttemptAt` はこのインスタンスのプロセス内メモリにしか
+/// 無かった。`AppSession` は起動のたびに既定引数で新しい `Translator` を作り直すため、
+/// アプリを終了して開き直すと「最後に試した時刻」の記録がゼロから始まり、実時間では
+/// クールダウン中（既定5分未満）でも同じ約60〜67秒の待ちが再発することが実機で確認された
+/// （eval-6.md「実測2」）。
+///
+/// `attemptPersistence`（`TranslationAttemptPersisting`。実体は `AppSession` が持つのと
+/// 同じ `Backend` インスタンス）へ、試みた時刻を都度書き込むようにした。読む側は
+/// プロセス内で一度でも触った言語なら（成功・失敗どちらでも）メモリの値を正とし、
+/// まだ一度も触っていない言語だけ、起動直後の1回に限って永続化された値を取り込む
+/// （`hydrateLastPrepareAttemptIfNeeded`）。書き込みは常に `Backend`（アクター）を
+/// 経由するので、`LocalBackend` が持つメモリ上のスナップショットと競合して片方の
+/// 書き込みが失われる、という事態にはならない（`Translator` 自身が `LocalStore` へ
+/// 直接読み書きしない設計上の理由は `TranslationAttemptPersisting` のコメントを参照）。
 @MainActor
 @Observable
 final class Translator {
@@ -162,6 +178,14 @@ final class Translator {
     /// 完了しなかった言語を、`modelDownloadRetryCooldownSeconds` の間は再試行しないために使う
     /// （eval-5.md [1]: 毎回ゼロから同じ待ちを繰り返す問題の修正。attempt 6）。
     private var lastPrepareAttemptAt: [String: Date] = [:]
+    /// `lastPrepareAttemptAt` を `attemptPersistence` から取り込み済みの言語コード
+    /// （attempt 7）。1プロセスにつき言語ごとに1回だけ問い合わせれば十分なので、
+    /// 一度取り込んだ（または「まだ一度も試みていない」と分かった）言語は再問い合わせしない。
+    private var hydratedFromPersistenceSourceCodes: Set<String> = []
+    /// `lastPrepareAttemptAt` を `state.json` 経由でアプリの終了・再起動をまたいで
+    /// 永続化するための窓口（attempt 7: eval-6.md [1] の修正）。`nil` なら従来どおり
+    /// プロセス内メモリだけで完結する（ユニットテストの多くはこれで十分なため既定は nil）。
+    private let attemptPersistence: TranslationAttemptPersisting?
 
     /// `sessionQueue` のセッション取得タイムアウト（`translate` にも `prepareIfNeeded` にも
     /// 共通で使う。ユニットテストでは短く差し替えて、解決されないまま待たされることを防ぐ）。
@@ -232,6 +256,10 @@ final class Translator {
     ///     `now` と合わせて短く／制御可能にして、クールダウンの境界を確定的に検証する。
     ///   - now: 「今」を読む窓口（既定は実時計）。ユニットテストが `lastPrepareAttemptAt`
     ///     からの経過時間を仮想的に進められるようにするための差し替え口。
+    ///   - attemptPersistence: `lastPrepareAttemptAt` をアプリの終了・再起動をまたいで
+    ///     永続化する窓口（既定は nil ＝プロセス内メモリのみ。attempt 7）。`AppSession` は
+    ///     既定引数でこの `Translator` を作るとき、自分が使う `Backend` インスタンスを
+    ///     そのまま渡す（詳細は `AppSession.init`）。
     nonisolated init(
         availability: LanguageAvailabilityProviding = LanguageAvailability(),
         fakeTranslate: Bool = LaunchOptions.current.fakeTranslate,
@@ -240,7 +268,8 @@ final class Translator {
         sessionJobTimeoutSeconds: Double = 30,
         modelPrepareJobTimeoutSeconds: Double = 60,
         modelDownloadRetryCooldownSeconds: Double = 300,
-        now: @escaping () -> Date = Date.init
+        now: @escaping () -> Date = Date.init,
+        attemptPersistence: TranslationAttemptPersisting? = nil
     ) {
         self.availability = availability
         self.fakeTranslateEnabled = fakeTranslate
@@ -249,6 +278,7 @@ final class Translator {
         self.modelPrepareJobTimeoutSeconds = modelPrepareJobTimeoutSeconds
         self.modelDownloadRetryCooldownSeconds = modelDownloadRetryCooldownSeconds
         self.now = now
+        self.attemptPersistence = attemptPersistence
         // `Locale.current.language` は使わない。このアプリは Localizable.strings 等の
         // 言語リソースを1つも持たないため、`Locale.current` は端末の言語設定を無視して
         // 開発言語（既定 "en"）に丸められることがある（実機・シミュレータで確認済みの挙動、
@@ -351,7 +381,19 @@ final class Translator {
 
         // 実際に試みる直前に記録する（成功・失敗・タイムアウトのいずれでも「試した」ことに
         // なる。ここを更新しないと、失敗するたびに次のクールダウン判定が効かない）。
-        lastPrepareAttemptAt[sourceCode] = now()
+        let attemptedAt = now()
+        lastPrepareAttemptAt[sourceCode] = attemptedAt
+        // 以後この言語は「プロセス内で一度触った」ことになるので、次にこのプロセス内で
+        // 判定するときはメモリの値をそのまま正として使い、永続化された値を読み直さない
+        // （attempt 7）。
+        hydratedFromPersistenceSourceCodes.insert(sourceCode)
+        if let attemptPersistence {
+            // アプリを終了して開き直しても、この「試した時刻」を次の `Translator` が
+            // 引き継げるようにする（eval-6.md [1] の修正の核心）。失敗しても翻訳自体は
+            // 続行してよいので `try?` で握りつぶす（クールダウンがプロセス内メモリだけに
+            // 留まる旧来の挙動に戻るだけで、翻訳のスキップ判定そのものは壊れない）。
+            try? await attemptPersistence.recordModelPrepareAttempt(sourceLanguageCode: sourceCode, at: attemptedAt)
+        }
         _ = await sessionQueue.perform(
             key: sourceCode,
             jobTimeoutSeconds: modelPrepareJobTimeoutSeconds,
@@ -395,11 +437,32 @@ final class Translator {
         }
 
         guard await availabilityStatus(sourceCode: sourceCode) == .supported else { return false }
+        await hydrateLastPrepareAttemptIfNeeded(sourceCode: sourceCode)
         if let lastAttempt = lastPrepareAttemptAt[sourceCode],
            now().timeIntervalSince(lastAttempt) < modelDownloadRetryCooldownSeconds {
             return false
         }
         return true
+    }
+
+    /// このプロセスでまだ一度も触っていない言語について、`attemptPersistence` から
+    /// 「最後に試した時刻」を1回だけ取り込む（attempt 7: eval-6.md [1] の修正）。
+    ///
+    /// アプリを終了して開き直すと `Translator` は新しいインスタンスとして作り直されるが
+    /// （`AppSession` の既定引数）、その新しいインスタンスのメモリには何の記録も無い。
+    /// ここで永続化された値を1回だけ読み込むことで、実時間ではまだクールダウン中の言語を
+    /// 「まだ一度も試していない」と誤判定して、また待たせてしまうことを防ぐ。
+    ///
+    /// 一度取り込んだ（または「記録が無い」と分かった）言語は `hydratedFromPersistenceSourceCodes`
+    /// に記録し、以後はこのプロセス内での判定を正として扱う（`attemptPersistence` への
+    /// 問い合わせを言語ごとに何度も繰り返さないため）。
+    private func hydrateLastPrepareAttemptIfNeeded(sourceCode: String) async {
+        guard !hydratedFromPersistenceSourceCodes.contains(sourceCode) else { return }
+        hydratedFromPersistenceSourceCodes.insert(sourceCode)
+        guard let attemptPersistence else { return }
+        if let persisted = try? await attemptPersistence.lastModelPrepareAttempt(sourceLanguageCode: sourceCode) {
+            lastPrepareAttemptAt[sourceCode] = persisted
+        }
     }
 
     /// 疑似モード（`-SameQFakeTranslate`）での `prepareIfNeeded` 相当。

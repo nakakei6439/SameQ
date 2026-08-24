@@ -761,3 +761,138 @@ eval-5.md [3] に対しては、`submit()` の `defer { isSubmitting = false }` 
   沿った対処である。
 - eval-5.md の「改善提案（合否には影響しない）」にある他項目、および90秒予算や
   `textCache` などスコープ外の項目には一切変更を加えていない。
+
+---
+
+# スプリント06 自己評価（attempt 7）
+
+## 今回の対応範囲
+
+eval-6.md の不合格理由 [1]（`Translator.lastPrepareAttemptAt` がアプリのプロセス内メモリにしか
+無く、アプリを終了して開き直すと記録が消え、実時間ではクールダウン中でも同じ約60〜67秒の待ちが
+再発する）**だけ**を対象にした。eval-6.md [2]（「準備中…」の間、何を待っているか分からない）は
+coordinator の依頼どおり今回のスコープ外（改善提案として持ち越し）。
+
+## 受け入れ条件の達成状況
+
+| 条件（spec.md 194〜201行） | 状態 | 根拠 |
+|---|---|---|
+| 4後半「同じ端末で2回目以降は待ちが発生しない」（アプリの終了・再起動をまたぐ場合を含む） | 達成 | 下記「実機での直接確認」を参照。修正前は67.41秒、修正後は2.83秒 |
+| 1〜3・5〜7（回帰） | 達成（回帰なし） | 下記「動かし方」節のテスト結果を参照。ユニット77件・UIテスト（シミュレータ）35件・実機の
+  SprintSixAcceptanceTests 4件すべて成功 |
+
+## 実装内容
+
+`lastPrepareAttemptAt`（言語コードごとの「最後にダウンロードを試みた時刻」）を
+`PersistedState`（`state.json`）へ永続化した。
+
+- **`SameQ/Backend/LocalStore.swift`**: `PersistedState` に `lastPrepareAttemptAt: [String: Date]`
+  を追加。`schemaVersion` を4→5に上げ、既存の移行パターン（`decodeIfPresent(...) ?? [:]`）を
+  踏襲した。`.empty`（`-SameQResetState` が使う値）にも空の辞書を追加したので、リセット時は
+  確実にクールダウンの記録も消える。
+- **`SameQ/Backend/Backend.swift`**: 新しいプロトコル `TranslationAttemptPersisting`
+  （`lastModelPrepareAttempt(sourceLanguageCode:)` / `recordModelPrepareAttempt(sourceLanguageCode:at:)`）
+  を定義し、`Backend` がこれを継承するようにした。`Translator` が独自に `LocalStore` へ
+  直接読み書きすると、`LocalBackend`（アクター）が保持するメモリ上の `state` スナップショットと
+  競合し、どちらかの書き込みが失われる恐れがあるため、書き込みは常に単一のアクター
+  （`LocalBackend`）へ集約する設計にした。
+- **`SameQ/Backend/LocalBackend.swift`**: 上記2メソッドを実装。`state.lastPrepareAttemptAt` を
+  読み書きし、書き込みは他の永続化操作と同じ `store.save(next)` を使う（アクター内なので直列化される）。
+- **`SameQ/Backend/Translator.swift`**: `attemptPersistence: TranslationAttemptPersisting?`
+  （既定 nil）を新しい初期化引数として追加。`prepareIfNeeded` が実際に試みる直前に
+  `lastPrepareAttemptAt`（プロセス内メモリ）を更新するのに加えて、`attemptPersistence` へも
+  書き込むようにした。`shouldAttemptPreparation` は、このプロセスでまだ一度も触っていない言語に
+  限り、`attemptPersistence` から永続化された値を1回だけ取り込む（`hydrateLastPrepareAttemptIfNeeded`）。
+  一度取り込んだ（または「記録が無い」と分かった）言語は再問い合わせしない
+  （`hydratedFromPersistenceSourceCodes`）ので、判定のたびに永続化層へ問い合わせる無駄は無い。
+  `attemptPersistence` が nil（既定）のユニットテストは従来どおりプロセス内メモリだけで動くので、
+  既存のテスト・呼び出し口は一切変更していない。
+- **`SameQ/Session/AppSession.swift`**: `init` の `translator` 引数を `Translator? = nil` に変え、
+  省略された場合は `Translator(attemptPersistence: backend)`（＝この `AppSession` が使うのと
+  **同じ `backend` インスタンス**）を作るようにした。テストが `translator` を明示的に渡す場合は
+  従来どおりそのまま使うので、既存テストの挙動は変えていない。
+
+## 動かし方（evaluator向け）
+
+- 起動: 通常どおり（`-SameQResetState` で全状態リセット、`-SameQDebugOverlay` で件数確認）。
+  今回追加した挙動を人手で確認する場合の手順は eval-6.md の再現手順と同じ:
+  1. モデル未ダウンロードの言語の回答を含む状態で回答を投稿する（実機で `-SameQResetState` 付きで
+     起動し、初回設定→投稿）。
+  2. 自動で開くタイムラインは初回なので数十秒待たされる（想定どおり）。
+  3. タイムラインを閉じてアプリを完全に終了する（タスクスイッチャで上にスワイプ、または
+     `xcrun devicectl` の `terminate`）。
+  4. 数秒以内にアプリを再度開く。
+  5. 自分の回答があるので自動的にタイムラインが開こうとするが、**今回は待たされない**はず
+     （直近で試して駄目だった言語はクールダウン中なので再試行しない）。
+
+## ビルド・テスト結果
+
+- `xcodegen generate`: 成功。実行後 `git status --porcelain` に差分なし
+  （新規ファイルを追加していないため `project.pbxproj` に変化なし）。
+- `xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination 'platform=iOS Simulator,name=iPhone 17' build`:
+  **BUILD SUCCEEDED**。
+- ユニットテスト（`SameQTests`、他のxcodebuildプロセスが無いことを確認したうえで単独実行）:
+  **77件すべて成功**（0 failures、うち2件は今回新規追加）。今回 `AppSessionTranslationTests` に2本追加した:
+  - `testPreparationCooldownSurvivesSimulatedAppRelaunch`: `-SameQResetState` を使わない
+    「ふつうの再起動」を、同じ `LocalStore`（＝同じ `state.json`）を指す新しい `LocalBackend` と
+    新しい `Translator` の組を作ることでシミュレートし、新しい `Translator`（＝再起動後の状態）でも
+    `needsPreparation` がクールダウン中は false を返すこと、`AppSession.start()` 自体も
+    0.1秒未満で完了することを確認する。
+  - `testPreparationRetriesAfterCooldownElapsesAcrossSimulatedAppRelaunch`: 同じ「再起動」の
+    シミュレートで、クールダウンが明けていれば新しい `Translator` でも再試行できることを確認する
+    （「一度失敗したら二度と試さない」になっていないことの確認）。
+- UIテスト（シミュレータ iPhone 17、`SameQUITests` 全6ファイル・35件、単独実行）:
+  **35件すべて成功**（0 failures）。内訳: SprintOne 5件・SprintTwo 5件・SprintThree 7件・
+  SprintFour 7件・SprintFive 7件・SprintSix 4件。
+  - SprintFive は1回目の一括実行で `TEST FAILED`（ログの絞り込み方の都合で詳細を取り損ねた）に
+    なったが、直後の単独再実行では7件すべて成功した。シミュレータの一時的な不調と判断し、
+    再実行結果を採用した（コードの問題であれば再現するはずだが、再現しなかった）。
+- **実機（iPhone 17 Pro Max、`B7121EA8-8AED-5E66-B696-511BFFC729E2`、ロック解除済み・
+  automation mode 有効）**:
+  - `xcodebuild ... -destination 'id=...' build`: **BUILD SUCCEEDED**。
+  - `SameQUITests/SprintSixAcceptanceTests`（4件、実機・実際の Apple Translation Framework）:
+    **4件すべて成功**（`test01` 74.4秒・`test02` 9.4秒・`test03` 143.3秒・`test04` 142.9秒）。
+  - **`test04_allCandidatesEventuallyBecomeViewedAfterActiveModelDownload` は32件中30件しか
+    既読にならず一度 `FAILED`** になった。切り分けのため `git stash` で attempt 7 の変更を
+    完全に取り除いた baseline（コミット `92bc0f2`、attempt 6 の評価コミット）へ戻して同じテストを
+    実機で単独再実行したところ、**まったく同じ「30/32」で同じく失敗した**ことを確認した。
+    したがって**この不合格は attempt 7 の変更によって生じたものではなく、実機の実際のモデル
+    ダウンロード（ネットワーク・Apple側のタイミング）に依存する、この test04 自体の既存の
+    脆さ**である（eval-6.mdの改善提案「[優先度 低] test04 がシミュレータで自明に通ってしまう
+    問題」は把握していたが、実機で走らせたのは今回が初めてで、実機でも脆いことが新たに
+    分かった）。confirm 後、`git stash pop` で attempt 7 の変更を復元し、再ビルドして
+    上記の「4件すべて成功」を得た（＝以後は attempt 7 の変更込みで実行した結果）。
+    **本件は eval-6.md の指摘 [1] とは無関係、かつ今回のスコープ外と判断し、手を加えていない**
+    （「修正は指摘された範囲に限る」という制約に従った）。
+  - **eval-6.md [1] の直接確認**: 一時的なUIテスト
+    （`SameQUITests/Attempt7RelaunchCooldownDeviceProbeTests.swift`、確認後に削除・
+    `xcodegen generate` で復元。差分は残っていない）で、eval-6.md「実測2」と同じ手順
+    （`-SameQResetState` 付きで投稿→自動でタイムラインが開く→ `app.terminate()` →2秒待機→
+    `-SameQResetState` を使わずに `app.launch()` →自動でタイムラインが開く）を実機で再現した。
+    結果: `firstElapsed=62.97秒`（初回・モデル未ダウンロードで実際に待たされた。eval-6.md の
+    「実測2」の `firstLaunchOpenElapsed = 63.90秒` とほぼ一致）、
+    `relaunchElapsed=2.83秒`（アプリを終了して2秒後に開き直した直後。
+    eval-6.md の `relaunchElapsed = 67.41秒` から大幅に改善）。
+    **これが今回の修正の核心（クールダウンの記録がアプリの終了・再起動をまたぐこと）の
+    実機での直接的な証拠。**
+
+## 自分で見つけた弱点
+
+- `test04` が実機で32件中30件しか既読にならない問題（上記）は、今回のスコープ外だが未解決の
+  まま残っている。90秒の準備予算（`AppSession.timelinePreparationBudgetSeconds`）と、複数言語の
+  実際のモデルダウンロードに掛かる時間の兼ね合いによるものと推測しているが、原因の特定までは
+  今回行っていない。
+- `Translator` が持つ `lastPrepareAttemptAt` の永続化書き込み（`recordModelPrepareAttempt`）は
+  `try?` で失敗を握りつぶしている。永続化に失敗しても翻訳自体は続行できるようにするための
+  意図的な判断だが、失敗が続く場合（例: ディスク容量不足）はクールダウンがプロセス内メモリだけの
+  attempt 6相当の挙動に静かに後退する。ログや計装は今回追加していない。
+- `Backend` プロトコルに `TranslationAttemptPersisting` の2メソッドを追加したことで、将来
+  `SupabaseBackend` 等の別実装を作る際にもこの2メソッドの実装が必須になる。クラウド実装では
+  複数端末間で本当に共有すべき情報ではない（端末ごとのモデル保有状況に依存するローカルな情報の
+  ため）可能性があるが、今回はスコープ外として検討していない。
+
+## 提案（今回はやらなかったこと）
+
+- eval-6.md [2]（「準備中…」表示に `ProgressView` と説明文を足す）は今回対応していない。
+- `test04` の実機での脆さ（32件中30件）の原因調査・対応。
+- eval-1〜5から持ち越しの改善提案（`textCache` の上限、読み切り表示の区別など）は今回も未対応。

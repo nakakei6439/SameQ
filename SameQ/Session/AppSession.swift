@@ -84,10 +84,17 @@ final class AppSession {
     /// いま有効なお題。お題待ちのあいだは nil。
     var prompt: Prompt? { promptState.prompt }
 
-    init(backend: Backend = BackendProvider.make(), clock: AppClock = AppClock(), translator: Translator = Translator()) {
+    /// `translator` を省略した場合は、この `AppSession` が使うのと**同じ `backend` インスタンス**
+    /// を `attemptPersistence` として渡した `Translator` を作る（attempt 7: eval-6.md [1] の修正）。
+    /// 同じインスタンス（＝同じアクター）を経由させることで、`Translator` が
+    /// `lastPrepareAttemptAt` を永続化する書き込みと、`LocalBackend` 自身の書き込みが
+    /// 競合してどちらかが失われる、という事態を避ける（`Backend` はアクターなので、
+    /// 同じインスタンスへの呼び出しはすべて直列化される）。
+    /// テストが `translator` を明示的に渡す場合はそのまま使う（挙動を変えない）。
+    init(backend: Backend = BackendProvider.make(), clock: AppClock = AppClock(), translator: Translator? = nil) {
         self.backend = backend
         self.clock = clock
-        self.translator = translator
+        self.translator = translator ?? Translator(attemptPersistence: backend)
         self.now = clock.now
     }
 

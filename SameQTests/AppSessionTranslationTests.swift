@@ -480,4 +480,157 @@ final class AppSessionTranslationTests: XCTestCase {
         let readyAgain = await translator.needsPreparation(sourceLanguageCode: "pl")
         XCTAssertTrue(readyAgain, "クールダウンが明けたら、また再試行できるはず（永久に読めなくなってはいけない）")
     }
+
+    // MARK: attempt 7（eval-6.md [1]）: クールダウンの記録がアプリの終了・再起動をまたぐ
+
+    /// eval-6.md [1] の核心の再発防止テスト。
+    ///
+    /// attempt 6 までは `Translator.lastPrepareAttemptAt` がプロセス内メモリにしか無く、
+    /// `AppSession` は起動のたびに既定引数で新しい `Translator` を作り直すため、
+    /// アプリを終了して開き直すと記録が消え、実時間ではクールダウン中（5分未満）でも
+    /// 同じ約60〜67秒の待ちが再発することが実機で確認された（eval-6.md「実測2」）。
+    ///
+    /// ここでは `-SameQResetState` を使わない「ふつうの再起動」を、**同じ `LocalStore`
+    /// （＝同じ `state.json`）を指す新しい `LocalBackend` と新しい `Translator` の組**を
+    /// 作ることでシミュレートする（実機の evaluator が確認した
+    /// 「`terminate()` → 数秒後に `launch()`」と同じ状況: プロセスは作り直されるが、
+    /// `state.json` の中身は引き継がれる）。
+    @MainActor
+    func testPreparationCooldownSurvivesSimulatedAppRelaunch() async throws {
+        let reference = Date()
+        let prompt = Prompt(
+            id: "p1",
+            text: "お題",
+            startsAt: reference.addingTimeInterval(-3600),
+            endsAt: reference.addingTimeInterval(Prompt.defaultDuration - 3600),
+            language: "ja"
+        )
+        let needsDownload = makePost(
+            promptID: prompt.id,
+            body: "sameQ_download_pending_test_marker",
+            bodyLanguage: "pl",
+            expiresAt: prompt.endsAt
+        )
+        let schedule = PromptSchedule(prompts: [prompt], posts: [needsDownload])
+        let store = makeStore()
+
+        // --- 1回目の起動 ---
+        let backend1 = LocalBackend(store: store, clock: AppClock(offset: 0), schedule: schedule, options: LaunchOptions())
+        let translator1 = Translator(
+            availability: NeedsDownloadAvailability(),
+            fakeTranslate: false,
+            preferredLanguageIdentifier: "ja",
+            sessionAcquireTimeoutSeconds: 0.2,
+            modelPrepareJobTimeoutSeconds: 0.2,
+            modelDownloadRetryCooldownSeconds: 300,
+            attemptPersistence: backend1
+        )
+        let session1 = AppSession(backend: backend1, clock: AppClock(offset: 0), translator: translator1)
+        await session1.start()
+        await session1.completeOnboarding(emoji: "🌙", nickname: nil)
+        await session1.submit(body: "自分の回答")
+        await session1.waitForPendingTimelineOpen()
+
+        let persistedAttempt = try await backend1.lastModelPrepareAttempt(sourceLanguageCode: "pl")
+        XCTAssertNotNil(persistedAttempt, "1回目の試行が state.json（`lastPrepareAttemptAt`）へ永続化されているはず")
+
+        // --- アプリを終了して開き直す（-SameQResetState は使わないので、同じ `store` が
+        // 指すファイルの中身は引き継がれる。新しい `LocalBackend` と新しい `Translator` は
+        // どちらもプロセス内メモリを一切共有していない） ---
+        let backend2 = LocalBackend(store: store, clock: AppClock(offset: 0), schedule: schedule, options: LaunchOptions())
+        let translator2 = Translator(
+            availability: NeedsDownloadAvailability(),
+            fakeTranslate: false,
+            preferredLanguageIdentifier: "ja",
+            sessionAcquireTimeoutSeconds: 0.2,
+            modelPrepareJobTimeoutSeconds: 0.2,
+            modelDownloadRetryCooldownSeconds: 300,
+            attemptPersistence: backend2
+        )
+
+        let needsRetryRightAfterRelaunch = await translator2.needsPreparation(sourceLanguageCode: "pl")
+        XCTAssertFalse(
+            needsRetryRightAfterRelaunch,
+            "新しい Translator（＝アプリの再起動を模した状態）でも、直近の試行時刻を state.json から" +
+            "引き継ぎ、クールダウン中は再試行しないはず（eval-6.md [1] の修正）"
+        )
+
+        // 再起動直後、自分の回答があるので自動的にタイムラインが開こうとする流れ
+        // （`AppSession.start()` → `applyPromptState` → `openTimeline()`）も、
+        // クールダウン中なので待たされずにすぐ完了するはず。
+        let session2 = AppSession(backend: backend2, clock: AppClock(offset: 0), translator: translator2)
+        let relaunchStart = Date()
+        await session2.start()
+        let relaunchElapsed = Date().timeIntervalSince(relaunchStart)
+        XCTAssertLessThan(
+            relaunchElapsed, 0.1,
+            "再起動直後もクールダウン中なので、ダウンロードの再試行を待たずにタイムラインが開くはず" +
+            "（eval-6.md [1]: 再起動のたびに約60〜67秒待たされる問題の再発防止）"
+        )
+        XCTAssertFalse(session2.isPreparingTimeline, "クールダウン中は再起動後も isPreparingTimeline が立たないはず")
+    }
+
+    /// attempt 7: クールダウンが明けていれば、再起動後の新しい `Translator` でも再試行できる
+    /// （「一度失敗したら二度と試さない」にしてしまうと、その言語は永久に読めなくなる。
+    /// attempt 6 の判断をアプリの再起動をまたいでも維持する）。
+    @MainActor
+    func testPreparationRetriesAfterCooldownElapsesAcrossSimulatedAppRelaunch() async throws {
+        let reference = Date()
+        let prompt = Prompt(
+            id: "p1",
+            text: "お題",
+            startsAt: reference.addingTimeInterval(-3600),
+            endsAt: reference.addingTimeInterval(Prompt.defaultDuration - 3600),
+            language: "ja"
+        )
+        let needsDownload = makePost(
+            promptID: prompt.id,
+            body: "sameQ_download_pending_test_marker",
+            bodyLanguage: "pl",
+            expiresAt: prompt.endsAt
+        )
+        let schedule = PromptSchedule(prompts: [prompt], posts: [needsDownload])
+        let store = makeStore()
+        // 2つの `Translator` インスタンス（＝2回のアプリ起動）で同じ仮想時計を共有し、
+        // 実時間を待たずにクールダウンの経過をシミュレートする。
+        let clock = MutableClock(reference)
+
+        let backend1 = LocalBackend(store: store, clock: AppClock(offset: 0), schedule: schedule, options: LaunchOptions())
+        let translator1 = Translator(
+            availability: NeedsDownloadAvailability(),
+            fakeTranslate: false,
+            preferredLanguageIdentifier: "ja",
+            sessionAcquireTimeoutSeconds: 0.2,
+            modelPrepareJobTimeoutSeconds: 0.2,
+            modelDownloadRetryCooldownSeconds: 60,
+            now: { clock.value },
+            attemptPersistence: backend1
+        )
+        let session1 = AppSession(backend: backend1, clock: AppClock(offset: 0), translator: translator1)
+        await session1.start()
+        await session1.completeOnboarding(emoji: "🌙", nickname: nil)
+        await session1.submit(body: "自分の回答")
+        await session1.waitForPendingTimelineOpen()
+
+        // クールダウン（60秒）を過ぎたことにする。
+        clock.value = clock.value.addingTimeInterval(61)
+
+        // アプリを終了して開き直す（新しい `LocalBackend` / `Translator`。同じ `store`）。
+        let backend2 = LocalBackend(store: store, clock: AppClock(offset: 0), schedule: schedule, options: LaunchOptions())
+        let translator2 = Translator(
+            availability: NeedsDownloadAvailability(),
+            fakeTranslate: false,
+            preferredLanguageIdentifier: "ja",
+            sessionAcquireTimeoutSeconds: 0.2,
+            modelPrepareJobTimeoutSeconds: 0.2,
+            modelDownloadRetryCooldownSeconds: 60,
+            now: { clock.value },
+            attemptPersistence: backend2
+        )
+        let readyAgainAfterRelaunch = await translator2.needsPreparation(sourceLanguageCode: "pl")
+        XCTAssertTrue(
+            readyAgainAfterRelaunch,
+            "クールダウンが明けていれば、再起動後の新しい Translator でも再試行できるはず（永久に読めなくなってはいけない）"
+        )
+    }
 }
