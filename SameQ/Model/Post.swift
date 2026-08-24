@@ -27,6 +27,20 @@ struct Post: Codable, Identifiable, Equatable, Sendable {
         return trimmed.isEmpty ? nil : trimmed
     }
 
+    /// 閲覧者用に音写した表示名を返す（F23）。
+    /// - Parameters:
+    ///   - transliterator: 端末言語への音写器。`nil` のときは音写せず原文をそのまま返す
+    ///     （`displayNickname` と同じ動作）。
+    ///   - isOwn: 自分の回答のときは `true` を渡す。受け入れ条件5により、自分のニックネームは
+    ///     入力した原文のまま表示する（音写しない）。
+    /// - Returns: 表示できる文字列。未設定・音写不能のときは `nil`（呼び出し側は絵文字のみ表示）。
+    func displayedNickname(transliterator: NicknameTransliterator?, isOwn: Bool) -> String? {
+        // 自分のニックネームは原文のまま表示する（受け入れ条件5）。
+        if isOwn { return displayNickname }
+        guard let transliterator else { return displayNickname }
+        return transliterator.transliterate(displayNickname)
+    }
+
     /// 本文を端末言語へ翻訳した表示用コピーを返す（F18）。他のフィールドは変えない。
     /// `state.json` には保存せず、`AppSession.timelineContent` の中でだけ使う使い捨ての値。
     func displaying(translatedBody: String) -> Post {

@@ -5,8 +5,13 @@ import SwiftUI
 /// 出す情報は「絵文字・（あれば）ニックネーム・本文」だけ。
 /// 国・言語・投稿時刻・いいね数は出さない（ランキング化と属性推測を避けるため）。
 /// 操作（次へ／いいね）はカードの外に置く。
+///
+/// **F23**: `displayedNickname` を受け取る。`TimelineView` が `session.nicknameTransliterator`
+/// と `isOwn`（=自分の投稿かどうか）を判定してここへ渡すので、View 自体は transliterator を
+/// 持たない。
 struct AnswerCardView: View {
     let post: Post
+    let displayedNickname: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -16,7 +21,7 @@ struct AnswerCardView: View {
                     .frame(width: 52, height: 52)
                     .background(Circle().fill(Theme.background))
                     .accessibilityIdentifier("timeline.card.emoji")
-                if let nickname = post.displayNickname {
+                if let nickname = displayedNickname {
                     Text(nickname)
                         .font(.system(size: 16, weight: .semibold, design: .rounded))
                         .foregroundStyle(Theme.inkSecondary)

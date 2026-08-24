@@ -168,7 +168,15 @@ struct TimelineView: View {
 
     private func cardStack(post: Post) -> some View {
         ZStack {
-            AnswerCardView(post: post)
+            AnswerCardView(
+                post: post,
+                // 自分のニックネームは原文のまま表示する（受け入れ条件5）。
+                // それ以外は transliterator を通した表示名（受け入れ条件1）。
+                displayedNickname: post.displayedNickname(
+                    transliterator: session.nicknameTransliterator,
+                    isOwn: post.authorID == session.user?.id
+                )
+            )
                 .padding(.horizontal, 20)
                 .offset(dragOffset)
                 .rotationEffect(.degrees(Double(dragOffset.width / 32)))

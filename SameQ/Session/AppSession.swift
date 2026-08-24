@@ -41,6 +41,10 @@ final class AppSession {
     /// `RootView` がこれを `TranslationHostView` へ渡し、常駐する `.translationTask` から
     /// `TranslationSession` を受け取れるようにする。
     let translator: Translator
+    /// ニックネームを端末言語の文字体系へ音写する窓口（F23）。
+    /// 端末言語の判定は `translator` と一貫させたいので、`Translator.targetLanguageCode` を
+    /// そのまま借りて `NicknameTransliterator` を作る。
+    let nicknameTransliterator: NicknameTransliterator
 
     private(set) var screen: Screen = .loading
     private(set) var user: AppUser?
@@ -94,7 +98,14 @@ final class AppSession {
     init(backend: Backend = BackendProvider.make(), clock: AppClock = AppClock(), translator: Translator? = nil) {
         self.backend = backend
         self.clock = clock
-        self.translator = translator ?? Translator(attemptPersistence: backend)
+        let translator = translator ?? Translator(attemptPersistence: backend)
+        self.translator = translator
+        // `NicknameTransliterator` の端末言語判定は `Translator` と一貫させる。
+        // `translator` だけ後から差し替えたいテストの便宜のため、`NicknameTransliterator` も
+        // `init` の引数で上書きできるよう既定では translator から作る。
+        self.nicknameTransliterator = NicknameTransliterator(
+            targetLanguageCode: translator.targetLanguageCode
+        )
         self.now = clock.now
     }
 

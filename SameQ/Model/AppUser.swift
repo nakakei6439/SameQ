@@ -15,4 +15,14 @@ struct AppUser: Codable, Identifiable, Equatable, Sendable {
         let trimmed = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
+
+    /// 自分のニックネームは原文のまま表示する（受け入れ条件5）。呼び出し側は
+    /// `transliterator` を渡さず（または `nil` を渡して）使う想定。
+    func displayedNickname(transliterator: NicknameTransliterator?) -> String? {
+        // 自分のニックネームは `transliterator` を経由せず、`displayNickname` をそのまま返す。
+        // transliterator は受け入れない（無視する）ことを明示するためシグネチャに残してある
+        // （`Post.displayedNickname(transliterator:isOwn:)` と API 形を揃える）。
+        _ = transliterator
+        return displayNickname
+    }
 }

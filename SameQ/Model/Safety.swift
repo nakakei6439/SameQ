@@ -61,4 +61,13 @@ struct BlockedAuthor: Codable, Identifiable, Equatable, Sendable {
         let trimmed = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
+
+    /// 閲覧者用に音写した名前を返す（F23）。設定画面のブロック一覧に出す名前用。
+    /// ブロックは自分の操作なので `isOwn` は常に `false`（相手のニックネームを音写する）。
+    /// - Parameter transliterator: 端末言語への音写器。`nil` のときは音写せず原文のまま。
+    /// - Returns: 表示できる文字列。未設定・音写不能のときは `nil`（呼び出し側は「名前のない人」表記）。
+    func displayedNickname(transliterator: NicknameTransliterator?) -> String? {
+        guard let transliterator else { return displayNickname }
+        return transliterator.transliterate(displayNickname)
+    }
 }

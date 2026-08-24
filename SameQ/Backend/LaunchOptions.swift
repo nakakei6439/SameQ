@@ -24,6 +24,9 @@ import Foundation
 ///                                    未対応を返すため、翻訳の周辺ロジック（表示切り替え・
 ///                                    非対応スキップ・ちらつき防止・キャッシュ）を確定的に
 ///                                    検証するための Debug 限定モード。
+/// - `-SameQNicknameTranslitDebug`     `NicknameTransliterator` を「常に音写失敗」扱いにし、
+///                                    絵文字のみ表示へのフォールバックを再現する（F23）。
+///                                    受け入れ条件3（音写できないニックネーム）の検証用。
 struct LaunchOptions: Sendable {
     var resetsState: Bool = false
     var resetsViewed: Bool = false
@@ -39,6 +42,10 @@ struct LaunchOptions: Sendable {
     /// `-SameQFakeTranslate`（Debug限定）。true の間は `Translator` が実際の `TranslationSession` を
     /// 使わず、決定的な疑似翻訳を返す（F18〜F22。シミュレータでの検証用）。
     var fakeTranslate: Bool = false
+    /// `-SameQNicknameTranslitDebug`（Debug限定）。true の間は `NicknameTransliterator` が
+    /// すべての入力に対して音写失敗扱いを返し、絵文字のみ表示へのフォールバックを
+    /// 受け入れ条件3（音写できないニックネーム）の検証用に再現できるようにする（F23）。
+    var forceNicknameTranslitFailure: Bool = false
     /// いいねの連打制限（F17）。既定は15秒間に8回まで、超えたら15秒制限。
     var likeRateLimit = RateLimitSettings(maxActions: 8, windowSeconds: 15, cooldownSeconds: 15)
     /// 通報の連打制限（F17）。既定は30秒間に4回まで、超えたら20秒制限。
@@ -60,6 +67,7 @@ struct LaunchOptions: Sendable {
         options.showsDebugOverlay = arguments.contains("-SameQDebugOverlay")
         options.isBanned = arguments.contains("-SameQBanned")
         options.fakeTranslate = arguments.contains("-SameQFakeTranslate")
+        options.forceNicknameTranslitFailure = arguments.contains("-SameQNicknameTranslitDebug")
         if arguments.contains("-SameQRateLimitTestMode") {
             // 手動検証・UIテストで実時間を長く待たなくて済むように回数を減らす。
             // ウィンドウは「操作を数回繰り返す」のに十分な長さを残す

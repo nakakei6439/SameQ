@@ -98,16 +98,17 @@ struct SettingsView: View {
     }
 
     private func row(_ author: BlockedAuthor) -> some View {
-        HStack(spacing: 12) {
+        let displayed = author.displayedNickname(transliterator: session.nicknameTransliterator)
+        return HStack(spacing: 12) {
             Text(author.emoji)
                 .font(.system(size: 24))
                 .frame(width: 44, height: 44)
                 .background(Circle().fill(Theme.background))
                 .accessibilityIdentifier("settings.blocked.emoji")
 
-            Text(author.displayNickname ?? "名前のない人")
+            Text(displayed ?? "名前のない人")
                 .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(author.displayNickname == nil ? Theme.inkTertiary : Theme.ink)
+                .foregroundStyle(displayed == nil ? Theme.inkTertiary : Theme.ink)
                 .lineLimit(1)
                 .accessibilityIdentifier("settings.blocked.name")
 
