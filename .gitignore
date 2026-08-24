@@ -65,3 +65,7 @@ Secrets.swift
 .branches
 .temp
 supabase/.temp
+
+# autoloop（夜間無人実行）のログ
+#
+.product/autoloop-logs/

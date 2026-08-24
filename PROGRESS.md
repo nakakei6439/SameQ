@@ -6,6 +6,48 @@
 3. 「現在の状態」の該当行にある関連ファイル・IDを見て、そこから続ける。
 4. 各作業単位が完了したら、このファイルの該当チェックボックスと「現在の状態」を**即座に**更新してコミットする。
 
+### ⚠️ generator の起動方法（重要）
+generator（MiniMax-M3）は **Agent ツール経由の自動呼び出しでは MiniMax-M3 に接続できません**。
+
+**最も簡単な起動方法（推奨）:**
+```bash
+gen
+```
+`~/.local/bin/gen` というショートカットスクリプトが env 変数をすべて自動で設定します。
+
+**フルコマンドで起動する場合:**
+```bash
+env -u ANTHROPIC_API_KEY -u CLAUDE_CODE_AUTH_TOKEN \
+  ANTHROPIC_BASE_URL='https://api.minimax.io/anthropic' \
+  ANTHROPIC_AUTH_TOKEN="$MINIMAX_API_KEY" \
+  ANTHROPIC_MODEL="MiniMax-M3 [im]" \
+  CLAUDE_CODE_AUTO_COMPACT_WINDOW="1000000" \
+  claude --agent generator
+```
+理由は `~/.claude/agents/generator.md` の冒頭を参照。
+
+### 🌙 夜間無人実行（残りスプリントの全自動ループ）
+`scripts/autoloop.sh` が `.product/state.json` の `status` を見て、generator（MiniMax-M3・非対話）と
+evaluator（Sonnet・非対話）を自動で交互に起動し、スプリント11まで自動で進める。合格したら次の
+スプリントへ自動で進み（`currentSprint`/`attempt`/`status` を更新）、各ステップ後にローカル
+git commit（push はしない）。`blocked`（generatorが同じ指摘で複数回失敗）や全スプリント完了で自動停止。
+
+**起動:**
+```bash
+cd /Users/nakagawakeita/Products/iOSApp/SameQ
+nohup caffeinate -i ./scripts/autoloop.sh > .product/autoloop-logs/main.log 2>&1 &
+```
+
+**停止:**
+```bash
+pkill -f autoloop.sh
+```
+
+**ログ確認:** `.product/autoloop-logs/`（`main.log` が全体ログ、`generator_*.log` / `evaluator_*.log` が個別ログ）
+
+詳細は `scripts/autoloop.sh` 内のコメントを参照。**初回は少数回だけ様子見で走らせ、`state.json` の
+遷移とログが期待通りか確認してから本格的な夜間実行に委ねること。**
+
 **2026-08-24時点の申し送り**: スプリント06 attempt 7 完了・evaluator 引き渡し待ち（詳細下記・[`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 7」）。eval-6.mdの指摘[1]（`lastPrepareAttemptAt` がプロセス内メモリのみでアプリ再起動をまたがない）に対応し、`PersistedState`（`state.json`、schemaVersion 4→5）へ永続化した。ユニット77件・シミュレータUI35件・実機のSprintSixAcceptanceTests 4件すべて成功。実機で一時テストを使いeval-6.mdの再現手順そのものを確認し、修正前67.41秒→修正後2.83秒への改善を直接確認済み（詳細は下記「スプリント06 attempt 7」節）。
 - スプリント06は既に6回不合格になっている（attempt 1〜6、詳細は下の該当節）。同じ轍を踏まないよう、各attemptの不合格理由には必ず目を通すこと
 - 実機で`SprintSixAcceptanceTests.test04`が32件中30件しか既読にならず一度失敗したが、attempt 7の変更を`git stash`で完全に除去したbaseline（`92bc0f2`）でも同じく30/32で失敗することを確認済み。**attempt 7の変更とは無関係の既存の脆さ**なので今回は手を加えていない（次スプリントの材料として持ち越し）
@@ -17,7 +59,8 @@
 | ローカルリポジトリ | `/Users/nakagawakeita/Products/iOSApp/SameQ` |
 | GitHubリポジトリ | `nakakei6439/SameQ`（Private） |
 | 製品仕様書 | [`.product/spec.md`](.product/spec.md)（機能一覧34件、スプリント11本） |
-| 開発ハーネス | planner → generator → evaluator |
+| 開発ハーネス | planner（Opus）→ generator（MiniMax-M3）→ evaluator（Sonnet） |
+| generator 起動方法 | **ターミナルから env 変数付きで起動**（Agent ツール経由では MiniMax-M3 に接続不可。下記参照） |
 
 ## バックログ（新規スコープ、未着手）
 
