@@ -215,4 +215,25 @@ final class NotificationSchedulingTests: XCTestCase {
         session.consumeDeepLink()
         XCTAssertNil(session.pendingDeepLinkTarget)
     }
+
+    /// `handleDeepLink(.timeline)` で `pendingDeepLinkTarget` が `.timeline` に立つ
+    /// （F25 / attempt 2: eval-1.md [1] の修正で実際に通るようになった経路）。
+    /// 回答済みアカウントで通知タップすると `RootView` 側が `.timeline` を立て、
+    /// それを `.onChange(of: pendingDeepLinkTarget)` が拾って世界タイムラインを開く。
+    @MainActor
+    func testHandleDeepLinkTimelineSetsPendingTarget() async {
+        let session = AppSession(
+            backend: BackendProvider.make(),
+            clock: AppClock(),
+            translator: nil,
+            notificationScheduler: nil
+        )
+        XCTAssertNil(session.pendingDeepLinkTarget)
+        session.handleDeepLink(.timeline)
+        XCTAssertEqual(session.pendingDeepLinkTarget, .timeline,
+                       "回答済みアカウントの通知タップでは `.timeline` が立つ")
+        session.consumeDeepLink()
+        XCTAssertNil(session.pendingDeepLinkTarget,
+                      "消費後は nil に戻る")
+    }
 }

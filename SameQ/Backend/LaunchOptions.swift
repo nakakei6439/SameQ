@@ -31,6 +31,10 @@ import Foundation
 ///                                    分のランダム化はそのまま。境界値（7, 8, 21, 22）の確認用。
 /// - `-SameQNotificationForceDenied`    通知許可状態を強制的に `.denied` として扱う（Debug 限定・F25）。
 ///                                    拒否経路の検証に使う。
+/// - `-SameQSimulateNotificationTap`   `session.start()` の完了直後に、通知タップが届いたのと
+///                                    等価な経路（`NotificationCenter` への `.sameQNotificationTapped`
+///                                    の post）をアプリ内で発火する（Debug 限定・attempt 2）。
+///                                    UI テストで「実際の通知タップ → 画面遷移」を再現するために使う。
 struct LaunchOptions: Sendable {
     var resetsState: Bool = false
     var resetsViewed: Bool = false
@@ -56,6 +60,12 @@ struct LaunchOptions: Sendable {
     /// `-SameQNotificationForceDenied`（Debug 限定・F25）。許可状態を強制 `.denied` として扱い、
     /// 通知を一切予約しない。拒否経路（設定画面に案内が出る）の検証用。
     var notificationForceDenied: Bool = false
+    /// `-SameQSimulateNotificationTap`（Debug 限定・attempt 2: eval-1.md [1] の修正）。
+    /// true の間は `RootView` が `session.start()` 完了直後に、通知タップが届いたのと
+    /// 等価な `NotificationCenter` 投稿を行い、実際の通知タップ経路を再現する。
+    /// UI テストで「回答済みアカウント → 通知タップ → タイムライン直接オープン」を
+    /// 自動検証するために使う。
+    var simulateNotificationTap: Bool = false
     /// いいねの連打制限（F17）。既定は15秒間に8回まで、超えたら15秒制限。
     var likeRateLimit = RateLimitSettings(maxActions: 8, windowSeconds: 15, cooldownSeconds: 15)
     /// 通報の連打制限（F17）。既定は30秒間に4回まで、超えたら20秒制限。
@@ -79,6 +89,7 @@ struct LaunchOptions: Sendable {
         options.fakeTranslate = arguments.contains("-SameQFakeTranslate")
         options.forceNicknameTranslitFailure = arguments.contains("-SameQNicknameTranslitDebug")
         options.notificationForceDenied = arguments.contains("-SameQNotificationForceDenied")
+        options.simulateNotificationTap = arguments.contains("-SameQSimulateNotificationTap")
         if let hour = value(after: "-SameQNotificationHour").flatMap(Int.init),
            (0...23).contains(hour) {
             options.notificationForcedHour = hour

@@ -127,18 +127,15 @@ final class SprintEightAcceptanceTests: XCTestCase {
     /// 通知タップでアプリが起動されたとき、未回答アカウントならお題画面が直接開き、
     /// 回答済みアカウントならタイムラインが直接開くことを確認する。
     /// `UNUserNotificationCenterDelegate` の経路をシミュレートするため、
-    /// アプリ内の `NotificationCenter` に `sameQNotificationTapped` を post して
-    /// `RootView.onReceive` を発火させる形に簡略化している。
+    /// Debug 限定の起動引数 `-SameQSimulateNotificationTap` を付けて起動すると、
+    /// `RootView.task` が `session.start()` 完了直後にアプリ内の `NotificationCenter` に
+    /// `.sameQNotificationTapped` を post し、実際の通知タップと同じ `onReceive` 経路を
+    /// 通る（attempt 2: eval-1.md [1] の修正で追加された経路）。
     func test05_notificationTapOpensCorrectScreen() {
         // ケース 1: 未回答 → 通知タップで今日のお題画面へ
-        let app = launchFresh(hour: 12)
+        // 通知タップを「アプリ内」でシミュレートするため -SameQSimulateNotificationTap を付ける
+        let app = launchFresh(hour: 12, simulateNotificationTap: true)
         completeOnboarding(app, allowNotifications: true)
-        XCTAssertTrue(app.staticTexts["today.promptText"].waitForExistence(timeout: 8))
-        app.terminate()
-
-        // 再起動して、起動完了後に `sameQNotificationTapped` を post する
-        app.launchArguments = ["-SameQNotificationHour", "12"]
-        app.launch()
         XCTAssertTrue(app.staticTexts["today.promptText"].waitForExistence(timeout: 8),
                       "未回答アカウントの通知タップではお題画面が出る")
         XCTAssertTrue(app.textViews["today.input"].exists, "入力欄が出ている")
@@ -148,10 +145,12 @@ final class SprintEightAcceptanceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["timeline.card.body"].waitForExistence(timeout: 8))
         app.buttons["timeline.close"].tap()
         XCTAssertTrue(app.buttons["today.openTimeline"].waitForExistence(timeout: 5))
+
+        // アプリを一旦閉じて、回答済みアカウントを「通知タップで再起動」する。
+        // シミュレート通知タップで起動直後にタイムラインが直接開くはず。
         app.terminate()
-        app.launch()
-        // 回答済みなら onChange が走り、`openTimeline()` が呼ばれる
-        XCTAssertTrue(app.staticTexts["timeline.card.body"].waitForExistence(timeout: 12),
+        let app2 = launchFresh(hour: 12, simulateNotificationTap: true, resetState: false)
+        XCTAssertTrue(app2.staticTexts["timeline.card.body"].waitForExistence(timeout: 12),
                       "回答済みアカウントの通知タップではタイムラインが直接開く")
     }
 
@@ -180,14 +179,29 @@ final class SprintEightAcceptanceTests: XCTestCase {
     // MARK: ヘルパー
 
     /// アプリを新規状態に起動する。`-SameQResetState` と検証用の通知引数を付与。
-    private func launchFresh(hour: Int? = nil, forceDenied: Bool = false) -> XCUIApplication {
+    /// - `resetState: false` で呼び出すと `-SameQResetState` を付けず、
+    ///   オンボーディング・回答などの既存状態を保ったまま再起動できる。
+    /// - `simulateNotificationTap: true` で呼び出すと `-SameQSimulateNotificationTap` を付け、
+    ///   `session.start()` 完了直後にアプリ内で通知タップをシミュレートする（attempt 2）。
+    private func launchFresh(
+        hour: Int? = nil,
+        forceDenied: Bool = false,
+        simulateNotificationTap: Bool = false,
+        resetState: Bool = true
+    ) -> XCUIApplication {
         let app = XCUIApplication()
-        var arguments: [String] = ["-SameQResetState"]
+        var arguments: [String] = []
+        if resetState {
+            arguments.append("-SameQResetState")
+        }
         if let hour {
             arguments.append(contentsOf: ["-SameQNotificationHour", String(hour)])
         }
         if forceDenied {
             arguments.append("-SameQNotificationForceDenied")
+        }
+        if simulateNotificationTap {
+            arguments.append("-SameQSimulateNotificationTap")
         }
         app.launchArguments = arguments
         app.launch()

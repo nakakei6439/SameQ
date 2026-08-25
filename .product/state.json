@@ -1,7 +1,7 @@
 {
   "currentSprint": "08",
-  "attempt": 1,
-  "status": "needs_fix",
+  "attempt": 2,
+  "status": "awaiting_eval",
   "history": [
     {
       "sprint": "01",
@@ -188,6 +188,12 @@
       "attempt": 1,
       "result": "needs_fix",
       "note": "evaluatorがiPhone 17 Pro Maxシミュレータ（iOS 26.3, UDID E33C6F86）で実操作検証。不合格。受け入れ条件5/6。条件4（通知タップで回答済みならタイムラインが直接開く）が未達: RootView.swiftの実際の通知タップ経路（UNUserNotificationCenterDelegate.didReceive→NotificationCenter.post→onReceive）はhandleDeepLink(.today)を無条件固定で呼んでおり、onChange側のcase .timelineへは到達不能（grep -rn handleDeepLinkでコード全体の呼び出し箇所が1箇所のみ、かつ常に.todayであることを確認）。ユニット・UIテストのどちらにも.timeline経路を検証するテストが無い。self-review.mdが自己申告した弱点2の懸念が実際の欠陥であることを確認。xcrun simctl pushで実際にプッシュ通知をシミュレータへ配信しバナー表示を画面キャプチャで確認、通知タップ後もtimeline.card.bodyが開かないことを2回のXCUITest実行で確認（座標系の制約で正確なバナータップの完全再現はできなかったが、コード上の到達不能性と実測結果は矛盾しない）。他条件（1,2,3,5,6）はself-review.mdのSprintEightAcceptanceTests（test01〜06）とNotificationSchedulingTestsを自分で実行し確認。回帰は3スプリント抜き取り18/18件成功（SprintOne/Three/SevenAcceptanceTests）。安定性（クラッシュ0）・データ整合性（state.json直接確認で問題なし）・使用性（3、主要動線は完走できるが通知タップ後にもう一手動タップが必要になる場面がある）は閾値を満たす。詳細は .product/sprints/08-random-notifications/eval-1.md"
+    },
+    {
+      "sprint": "08",
+      "attempt": 2,
+      "result": "awaiting_eval",
+      "note": "eval-1.mdの指摘[1]に対応。RootViewに@State pendingNotificationTapを追加し、.onReceive(.sameQNotificationTapped)は即時dispatchせず、session.userとscreenの準備が整ってからattemptDispatchPendingNotificationTap()が遷移先を決める設計に変更（未回答→.today、回答済み→.timeline、お題待ち→.waiting、それ以外は保留継続）。.task（session.start()完了直後）と.onChange(of: session.screen)（画面遷移時）の両方から同関数を呼ぶことで起動レースと取りこぼしを両方防ぐ。Debug限定の起動引数 -SameQSimulateNotificationTap を追加し、RootView.task内のsession.start()完了直後にNotificationCenter.default.post(name: .sameQNotificationTapped)でアプリ内通知タップを再現。SprintEightAcceptanceTests.test05_notificationTapOpensCorrectScreenを全面更新し、ケース1（未回答→お題画面）とケース2（回答済み→タイムライン直接オープン）の両方を -SameQSimulateNotificationTap 経由で実経路検証する形に変更。launchFresh ヘルパに simulateNotificationTap / resetState パラメータを追加。ユニットテスト NotificationSchedulingTests.testHandleDeepLinkTimelineSetsPendingTarget を新規追加し、handleDeepLink(.timeline)が実際に.timelineを立たせてconsumeDeepLink()で消えることを確認。SameQTests 113本・SprintEightAcceptanceTests 6本すべて単独実行で0 failuresを確認（test05は新経路で29秒）。詳細は .product/sprints/08-random-notifications/self-review.md の attempt 2"
     }
   ]
 }

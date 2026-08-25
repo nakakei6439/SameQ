@@ -11,6 +11,12 @@ struct RootView: View {
     @State private var session = AppSession()
     @Environment(\.scenePhase) private var scenePhase
 
+    /// 通知タップが届いたが、まだ `session.start()` が完了していない／画面の準備が
+    /// 整っていないときに true にして保留する（attempt 2: eval-1.md [1] の修正）。
+    /// `session.user` が読み込まれて `screen` が確定したあとに
+    /// `attemptDispatchPendingNotificationTap()` で実際の遷移先を決める。
+    @State private var pendingNotificationTap = false
+
     /// お題の切り替わりを見張る間隔。端末内の判定だけなので1秒でも軽い。
     private let refreshInterval = Duration.seconds(1)
 
@@ -44,6 +50,16 @@ struct RootView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { debugOverlay }
         .task {
             await session.start()
+            // 起動前に通知タップが届いていた場合は、ここで初めて `myPost` を見て
+            // 遷移先を決める（attempt 2: eval-1.md [1] の修正。`start()` が完了する
+            // 前に `.onReceive` が走っても `myPost` はまだ nil なので即時 dispatch できない）。
+            attemptDispatchPendingNotificationTap()
+            // `-SameQSimulateNotificationTap`（Debug 限定）が付いていれば、通知タップが
+            // 届いたのと同じ `NotificationCenter` 投稿を `MainActor` 上で発火する。
+            // UI テストで「実際の通知タップ → 画面遷移」を再現するためのフック。
+            if LaunchOptions.current.simulateNotificationTap {
+                NotificationCenter.default.post(name: .sameQNotificationTapped, object: nil)
+            }
             while !Task.isCancelled {
                 try? await Task.sleep(for: refreshInterval)
                 await session.refresh()
@@ -51,9 +67,18 @@ struct RootView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .sameQNotificationTapped)) { _ in
             // 通知タップでアプリが起動・前面化された（F25）。
-            // お題の有無に関わらず「今日の画面に遷移したい」という意思だけ伝え、
-            // 実際の遷移は `AppSession` 側が開いた画面の状態で判断する。
-            session.handleDeepLink(.today)
+            // 起動直後で `session.start()` が完了していない可能性があるため、
+            // ここでは「タップが届いた」事実だけを覚えておき、画面の準備が整った
+            // タイミングで `attemptDispatchPendingNotificationTap()` が実際の
+            // 遷移先（未回答→`.today`、回答済み→`.timeline`）を決める。
+            pendingNotificationTap = true
+            attemptDispatchPendingNotificationTap()
+        }
+        .onChange(of: session.screen) { _, _ in
+            // 画面が `.loading` → `.today` / `.waiting` / `.failure` などに移った
+            // タイミングで、保留していた通知タップを反映する（`start()` 完了や
+            // オンボーディング直後の通知タップを取りこぼさないため）。
+            attemptDispatchPendingNotificationTap()
         }
         .onChange(of: scenePhase) { _, phase in
             // バックグラウンドから戻ったときは、待たずにその場で見直す。
@@ -134,6 +159,35 @@ struct RootView: View {
                 .padding(.top, 8)
             }
             .padding(32)
+        }
+    }
+
+    /// 通知タップが届いたとき、実際の遷移先を `session` の状態から決めて
+    /// `handleDeepLink(_:)` を発火させる（attempt 2: eval-1.md [1] の修正）。
+    ///
+    /// - `session.user == nil`: `start()` がまだ完了していない。次回再試行に持ち越し。
+    /// - `screen == .today`:
+    ///   - 自分の回答あり（`myPost != nil`） → `.timeline`（世界タイムラインを開く）
+    ///   - 自分の回答なし（`myPost == nil`） → `.today`（今日のお題画面を維持）
+    /// - `screen == .waiting`: `.waiting`（お題待ち画面を維持）
+    /// - その他（`.loading` / `.onboarding` / `.banned` / `.failure`）: 何もしない。
+    ///   保留フラグは下ろさず、次の画面遷移や `start()` 完了時に再試行する。
+    private func attemptDispatchPendingNotificationTap() {
+        guard pendingNotificationTap else { return }
+        guard session.user != nil else { return }
+        switch session.screen {
+        case .today:
+            if session.myPost != nil {
+                session.handleDeepLink(.timeline)
+            } else {
+                session.handleDeepLink(.today)
+            }
+            pendingNotificationTap = false
+        case .waiting:
+            session.handleDeepLink(.waiting)
+            pendingNotificationTap = false
+        case .loading, .onboarding, .banned, .failure:
+            break
         }
     }
 
