@@ -261,11 +261,11 @@ final class ReportBlockTests: XCTestCase {
         let restoredReports = try await relaunched.reportedPostIDs()
         XCTAssertEqual(restoredReports, [reported.id])
 
-        // お題が終われば、その回答への通報の記録は端末から落ちる（履歴を持たない）。
-        // ブロックは相手に対するものなので残る。
+        // お題が終わっても、その回答への通報の記録は F34 により **30 日間** 残る
+        //（安全対策のログ）。ブロックは相手に対するものなので残る。
         let afterEnd = makeBackend(store: store, schedule: schedule, offset: Prompt.defaultDuration)
         let reportsAfterEnd = try await afterEnd.reportedPostIDs()
-        XCTAssertTrue(reportsAfterEnd.isEmpty)
+        XCTAssertEqual(reportsAfterEnd, [reported.id], "F34: お題終了直後の通報は残る（30日保持）")
         let blocksAfterEnd = try await afterEnd.blockedAuthors()
         XCTAssertEqual(blocksAfterEnd.map(\.id), [blocked.authorID])
     }

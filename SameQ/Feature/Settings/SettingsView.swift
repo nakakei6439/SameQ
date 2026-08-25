@@ -21,13 +21,16 @@ struct SettingsEntryButton: View {
     }
 }
 
-/// 設定（F15 ブロック管理 / F25 通知設定）。
+/// 設定（F15 ブロック管理 / F25 通知設定 / F28-F31 Plus / F32 プロフィール・規約・削除）。
 ///
 /// スプリント04で必要なのは「ブロック中の一覧と解除」だけだったので、
 /// ブロック管理セクションだけを置いた。スプリント08で「通知」セクションを
 /// 上に足し、拒否状態のときに「設定アプリからオンにしてね」案内を出すように
 /// した（アプリ内から直接許可を再要求するボタンは置かない。 iOS の仕様上、
-/// 一旦拒否された後は設定アプリでしか戻せないため）。
+/// 一旦拒否された後は設定App からでしか戻せないため）。スプリント10 で
+/// 「Plus」セクションを足し、購入復元と Plus 画面の入り口を置いた。
+/// スプリント11 で「プロフィール」「規約・プライバシー」「アカウント削除」
+/// の3セクションを追加し、設定を完成形にした（F32 / F33）。
 ///
 /// 一覧に出すのは**絵文字と（あれば）ニックネームだけ**。
 /// 国・言語・回答本文・ブロックした時刻は出さない。相手について分かるのは
@@ -36,6 +39,13 @@ struct SettingsView: View {
     @Environment(AppSession.self) private var session
     @Environment(\.dismiss) private var dismiss
 
+    /// プロフィール編集シート（F32）。nil のあいだは出さない。
+    @State private var profileEditor: ProfileEditorPresentation?
+    /// 規約・プライバシーポリシー表示シート（F32）。nil のあいだは出さない。
+    @State private var legalDocument: LegalDocument?
+    /// アカウント削除の確認ダイアログ（F33）。true のあいだ表示。
+    @State private var showsDeleteConfirmation = false
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -43,9 +53,12 @@ struct SettingsView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
+                        profileSection
+                        legalSection
                         notificationSection
                         plusSection
                         blockedSection
+                        dangerZoneSection
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
@@ -67,6 +80,28 @@ struct SettingsView: View {
         .task {
             // 設定を開いた瞬間に最新の許可状態を反映する（拒否 → 許可にした直後など）。
             await session.refreshNotificationAuthorizationStatus()
+        }
+        .sheet(item: $profileEditor) { presentation in
+            ProfileEditView(initialEmoji: presentation.emoji, initialNickname: presentation.nickname)
+                .fontDesign(.rounded)
+                .environment(session)
+        }
+        .sheet(item: $legalDocument) { document in
+            LegalView(document: document)
+                .fontDesign(.rounded)
+                .environment(session)
+        }
+        .confirmationDialog(
+            "アカウントを削除しますか？",
+            isPresented: $showsDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("削除する", role: .destructive) {
+                Task { await session.deleteAccount() }
+            }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text("アカウント・投稿・いいね・ブロック・通報の記録がすべて消えます。\nこの操作は取り消せません。")
         }
     }
 
@@ -275,4 +310,153 @@ struct SettingsView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("settings.blocked.row")
     }
+
+    // MARK: プロフィールセクション（F32）
+
+    /// 自分の絵文字とニックネームを表示し、「編集」ボタンで `ProfileEditView` を sheet で開く。
+    private var profileSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("プロフィール")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.inkTertiary)
+                .tracking(1)
+                .padding(.horizontal, 4)
+
+            HStack(spacing: 14) {
+                Text(session.user?.emoji ?? "🙂")
+                    .font(.system(size: 28))
+                    .frame(width: 52, height: 52)
+                    .background(Circle().fill(Theme.background))
+                    .accessibilityIdentifier("settings.profile.emoji")
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(session.user?.displayNickname ?? "名前のない人")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(session.user?.displayNickname == nil ? Theme.inkTertiary : Theme.ink)
+                        .accessibilityIdentifier("settings.profile.nickname")
+                    Text("あとから変更できます")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+
+                Spacer()
+
+                Button("編集") {
+                    profileEditor = ProfileEditorPresentation(
+                        emoji: session.user?.emoji ?? EmojiCatalog.all.first ?? "🙂",
+                        nickname: session.user?.nickname ?? ""
+                    )
+                }
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Theme.accent)
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("settings.profile.edit")
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cardBackground(cornerRadius: 18)
+        }
+    }
+
+    // MARK: 規約・プライバシーポリシーセクション（F32）
+
+    /// 利用規約 / プライバシーポリシーを `LegalView` で sheet 表示する。
+    /// リリース前にダミー本文を差し替える想定（`LegalText`）。
+    private var legalSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("規約・プライバシー")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.inkTertiary)
+                .tracking(1)
+                .padding(.horizontal, 4)
+
+            VStack(spacing: 0) {
+                legalRow(
+                    title: "利用規約",
+                    identifier: "settings.legal.terms"
+                ) {
+                    legalDocument = .terms
+                }
+                Divider().padding(.leading, 16)
+                legalRow(
+                    title: "プライバシーポリシー",
+                    identifier: "settings.legal.privacy"
+                ) {
+                    legalDocument = .privacy
+                }
+            }
+            .cardBackground(cornerRadius: 18)
+        }
+    }
+
+    private func legalRow(
+        title: String,
+        identifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(Theme.ink)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
+    }
+
+    // MARK: アカウント削除セクション（F33）
+
+    /// アカウント削除のエントリ。確認ダイアログを挟んでから実行する。
+    /// 画面下部に Danger Zone として独立セクションで置く（誤タップ防止）。
+    private var dangerZoneSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("アカウント")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.inkTertiary)
+                .tracking(1)
+                .padding(.horizontal, 4)
+
+            Button(role: .destructive) {
+                showsDeleteConfirmation = true
+            } label: {
+                HStack {
+                    Text("アカウントを削除")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.red)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cardBackground(cornerRadius: 18)
+            .accessibilityIdentifier("settings.account.delete")
+        }
+    }
+}
+
+/// プロフィール編集シートに渡す初期値（F32）。
+/// `Identifiable` にして `sheet(item:)` 駆動にする。
+struct ProfileEditorPresentation: Identifiable, Equatable {
+    let id = UUID()
+    let emoji: String
+    let nickname: String
+}
+
+/// 規約・プライバシーポリシー表示シート（F32）。
+/// `sheet(item:)` 駆動のため `Identifiable` を持たせる。
+enum LegalDocument: String, Identifiable {
+    case terms
+    case privacy
+    var id: String { rawValue }
 }

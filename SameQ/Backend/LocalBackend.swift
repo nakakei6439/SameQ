@@ -106,6 +106,71 @@ actor LocalBackend: Backend {
         return user
     }
 
+    /// 絵文字・ニックネームを更新し、過去の自分の `Post` の表示情報も書き換える（F32）。
+    ///
+    /// 仕様では「自分の情報が新しい内容になる」とだけ書かれている。
+    /// `myPosts`（保存済みの自分の回答）の `authorEmoji` / `authorNickname` を
+    /// 遡って更新することで、タイムラインの候補に出てきた自分の過去回答が
+    /// 新しい見た目で表示される（受け入れ条件2）。
+    @discardableResult
+    func updateProfile(emoji: String, nickname: String?) async throws -> AppUser {
+        guard let current = state.user else { throw BackendError.notSignedIn }
+        let trimmedEmoji = emoji.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedEmoji.isEmpty else { throw BackendError.emptyBody }
+        let trimmedNickname = nickname?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let newNickname: String? = (trimmedNickname?.isEmpty ?? true) ? nil : trimmedNickname
+
+        var next = state
+        let updated = AppUser(
+            id: current.id,
+            emoji: trimmedEmoji,
+            nickname: newNickname,
+            createdAt: current.createdAt
+        )
+        next.user = updated
+        // 自分の過去の投稿の見た目も更新する。
+        // 期限切れの投稿も `myPosts` には残っているので（削除は次の `pruneExpired` の役）、
+        // ここでは全件を更新する。表示期限を過ぎたものは画面に出ないので副作用はない。
+        next.myPosts = state.myPosts.map { post in
+            guard post.authorID == current.id else { return post }
+            return Post(
+                id: post.id,
+                promptID: post.promptID,
+                authorID: post.authorID,
+                authorEmoji: trimmedEmoji,
+                authorNickname: newNickname,
+                body: post.body,
+                bodyLanguage: post.bodyLanguage,
+                createdAt: post.createdAt,
+                expiresAt: post.expiresAt,
+                decorations: post.decorations
+            )
+        }
+        try store.save(next)
+        state = next
+        return updated
+    }
+
+    /// アカウントを削除する（F33）。
+    ///
+    /// ユーザー本体に加え、関連する全ての端末内データを消去する。
+    /// `discardedCandidatesCount` だけは「積算統計」として残す（リセットしない）。
+    /// 削除後は `currentUser()` が nil を返し、UI 側は初回設定へ戻れる。
+    func deleteAccount() async throws {
+        var next = state
+        next.user = nil
+        next.myPosts = []
+        next.likedPostIDs = []
+        next.viewedPostIDs = []
+        next.reports = []
+        next.blockedAuthors = []
+        next.lastPostBody = nil
+        next.lastPrepareAttemptAt = [:]
+        // `discardedCandidatesCount` は積算情報なので保持する。
+        try store.save(next)
+        state = next
+    }
+
     // MARK: お題
 
     func promptState() async throws -> PromptState {
@@ -291,14 +356,35 @@ actor LocalBackend: Backend {
         if let retryAfter = reportLimiter.attempt(at: clock.now) {
             throw BackendError.rateLimited(action: .report, retryAfterSeconds: retryAfter)
         }
+        // 通報対象の投稿の表示期限を `Report` に保持する（F34）。
+        // 「投稿の表示期限から 30 日後に安全ログを自動削除」の起点に使う。
+        // 候補（自分の `myPosts` 含む / 同梱シードの `schedule.posts`）を当たっても見つからない
+        // 場合は、`createdAt + 28h`（お題の標準有効期間）でフォールバック。
+        let postExpiresAt = postExpiresAt(forPost: postID)
+            ?? clock.now.addingTimeInterval(Prompt.defaultDuration)
         var next = state
         // 同じ回答を二重に通報しても記録は1件だけ（表示対象から外れるのは同じ）。
         guard !next.reports.contains(where: { $0.postID == postID }) else { return }
         next.reports.append(
-            Report(id: UUID(), postID: postID, reason: reason, createdAt: clock.now)
+            Report(
+                id: UUID(),
+                postID: postID,
+                reason: reason,
+                createdAt: clock.now,
+                postExpiresAt: postExpiresAt
+            )
         )
         try store.save(next)
         state = next
+    }
+
+    /// 該当投稿の `expiresAt` を、自分の過去投稿・同梱シードのスケジュールから探して返す。
+    /// 見つからなければ nil（呼び出し側でフォールバックする）。
+    private func postExpiresAt(forPost postID: UUID) -> Date? {
+        if let mine = state.myPosts.first(where: { $0.id == postID }) {
+            return mine.expiresAt
+        }
+        return schedule.posts.first(where: { $0.id == postID })?.expiresAt
     }
 
     func reportedPostIDs() async throws -> Set<UUID> {
@@ -366,15 +452,20 @@ actor LocalBackend: Backend {
         state = next
     }
 
-    // MARK: 期限切れの掃除（F10）
+    // MARK: 期限切れの掃除（F10 / F34）
 
     /// 表示期限を過ぎた自分の回答と、そこに紐づくいいね・既読を保存から落とす。
     ///
     /// 「その日の言葉は消える」ため履歴は持たない。消えた投稿への いいね も既読も残さない。
     /// 保存内容が変わったときだけ書き込む。
     ///
-    /// 既読と通報だけは「期限切れと**確認できた**投稿」に限って落とす。
+    /// 既読は「期限切れと**確認できた**投稿」に限って落とす。
     /// 検証用の起動引数で回答の顔ぶれが変わったときに、既読が黙って消えないようにするため。
+    ///
+    /// 通報（F34）は仕様により、**投稿の表示期限 + 30 日**まで安全対策のログとして残す。
+    /// 30 日を過ぎたものは自動で削除する（サーバ側の `safety_logs` 30 日保持と一致）。
+    /// 検証用には `LaunchOptions.safetyLogRetentionSeconds` で短縮できる
+    ///（既定は `Backend.safetyLogRetentionSeconds` = 30 日）。
     ///
     /// ブロックは投稿ではなく相手に対するものなので、ここでは消さない（解除するまで残る）。
     private func pruneExpired(at now: Date) {
@@ -387,7 +478,14 @@ actor LocalBackend: Backend {
         )
         let liveLikes = state.likedPostIDs.filter { livePostIDs.contains($0) }
         let liveViewed = state.viewedPostIDs.filter { !expiredPostIDs.contains($0) }
-        let liveReports = state.reports.filter { !expiredPostIDs.contains($0.postID) }
+        // F34: 通報は「投稿の表示期限 + 30 日」が経過するまで残す。
+        let retention = Self.resolveSafetyLogRetention()
+        let liveReports = state.reports.filter { report in
+            // まだ表示中の投稿なら常に残す。
+            if !expiredPostIDs.contains(report.postID) { return true }
+            // 表示期限切れの通報は `postExpiresAt + retention` を越えた時点で削除。
+            return now.timeIntervalSince(report.postExpiresAt) < retention
+        }
 
         guard liveMyPosts.count != state.myPosts.count
             || liveLikes.count != state.likedPostIDs.count
@@ -402,5 +500,12 @@ actor LocalBackend: Backend {
         next.reports = liveReports
         try? store.save(next)
         state = next
+    }
+
+    /// 安全ログの保持期間。`LaunchOptions.safetyLogRetentionSeconds` が 0 でなければ
+    /// そちらを優先（検証用）。既定は 30 日。
+    private static func resolveSafetyLogRetention() -> TimeInterval {
+        let override = LaunchOptions.current.safetyLogRetentionSeconds
+        return override > 0 ? override : SafetyLogDefaults.defaultRetentionSeconds
     }
 }

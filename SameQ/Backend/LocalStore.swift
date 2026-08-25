@@ -43,7 +43,10 @@ struct PersistedState: Codable, Sendable {
     /// 5 で `lastPrepareAttemptAt` を追加した。
     /// `discardedCandidatesCount` は 6 で追加したが、スキーマバージョンは据え置き
     ///（既存ファイルには値が無く、デフォルト 0 で埋めて互換性を保つ）。
-    static let currentSchemaVersion = 5
+    /// 6 で `Report.postExpiresAt` を追加したが、`Report.init(from:)` が
+    /// `createdAt + 28h` でフォールバックするので、ユーザーデータの消失は無い
+    /// （F34 安全ログの 30 日保持用）。
+    static let currentSchemaVersion = 6
 
     static let empty = PersistedState(
         schemaVersion: currentSchemaVersion,

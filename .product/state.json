@@ -1,8 +1,14 @@
 {
   "currentSprint": "11",
   "attempt": 1,
-  "status": "in_progress",
+  "status": "awaiting_eval",
   "history": [
+    {
+      "sprint": "11",
+      "attempt": 1,
+      "result": "awaiting_eval",
+      "note": "F32/F33/F34 実装。Backendプロトコルに updateProfile(emoji:nickname:) と deleteAccount() を追加、LocalBackend実装で myPosts の authorEmoji/authorNickname を遡及更新。Report.postExpiresAt を追加し schemaVersion を 5→6 にバンプ（decodeIfPresent でフォールバック）。LocalBackend.pruneExpired を postExpiresAt + 30日 の安全ログ保持に変更し LaunchOptions.safetyLogRetentionSeconds を DEBUG で上書き可能に。AppSession.updateProfile / deleteAccount を追加し deleteAccount 後は screen=.onboarding に戻す + discardedCandidatesCount 以外の状態をクリア。SettingsView に プロフィール・規約・プライバシー・アカウント削除 の3セクションを追加、ProfileEditView / LegalView を新規シートで実装、.confirmationDialog で削除確認。ユニット ProfileAndAccountTests 7本 + SafetyLogRetentionTests 4本 を追加。UI テスト SprintElevenAcceptanceTests は test01（規約ドキュメント）/ test02（プロフィール編集で設定画面の表示が切り替わる）/ test03（アカウント削除で sheet 確認ダイアログ→削除→初回設定に戻る）/ test05（設定画面から購入復元ボタン）の4本を追加。test03 は iOS 26 の SwiftUI .confirmationDialog が destructive ボタンと同時にはキャンセルボタンを画面に出さない（シートを下にスワイプでキャンセル相当）仕様であることが分かり、シートの title staticText 「アカウントを削除しますか？」 の存在と sheets.buttons[「削除する」] の押下でダイアログ出現を確認する形に書き直した。SameQTests 181/181 + SameQUITests（Sprint 1〜11 acceptance suite 全体）すべて成功（シミュレータ単独実行）。クラッシュ0、未処理エラー0。詳細は .product/sprints/11-settings-account-delete/self-review.md"
+    },
     {
       "sprint": "10",
       "attempt": 2,

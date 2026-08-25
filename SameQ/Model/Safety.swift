@@ -39,6 +39,28 @@ struct Report: Codable, Identifiable, Equatable, Sendable {
     let postID: UUID
     let reason: ReportReason
     let createdAt: Date
+    /// 通報対象の投稿の表示期限。F34 の 30 日保持期限の起点。
+    let postExpiresAt: Date
+
+    init(id: UUID, postID: UUID, reason: ReportReason, createdAt: Date, postExpiresAt: Date) {
+        self.id = id
+        self.postID = postID
+        self.reason = reason
+        self.createdAt = createdAt
+        self.postExpiresAt = postExpiresAt
+    }
+
+    /// schemaVersion 5 以前の `Report` 用フォールバックデコーダ。
+    /// `postExpiresAt` が無いものだけ `createdAt + 28h` を仮置きする。
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        postID = try container.decode(UUID.self, forKey: .postID)
+        reason = try container.decode(ReportReason.self, forKey: .reason)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        postExpiresAt = try container.decodeIfPresent(Date.self, forKey: .postExpiresAt)
+            ?? createdAt.addingTimeInterval(28 * 60 * 60)
+    }
 }
 
 /// ブロック中の相手（F14 / F15）。

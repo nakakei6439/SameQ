@@ -89,6 +89,9 @@ struct LaunchOptions: Sendable {
     var likeRateLimit = RateLimitSettings(maxActions: 8, windowSeconds: 15, cooldownSeconds: 15)
     /// 通報の連打制限（F17）。既定は30秒間に4回まで、超えたら20秒制限。
     var reportRateLimit = RateLimitSettings(maxActions: 4, windowSeconds: 30, cooldownSeconds: 20)
+    /// 安全ログ（通報記録）の保持期間（F34）。0 なら `Backend.safetyLogRetentionSeconds`
+    /// （30 日）を使う。検証用に `-SameQSafetyLogRetentionSeconds` で短縮できる。
+    var safetyLogRetentionSeconds: TimeInterval = 0
 
     /// このプロセスの設定。起動時に1度だけ解釈する。
     static let current = parse(ProcessInfo.processInfo.arguments)
@@ -139,6 +142,9 @@ struct LaunchOptions: Sendable {
         }
         if let minutes = value(after: "-SameQTimeOffsetMinutes").flatMap(Double.init) {
             options.timeOffset = minutes * 60
+        }
+        if let seconds = value(after: "-SameQSafetyLogRetentionSeconds").flatMap(Double.init) {
+            options.safetyLogRetentionSeconds = seconds
         }
         #endif
         return options

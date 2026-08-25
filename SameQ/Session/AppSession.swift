@@ -459,6 +459,68 @@ final class AppSession {
         }
     }
 
+    // MARK: プロフィール編集・アカウント削除（F32 / F33）
+
+    /// プロフィール（絵文字・ニックネーム）を更新する（F32）。
+    /// 成功時は `user` を差し替え、`myPosts` の `authorEmoji` / `authorNickname` も
+    /// バックエンド側で遡って更新される（受け入れ条件2）。
+    @discardableResult
+    func updateProfile(emoji: String, nickname: String?) async -> Bool {
+        do {
+            let updated = try await backend.updateProfile(emoji: emoji, nickname: nickname)
+            user = updated
+            // 自分の回答（`myPost`）が現在表示中であれば、新しい表示情報を即座に反映する。
+            if let prompt {
+                myPost = try await backend.myPost(promptID: prompt.id)
+            }
+            return true
+        } catch {
+            alertMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    /// アカウントを削除する（F33）。
+    /// 成功時はすべての状態をクリアして初回設定画面へ戻る。
+    /// 削除確認は呼び出し側（`SettingsView`）が `.confirmationDialog` 等で行う。
+    @discardableResult
+    func deleteAccount() async -> Bool {
+        do {
+            try await backend.deleteAccount()
+            await resetToOnboarding()
+            return true
+        } catch {
+            alertMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    /// アカウント削除後など、関連するすべての画面状態を初期化して
+    /// 初回設定（オンボーディング）へ戻すヘルパ。
+    private func resetToOnboarding() {
+        user = nil
+        myPost = nil
+        promptState = .waiting(nextStartsAt: nil)
+        promptDisplayText = nil
+        timelineContent = .loading
+        likedPostIDs = []
+        blockedAuthors = []
+        pendingDecorations = []
+        isTimelinePresented = false
+        isSettingsPresented = false
+        isPlusViewPresented = false
+        pendingDeepLinkTarget = nil
+        alertMessage = nil
+        promptTranslationTask?.cancel()
+        promptTranslationTask = nil
+        lastTranslatedPromptID = nil
+        timelineCandidateCount = 0
+        timelineViewedCount = 0
+        reportedCount = 0
+        discardedCandidatesCount = 0
+        screen = .onboarding
+    }
+
     // MARK: 回答投稿（F04）
 
     /// 投稿に成功したら世界タイムラインを開く。

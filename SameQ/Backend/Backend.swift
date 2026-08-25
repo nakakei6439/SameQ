@@ -36,6 +36,25 @@ protocol Backend: Sendable, TranslationAttemptPersisting {
     @discardableResult
     func createAnonymousUser(emoji: String, nickname: String?) async throws -> AppUser
 
+    /// 既存アカウントのプロフィールを更新する（F32）。
+    /// 絵文字・ニックネームは `AppUser.emoji` / `AppUser.nickname` を書き換えるだけでなく、
+    /// そのユーザーが過去に投稿した `Post` の `authorEmoji` / `authorNickname` も
+    /// 遡って更新する（受け入れ条件2「タイムラインへ流れる自分の情報が新しい内容になる」）。
+    /// - Parameters:
+    ///   - emoji: 新しい絵文字。空文字や空白のみは許可しない。
+    ///   - nickname: 新しいニックネーム。nil / 空文字 / 空白のみを渡すと「未設定」になる。
+    @discardableResult
+    func updateProfile(emoji: String, nickname: String?) async throws -> AppUser
+
+    /// アカウントを削除する（F33）。
+    /// 自分のアカウント本体に加え、関連する全ての端末内データ
+    ///（`myPosts` / `likedPostIDs` / `viewedPostIDs` / `reports` / `blockedAuthors` /
+    /// `lastPostBody` / `lastPrepareAttemptAt`）を消去する。
+    /// 削除後は `currentUser()` が nil を返す状態になり、UI 側は初回設定へ戻る。
+    /// お題の自動生成で積算された破棄件数（`discardedCandidatesCount`）は
+    /// 統計情報として残す（リセットしない）。
+    func deleteAccount() async throws
+
     // MARK: お題（F03 / F08 / F09）
 
     /// いま有効なお題の状態。有効期間外なら `.waiting`（お題待ち画面になる）。
@@ -145,6 +164,21 @@ extension Backend {
             isPlus: false
         )
     }
+
+    /// 安全ログ（通報記録）の既定保持期間（F34）。サーバ側 `safety_logs` テーブルの
+    /// 30 日保持と一致させる。検証用には `LaunchOptions.safetyLogRetentionSeconds`
+    /// で短縮できる（`LocalBackend` がそちらを優先する）。
+    /// プロトコルへの static 追加は制限があるため、`(any Backend).Type.defaultSafetyLogRetentionSeconds`
+    /// 経由ではなく `SafetyLogDefaults` 経由で参照する。
+    static var defaultSafetyLogRetentionSeconds: TimeInterval {
+        SafetyLogDefaults.defaultRetentionSeconds
+    }
+}
+
+/// 安全ログの既定保持期間（F34）。プロトコル extension の static 制約を回避するため
+/// グローバル名前空間に置く。サーバ側 `safety_logs` の 30 日保持と一致させる。
+enum SafetyLogDefaults {
+    static let defaultRetentionSeconds: TimeInterval = 30 * 24 * 60 * 60
 }
 
 /// タイムラインから引いた1件の結果（F11 / F12）。
