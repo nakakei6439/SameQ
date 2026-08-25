@@ -251,7 +251,9 @@ final class TimelineSelectionTests: XCTestCase {
     // MARK: 検証用の件数指定（`-SameQAnswerCount`）
 
     func testAnswerCountOptionProducesStableIdentifiersAcrossLaunches() throws {
-        let reference = Date()
+        // スプリント09 attempt 2: `.live` の seed prompt は絶対アンカーから 28h 間隔で並ぶ。
+        // coverage (= 56h) 内の reference (= anchor + 12h) を使い、prompt_001 が active な状態で検証する。
+        let reference = SeedCatalog.debugLiveAnchor.addingTimeInterval(12 * 60 * 60)
         var options = LaunchOptions()
         options.answerCount = 120
 
@@ -280,7 +282,8 @@ final class TimelineSelectionTests: XCTestCase {
 
     /// 引数なしでも20スワイプの検証ができるだけの回答が同梱されている。
     func testBundledSeedHasEnoughAnswersForTwentySwipes() throws {
-        let reference = Date()
+        // スプリント09 attempt 2: `.live` の reference は anchor 直近 (anchor + 12h) を使う。
+        let reference = SeedCatalog.debugLiveAnchor.addingTimeInterval(12 * 60 * 60)
         let schedule = try SeedCatalog.loadSchedule(reference: reference, scenario: .live, options: LaunchOptions())
         XCTAssertGreaterThanOrEqual(
             schedule.visiblePosts(promptID: "prompt_001", at: reference).count,

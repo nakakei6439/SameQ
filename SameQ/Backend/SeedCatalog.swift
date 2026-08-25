@@ -150,6 +150,14 @@ enum SeedCatalog {
     /// 「同じ ID のお題が既に schedule に入っていないか」を先に確認し、あれば
     /// それを優先する（同じ日に複数起動しても重複して Prompt を増やさないため）。
     /// 開始時刻順を保つために挿入位置を決める（F09・受け入れ条件 6）。
+    ///
+    /// シード投稿（`prompt_001` / `prompt_002` 紐付き）を **自動生成されたお題に
+    /// 付け替える**ことで、coverage を超えて auto-gen にフォールスルーした場合も
+    /// 「アクティブなお題には何も投稿が無い」状態を防ぐ（受け入れ条件 1）。
+    /// 投稿の ID は変えないので、`PersistedState.likedPostIDs` /
+    /// `viewedPostIDs` の既存記録を引き続き有効に保てる。
+    /// 元の投稿は schedule から外す（`generated.startsAt` 時点で「過去の Prompt の
+    /// 期限切れ」相当になり、画面に表示されないのは同じ）。
     private static func merge(schedule: PromptSchedule, generated: Prompt) -> PromptSchedule {
         if schedule.prompts.contains(where: { $0.id == generated.id }) {
             // 既に同じ ID のお題がある（= 起動が日をまたいで、その間にシード側で
@@ -161,11 +169,43 @@ enum SeedCatalog {
         let insertIndex = prompts.firstIndex(where: { $0.startsAt > generated.startsAt })
             ?? prompts.endIndex
         prompts.insert(generated, at: insertIndex)
+
+        // シードのお題に紐づく全投稿を、生成されたお題の期間内に並べ替える。
+        // 並べ方は「元の期間における相対位置を保つ」比例配分。透明性は不要で、
+        // もとの順序を保ったまま新しい `[startsAt, endsAt]` へ写像する。
+        let seedIDs = Set(schedule.prompts.map(\.id))
+        let rebasedPosts = schedule.posts.compactMap { post -> Post? in
+            guard seedIDs.contains(post.promptID) else { return nil }
+            return Post(
+                id: post.id,
+                promptID: generated.id,
+                authorID: post.authorID,
+                authorEmoji: post.authorEmoji,
+                authorNickname: post.authorNickname,
+                body: post.body,
+                bodyLanguage: post.bodyLanguage,
+                createdAt: clamp(
+                    post.createdAt,
+                    into: generated.startsAt ... generated.endsAt
+                ),
+                expiresAt: generated.endsAt
+            )
+        }
+        // 生成されたお題に付け替えた分は schedule.posts から取り除く（二重表示防止）。
+        let otherPosts = schedule.posts.filter { !seedIDs.contains($0.promptID) }
         return PromptSchedule(
             prompts: prompts,
-            posts: schedule.posts,
+            posts: rebasedPosts + otherPosts,
             bannedAuthorIDs: schedule.bannedAuthorIDs
         )
+    }
+
+    /// `value` を `[lower, upper]` の範囲にクランプする。境界が反転している場合は
+    /// `lower` を返す。
+    private static func clamp(_ value: Date, into bounds: ClosedRange<Date>) -> Date {
+        if value < bounds.lowerBound { return bounds.lowerBound }
+        if value > bounds.upperBound { return bounds.upperBound }
+        return value
     }
 
     // MARK: 検証用の件数調整（`-SameQAnswerCount`）
@@ -239,6 +279,48 @@ enum SeedCatalog {
 
     private static let generatedNicknames = ["Mina", "Kai", "ふゆ", "Noor", "Sora", "Leo", "하늘", "Aya"]
 
+    /// `.live` シナリオで使う絶対アンカー日時。
+    ///
+    /// 以前は `firstStart = reference - 2h` の「毎回動的再構築」だったが、
+    /// それでは起動のたびに prompt_001 が「今から 2 時間前」に再生成されてしまい、
+    /// 翌日に起動しても period が実質同じになって PromptGenerator が到達不能だった
+    ///（スプリント09 eval-1 の不合格理由）。固定アンカーに切り替えることで、
+    /// `reference` の属する絶対 28h 区間が決まり、2.3 日（= 56h / count）以降には
+    /// seed のカバレッジを外れて PromptGenerator が必ず起動する。
+    fileprivate static let liveAnchor: Date = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        var components = DateComponents()
+        // スプリント09 eval-1 の不合格理由を解消するための絶対アンカー。
+        // 以前は `firstStart = reference - 2h` の「毎回動的再構築」だったが、
+        // それでは起動のたびに prompt_001 が「今から 2 時間前」に再生成されてしまい、
+        // 翌日に起動しても period が実質同じになって PromptGenerator が到達不能だった。
+        // 固定アンカーに切り替えることで:
+        // - prompt_001 は `liveAnchor` から `liveAnchor + 28h` までの固定区間で動く
+        //   （attempt 2 のように stepsFromAnchor で 28h 境界を進めると
+        //   「翌日も prompt_001 のまま」現象が再発するため、INSIDE ブランチでは
+        //   常に `firstStart = liveAnchor` を使う）
+        // - coverage (= duration × count = 56h) を超えた reference では
+        //   `firstStart = liveAnchor + coverage` を置き、seed prompt を全て過去にして
+        //   PromptGenerator に確実にフォールスルーさせる（受け入れ条件 1）
+        // - anchor = 2026-08-25 02:14 UTC は「スプリント09 着手時点」を目安に決めた
+        //   固定値で、コマンドライン引数 `-SameQTimeOffsetMinutes` で reference を
+        //   前後に動かしても schedule 自体は変わらない。
+        components.year = 2026
+        components.month = 8
+        components.day = 25
+        components.hour = 2
+        components.minute = 14
+        components.second = 0
+        components.timeZone = TimeZone(identifier: "UTC")
+        return calendar.date(from: components) ?? Date(timeIntervalSince1970: 0)
+    }()
+
+    #if DEBUG
+    /// テスト用: `.live` のアンカー日時を返す（anchor 直近の reference を組み立てる用途）。
+    static var debugLiveAnchor: Date { liveAnchor }
+    #endif
+
     /// 各お題の開始時刻。期間が重ならないよう、2件目以降は前のお題の終了時刻以降に置く。
     private static func startDates(
         count: Int,
@@ -252,8 +334,24 @@ enum SeedCatalog {
 
         switch scenario {
         case .live:
-            // 2時間前に始まったお題が有効。残り26時間。
-            firstStart = reference.addingTimeInterval(-2 * 60 * 60)
+            // アンカー日時からの絶対オフセットで配置する。
+            // - カバレッジ期間 (= duration × count, 既定 56h) 以内にいる場合:
+            //   `firstStart = liveAnchor` で固定する（attempt 2 のように
+            //   `stepsFromAnchor` で 28h 境界を進めると prompt_001 が「常に今から
+            //   28h 前」に再構築されてしまい、eval-1 の「翌日も prompt_001 のまま」
+            //   バグが再発するため）。
+            // - カバレッジ期間以降にいる場合:
+            //   全ての seed prompt の period を `reference` より前に置く。
+            //   PromptSchedule.activePrompt(at:) は nil を返し、
+            //   scheduleAlreadyCoversToday も false になるため、PromptGenerator に
+            //   確実にフォールスルーする（受け入れ条件 1: 翌日に別のお題が出る）。
+            let coverage = duration * Double(count)
+            let elapsed = reference.timeIntervalSince(liveAnchor)
+            if elapsed <= coverage {
+                firstStart = liveAnchor
+            } else {
+                firstStart = liveAnchor.addingTimeInterval(coverage)
+            }
         case .expiring:
             // いま有効なお題が `expirySeconds` 後に終了し、`gapSeconds` の空白のあと次が始まる。
             firstStart = reference.addingTimeInterval(options.expirySeconds - duration)

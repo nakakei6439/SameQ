@@ -70,18 +70,21 @@ final class SprintNineAcceptanceTests: XCTestCase {
     // MARK: 受け入れ条件 2（世界共通、シード経路）
 
     /// 同じ起動引数で 2 つのシミュレータを起動しても、同じ今日のお題が表示される
-    ///（受け入れ条件 2: 世界共通）。
+    ///（受け入れ条件 2: 世界共通 = シード経路）。
     ///
-    /// `-SameQSeedOnly` で起動し、`-SameQTimeOffsetMinutes` で同じ「今日」に
-    /// 揃える。`SeedCatalog.loadScheduleWithAutoGeneration` が `seedOnly: true`
-    /// のときは auto-gen を呼ばないので、2 プロセスともシード側のお題が
-    /// 出るはず＝完全に同じになる。
+    /// 起動引数: `-SameQSeedOnly` + `scenario=expiring`。
+    /// - `seedOnly: true` で auto-gen を呼ばない（= シード側のお題だけで判定できる）
+    /// - `scenario=expiring` で「いま active な seed prompt」が必ず存在するようにする
+    ///   （`scenario=live` の固定アンカー化により、アンカー + coverage を過ぎると
+    ///   `seedOnly` だけだと waiting 画面になる。`expiring` は wall clock 起点の
+    ///   相対配置なので、テストの再現性と「世界共通」の検証が両立する）。
+    /// - 同じ秒数で起動した 2 プロセスは同じ seed prompt を見るはず。
     func test04_worldCommonSameTextAcrossProcesses() {
-        let appA = launchFresh(timeOffsetMinutes: 0, seedOnly: true)
+        let appA = launchFresh(timeOffsetMinutes: 0, seedOnly: true, scenario: "expiring")
         let textA = readTodaysPromptText(appA)
         appA.terminate()
 
-        let appB = launchFresh(timeOffsetMinutes: 0, seedOnly: true)
+        let appB = launchFresh(timeOffsetMinutes: 0, seedOnly: true, scenario: "expiring")
         let textB = readTodaysPromptText(appB)
         XCTAssertEqual(textA, textB, "同じ起動条件なら同じお題が两端で見える")
         XCTAssertFalse(textA.isEmpty)

@@ -285,7 +285,8 @@ final class BanAndSpamTests: XCTestCase {
     // MARK: 同梱シードにBANされた投稿者が含まれていること（評価者が実機で確認するための土台）
 
     func testBundledSeedHasABannedAuthorExcludedFromVisiblePosts() throws {
-        let reference = Date()
+        // スプリント09 attempt 2: `.live` の reference は anchor 直近 (anchor + 12h) を使う。
+        let reference = SeedCatalog.debugLiveAnchor.addingTimeInterval(12 * 60 * 60)
         let schedule = try SeedCatalog.loadSchedule(reference: reference, scenario: .live, options: LaunchOptions())
         XCTAssertFalse(schedule.bannedAuthorIDs.isEmpty, "同梱シードにBANされた投稿者が用意されていない")
 

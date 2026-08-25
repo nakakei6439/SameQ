@@ -152,7 +152,9 @@ final class PromptLifecycleTests: XCTestCase {
     // MARK: 検証用シナリオ（評価者が使う起動引数の裏付け）
 
     func testScenariosProduceExpectedPromptState() throws {
-        let reference = Date()
+        // スプリント09 attempt 2: `.live` の reference は anchor 直近 (anchor + 12h) を使い、
+        // seed prompt が active な状態で検証する（coverage 内）。
+        let reference = SeedCatalog.debugLiveAnchor.addingTimeInterval(12 * 60 * 60)
         var options = LaunchOptions()
         options.expirySeconds = 120
         options.gapSeconds = 60
