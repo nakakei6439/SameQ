@@ -101,6 +101,73 @@ enum SeedCatalog {
         return PromptSchedule(prompts: prompts, posts: posts, bannedAuthorIDs: Set(file.bannedAuthorIDs))
     }
 
+    /// `loadSchedule` の上に「今日のお題が無ければ `PromptGenerator` で自動生成して
+    /// 末尾へ追加する」薄いラッパ（F26）。
+    ///
+    /// 返り値は「起動時の PromptSchedule」と「自動生成した結果（破棄記録を含む）」。
+    /// `LocalBackend` は結果の `prompt` を schedule にマージし、`discarded` の件数を
+    /// `PersistedState.discardedCandidatesCount` へ積算する（受け入れ条件 4）。
+    ///
+    /// `seedOnly: true` のときは自動生成をスキップして、シードのお題だけ返す。
+    /// 検証用（`-SameQSeedOnly` / スプリント02の既存テストの挙動を保ったままにする）。
+    ///
+    /// `skipSeed: true` のときは**シードを一切読み込まず**、`PromptGenerator` の
+    /// 自動生成だけで PromptSchedule を組み立てる。シードに依存しないお題自動生成の
+    /// 動作を UI から確認したいとき（`-SameQSkipSeed`）に使う。
+    static func loadScheduleWithAutoGeneration(
+        reference: Date,
+        scenario: PromptScenario,
+        options: LaunchOptions = .current,
+        seedOnly: Bool = false,
+        skipSeed: Bool = false
+    ) throws -> (PromptSchedule, PromptGenerator.GenerationResult?) {
+        if skipSeed {
+            // シードのお題を一切入れず、auto-gen だけで PromptSchedule を組み立てる
+            //（Debug 限定の動作確認用。受け入れ条件 6 の検証に使う）。
+            let result = PromptGenerator.generate(reference: reference)
+            return (
+                PromptSchedule(prompts: [result.prompt], posts: []),
+                result
+            )
+        }
+        let base = try loadSchedule(reference: reference, scenario: scenario, options: options)
+        if seedOnly {
+            return (base, nil)
+        }
+        // シードが「今日の UTC 日付」を既にカバーしているなら、シードのお題を採用する
+        // （受け入れ条件 6: 2 つのお題が同時に表示されない）。自動生成は「シードに無い日」を
+        // 埋めるためにだけ動く。
+        if PromptGenerator.scheduleAlreadyCoversToday(schedule: base, reference: reference) {
+            return (base, nil)
+        }
+        let result = PromptGenerator.generate(reference: reference)
+        let merged = merge(schedule: base, generated: result.prompt)
+        return (merged, result)
+    }
+
+    /// `generated` を `schedule.prompts` に追加する。
+    ///
+    /// 「同じ ID のお題が既に schedule に入っていないか」を先に確認し、あれば
+    /// それを優先する（同じ日に複数起動しても重複して Prompt を増やさないため）。
+    /// 開始時刻順を保つために挿入位置を決める（F09・受け入れ条件 6）。
+    private static func merge(schedule: PromptSchedule, generated: Prompt) -> PromptSchedule {
+        if schedule.prompts.contains(where: { $0.id == generated.id }) {
+            // 既に同じ ID のお題がある（= 起動が日をまたいで、その間にシード側で
+            // 同じ ID が入ってしまった等の特殊なケース）は、schedule 側を採用する。
+            return schedule
+        }
+        var prompts = schedule.prompts
+        // 開始時刻順を維持する位置を決める
+        let insertIndex = prompts.firstIndex(where: { $0.startsAt > generated.startsAt })
+            ?? prompts.endIndex
+        prompts.insert(generated, at: insertIndex)
+        return PromptSchedule(
+            prompts: prompts,
+            posts: schedule.posts,
+            bannedAuthorIDs: schedule.bannedAuthorIDs
+        )
+    }
+
     // MARK: 検証用の件数調整（`-SameQAnswerCount`）
 
     /// 各お題の回答を指定件数ちょうどに揃える。

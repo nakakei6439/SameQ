@@ -28,11 +28,19 @@ actor LocalBackend: Backend {
     ) {
         self.store = store
         self.clock = clock
-        self.schedule = schedule ?? ((try? SeedCatalog.loadSchedule(
+        // お題の自動生成（F26 / F27）を取り込んだ日程構築。
+        // `seedOnly: options.seedOnly` でユニットテストや特定検証用にシードのみの日程に
+        // 戻せる（既定では自動生成あり）。
+        let built = (try? SeedCatalog.loadScheduleWithAutoGeneration(
             reference: clock.now,
             scenario: options.scenario,
-            options: options
-        )) ?? PromptSchedule(prompts: [], posts: []))
+            options: options,
+            seedOnly: options.seedOnly,
+            skipSeed: options.skipSeed
+        )) ?? (PromptSchedule(prompts: [], posts: []), nil)
+        let builtSchedule = built.0
+        let builtGeneration = built.1
+        self.schedule = schedule ?? builtSchedule
         self.likeLimiter = options.likeRateLimit.makeLimiter()
         self.reportLimiter = options.reportRateLimit.makeLimiter()
 
@@ -40,6 +48,14 @@ actor LocalBackend: Backend {
             // 起動引数 `-SameQResetState`（Debug のみ）。UI テストと評価者の再検証用。
             try? store.save(.empty)
             self.state = .empty
+            // 破棄件数の積算は別フィールドなので、`resetsState` でクリアされない問題はない。
+            // 起動時の自動生成分の破棄は別途 `discardedCandidatesCount` に積算するため、
+            // resetsState 経路でも生成結果を反映する。
+            if let generation = builtGeneration {
+                var empty = PersistedState.empty
+                empty.discardedCandidatesCount = generation.discarded.count
+                try? store.save(empty)
+            }
             return
         }
         var loaded = store.load()
@@ -47,6 +63,12 @@ actor LocalBackend: Backend {
             // 起動引数 `-SameQResetViewed`（Debug のみ）。
             // アカウント・自分の回答・いいねは残したまま、既読だけを消して読み直せるようにする。
             loaded.viewedPostIDs = []
+            try? store.save(loaded)
+        }
+        // 起動時の自動生成で破棄された候補があれば、`PersistedState` の累計件数に足す
+        // （受け入れ条件 4）。`save` はまとめて 1 回で済ませる。
+        if let generation = builtGeneration, !generation.discarded.isEmpty {
+            loaded.discardedCandidatesCount += generation.discarded.count
             try? store.save(loaded)
         }
         self.state = loaded
@@ -303,6 +325,12 @@ actor LocalBackend: Backend {
     func blockedAuthors() async throws -> [BlockedAuthor] {
         // 新しくブロックした人を上に。表示するのは絵文字とニックネームだけ（F15）。
         state.blockedAuthors.sorted { $0.blockedAt > $1.blockedAt }
+    }
+
+    // MARK: お題の自動生成（F26）
+
+    func discardedCandidatesCount() async throws -> Int {
+        state.discardedCandidatesCount
     }
 
     // MARK: 翻訳モデルのダウンロード試行の永続化（受け入れ条件4・attempt 7）

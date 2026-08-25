@@ -1,7 +1,7 @@
 {
   "currentSprint": "09",
   "attempt": 1,
-  "status": "in_progress",
+  "status": "awaiting_eval",
   "history": [
     {
       "sprint": "01",
@@ -200,6 +200,12 @@
       "attempt": 2,
       "result": "passed",
       "note": "evaluatorが新規シミュレータ2台（自動テスト用Eval08、実通知タップ手動検証用Eval08-Manual）で検証。合格。eval-1.mdの不合格理由（通知タップの実経路が常に.todayを固定で呼び.timelineケースが到達不能）の解消を、generatorの自己申告テスト（-SameQSimulateNotificationTapのコールドスタート）だけでなく、それとは独立にeval-1.mdの元の再現手順（バックグラウンド維持＋本物のxcrun simctl pushでの通知配信＋通知バナーへの実タップ）で直接確認した。未回答アカウントは今日のお題画面、回答済みアカウントはタイムラインが、実際の通知タップで直接開くことをスクリーンショットで確認（自己申告テストのケース2はapp.terminate()後の再launchでstart()自体が回答済みなら自動でタイムラインを開く既存動作と混同しうる構造だったため、あえて独立検証した）。条件1,2,3,5,6はSprintEightAcceptanceTests（6/6）とNotificationSchedulingTests（10/10）を自分で再実行し確認。回帰はSprintOne/Three/SevenAcceptanceTests 18/18＋ユニット全件113/113。クラッシュ0、アプリ由来の未処理エラー0（simulatorノイズのみ）、データ整合性OK（schemaVersion 5）、使用性4（条件4の修正で前回指摘の二度タップの摩擦が解消）。詳細は .product/sprints/08-random-notifications/eval-2.md"
+    },
+    {
+      "sprint": "09",
+      "attempt": 1,
+      "result": "awaiting_eval",
+      "note": "F26/F27 実装。PromptCatalog（新・手書き50件の候補プール+安全チェッカー+2件のフォールバック）+PromptGenerator（UTC暦日ベースの決定的な生成、startIndexローテーション、安全でない候補を破棄して次に進む、結果に discarded を同梱）+SeedCatalog.loadScheduleWithAutoGeneration（シードが今日をカバーしていなければ自動生成をマージ、scheduleAlreadyCoversToday で重複防止）+LocalBackend（生成結果を discardedCandidatesCount に積算）+PersistedState（discardedCandidatesCount を decodeIfPresent で後方互換導入、schemaVersion 据え置き）+LaunchOptions（-SameQSeedOnly / -SameQSkipSeed を追加）+Debug オーバーレイ（discarded N 表示）。ユニット18本（新規）+UIテスト7本（新規）を追加。シミュレータ単独実行でユニット131/131・UIテスト7/7すべて成功。フルUI回帰テストはバックグラウンド実行中。詳細は .product/sprints/09-auto-prompt-generation/self-review.md"
     }
   ]
 }

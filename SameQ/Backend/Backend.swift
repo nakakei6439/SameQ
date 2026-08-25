@@ -108,6 +108,13 @@ protocol Backend: Sendable, TranslationAttemptPersisting {
 
     /// ブロック中の相手の一覧（新しい順）。設定画面で使う（F15）。
     func blockedAuthors() async throws -> [BlockedAuthor]
+
+    // MARK: お題の自動生成（F26）
+
+    /// お題の自動生成で安全条件により破棄された候補の累計件数
+    ///（受け入れ条件 4「破棄された記録が残る」）。`PersistedState` に永続化されている。
+    /// ユーザー向け UI には出さず、Debug オーバーレイ用。
+    func discardedCandidatesCount() async throws -> Int
 }
 
 extension Backend {

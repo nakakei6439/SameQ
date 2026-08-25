@@ -66,6 +66,16 @@ struct LaunchOptions: Sendable {
     /// UI テストで「回答済みアカウント → 通知タップ → タイムライン直接オープン」を
     /// 自動検証するために使う。
     var simulateNotificationTap: Bool = false
+    /// `-SameQSeedOnly`（Debug 限定・スプリント09）。true の間は `PromptGenerator`
+    /// を呼ばず、`SeedCatalog.loadSchedule` のシードだけの日程にする。
+    /// 自動生成を切った状態でシードのお題スケジュール（F26以前の挙動）を
+    /// 検証したいときに使う。
+    var seedOnly: Bool = false
+    /// `-SameQSkipSeed`（Debug 限定・スプリント09）。true の間は
+    /// `SeedCatalog.loadSchedule` を呼ばず、空の PromptSchedule に
+    /// `PromptGenerator` の自動生成だけを追加する。シードに依存しない
+    /// お題自動生成の動作を UI から確認したいときに使う。
+    var skipSeed: Bool = false
     /// いいねの連打制限（F17）。既定は15秒間に8回まで、超えたら15秒制限。
     var likeRateLimit = RateLimitSettings(maxActions: 8, windowSeconds: 15, cooldownSeconds: 15)
     /// 通報の連打制限（F17）。既定は30秒間に4回まで、超えたら20秒制限。
@@ -90,6 +100,8 @@ struct LaunchOptions: Sendable {
         options.forceNicknameTranslitFailure = arguments.contains("-SameQNicknameTranslitDebug")
         options.notificationForceDenied = arguments.contains("-SameQNotificationForceDenied")
         options.simulateNotificationTap = arguments.contains("-SameQSimulateNotificationTap")
+        options.seedOnly = arguments.contains("-SameQSeedOnly")
+        options.skipSeed = arguments.contains("-SameQSkipSeed")
         if let hour = value(after: "-SameQNotificationHour").flatMap(Int.init),
            (0...23).contains(hour) {
             options.notificationForcedHour = hour

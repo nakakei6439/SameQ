@@ -88,6 +88,10 @@ final class AppSession {
     private(set) var timelineCandidateCount = 0
     private(set) var timelineViewedCount = 0
     private(set) var reportedCount = 0
+    /// お題の自動生成（F26 / F27）で破棄された候補の累計件数
+    /// （受け入れ条件 4「破棄された記録が残る」）。UI には出さないが
+    /// `-SameQDebugOverlay` で見えるようにするためキャッシュしている。
+    private(set) var discardedCandidatesCount = 0
 
     /// 現在の通知許可状態（F25）。設定画面で「通知はオフです」案内を出すか判定する。
     /// `nil` のときは未確認（オンボーディング前など）。
@@ -163,6 +167,8 @@ final class AppSession {
             promptState = try await backend.promptState()
             let loadedUser = try await backend.currentUser()
             user = loadedUser
+            // Debug オーバーレイ用にお題自動生成の破棄件数を読み込む（F26）。
+            discardedCandidatesCount = try await backend.discardedCandidatesCount()
 
             // 通知許可状態を最初に一度読んでおく（設定画面・Debug オーバーレイ用）。
             // 拒否だった場合は以降の `scheduleDailyReminderIfPossible` が何もしないので、
@@ -616,6 +622,8 @@ final class AppSession {
         // 通報・ブロックの効き方を目で確かめられるようにする（F13 / F14）。
         parts.append("reported \(reportedCount)")
         parts.append("blocked \(blockedAuthors.count)")
+        // お題自動生成の破棄件数（F26 / 受け入れ条件 4）。
+        parts.append("discarded \(discardedCandidatesCount)")
         // 通知の予約状態（F24）を目で確かめられるようにする。
         if let next = nextScheduledNotificationAt {
             let formatter = DateFormatter()

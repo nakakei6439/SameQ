@@ -21,16 +21,28 @@ struct PersistedState: Codable, Sendable {
     ///
     /// attempt 6 まではこれと同じ役割の `Translator.lastPrepareAttemptAt` がアプリの
     /// プロセス内メモリにしか無く、`Translator` は起動のたびに（`AppSession` が
-    /// 既定引数で作り直すため）ゼロから作られていた。そのため、実時間ではまだ
+    /// 既定引数で作り上げるため）ゼロから作られていた。そのため、実時間ではまだ
     /// クールダウン中（既定5分未満）でもアプリを終了して開き直すと記録が消え、
     /// モデル未ダウンロードの言語があるたびに毎回60秒超の「準備中…」を再び待たされる
     /// ことが実機で確認された（eval-6.md「実測2」）。ここに永続化することで、
-    /// `Translator` が新しいインスタンスとして作り直されても、同じ `Backend`
+    /// `Translator` が新しいインスタンスとして作り上げ直されても、同じ `Backend`
     /// （＝同じ `state.json`）を通じて直近の試行時刻を引き継げる。
     var lastPrepareAttemptAt: [String: Date]
 
+    /// お題の自動生成（F26）で安全条件により破棄された候補の累計件数
+    /// （受け入れ条件 4「破棄された記録が残る」）。
+    ///
+    /// UI には出さず、Debug オーバーレイ（`-SameQDebugOverlay`）で
+    ///「discarded N」として確認できるようにするための積算値。
+    /// 仕様は「記録が残る」を求めるだけで個別の破棄内容を
+    /// ユーザーや運営に常時見せることは求めていないので、件数のみを
+    /// 永続化する（個別候補のログはメモリ内にとどめて画面表示もしない）。
+    var discardedCandidatesCount: Int
+
     /// 2 で `viewedPostIDs`、3 で `reports` / `blockedAuthors`、4 で `lastPostBody`、
     /// 5 で `lastPrepareAttemptAt` を追加した。
+    /// `discardedCandidatesCount` は 6 で追加したが、スキーマバージョンは据え置き
+    ///（既存ファイルには値が無く、デフォルト 0 で埋めて互換性を保つ）。
     static let currentSchemaVersion = 5
 
     static let empty = PersistedState(
@@ -42,7 +54,8 @@ struct PersistedState: Codable, Sendable {
         reports: [],
         blockedAuthors: [],
         lastPostBody: nil,
-        lastPrepareAttemptAt: [:]
+        lastPrepareAttemptAt: [:],
+        discardedCandidatesCount: 0
     )
 
     init(
@@ -54,7 +67,8 @@ struct PersistedState: Codable, Sendable {
         reports: [Report] = [],
         blockedAuthors: [BlockedAuthor] = [],
         lastPostBody: String? = nil,
-        lastPrepareAttemptAt: [String: Date] = [:]
+        lastPrepareAttemptAt: [String: Date] = [:],
+        discardedCandidatesCount: Int = 0
     ) {
         self.schemaVersion = schemaVersion
         self.user = user
@@ -65,6 +79,7 @@ struct PersistedState: Codable, Sendable {
         self.blockedAuthors = blockedAuthors
         self.lastPostBody = lastPostBody
         self.lastPrepareAttemptAt = lastPrepareAttemptAt
+        self.discardedCandidatesCount = discardedCandidatesCount
     }
 
     /// 旧バージョン（schemaVersion 1〜4）の保存ファイルにはキーが無いので、
@@ -80,6 +95,7 @@ struct PersistedState: Codable, Sendable {
         blockedAuthors = try container.decodeIfPresent([BlockedAuthor].self, forKey: .blockedAuthors) ?? []
         lastPostBody = try container.decodeIfPresent(String.self, forKey: .lastPostBody)
         lastPrepareAttemptAt = try container.decodeIfPresent([String: Date].self, forKey: .lastPrepareAttemptAt) ?? [:]
+        discardedCandidatesCount = try container.decodeIfPresent(Int.self, forKey: .discardedCandidatesCount) ?? 0
     }
 }
 
