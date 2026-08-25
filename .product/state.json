@@ -1,7 +1,7 @@
 {
   "currentSprint": "08",
   "attempt": 1,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "01",
@@ -182,6 +182,12 @@
       "attempt": 1,
       "result": "awaiting_eval",
       "note": "F24/F25 実装。NotificationScheduling プロトコル + Live/Fake 実装、NotificationTimePicker（純粋関数・8:00〜22:00 の半開区間・現在時刻以前なら翌日へ持ち越し）、AppSession に pendingDeepLinkTarget / nextScheduledNotificationAt / scheduleDailyReminderIfPossible を追加、RootView に UNUserNotificationCenterDelegate ホスト + .onReceive 経路を実装、SettingsView に通知セクション（状態＋次のお知らせ）を追加、起動引数 -SameQNotificationHour と -SameQNotificationForceDenied を追加。ユニット9本（NotificationSchedulingTests）+ UIテスト6本（SprintEightAcceptanceTests）を新規追加。フルテストスイート（ユニット112本 + UIテスト41本 = 153本）を iPhone 17 / iOS 26.5 シミュレータで単独実行し0 failures（TEST SUCCEEDED）"
+    },
+    {
+      "sprint": "08",
+      "attempt": 1,
+      "result": "needs_fix",
+      "note": "evaluatorがiPhone 17 Pro Maxシミュレータ（iOS 26.3, UDID E33C6F86）で実操作検証。不合格。受け入れ条件5/6。条件4（通知タップで回答済みならタイムラインが直接開く）が未達: RootView.swiftの実際の通知タップ経路（UNUserNotificationCenterDelegate.didReceive→NotificationCenter.post→onReceive）はhandleDeepLink(.today)を無条件固定で呼んでおり、onChange側のcase .timelineへは到達不能（grep -rn handleDeepLinkでコード全体の呼び出し箇所が1箇所のみ、かつ常に.todayであることを確認）。ユニット・UIテストのどちらにも.timeline経路を検証するテストが無い。self-review.mdが自己申告した弱点2の懸念が実際の欠陥であることを確認。xcrun simctl pushで実際にプッシュ通知をシミュレータへ配信しバナー表示を画面キャプチャで確認、通知タップ後もtimeline.card.bodyが開かないことを2回のXCUITest実行で確認（座標系の制約で正確なバナータップの完全再現はできなかったが、コード上の到達不能性と実測結果は矛盾しない）。他条件（1,2,3,5,6）はself-review.mdのSprintEightAcceptanceTests（test01〜06）とNotificationSchedulingTestsを自分で実行し確認。回帰は3スプリント抜き取り18/18件成功（SprintOne/Three/SevenAcceptanceTests）。安定性（クラッシュ0）・データ整合性（state.json直接確認で問題なし）・使用性（3、主要動線は完走できるが通知タップ後にもう一手動タップが必要になる場面がある）は閾値を満たす。詳細は .product/sprints/08-random-notifications/eval-1.md"
     }
   ]
 }
