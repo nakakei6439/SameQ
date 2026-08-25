@@ -66,6 +66,7 @@ Secrets.swift
 .temp
 supabase/.temp
 
-# autoloop（夜間無人実行）のログ
+# autoloop（夜間無人実行）のログ・ロックファイル
 #
 .product/autoloop-logs/
+.product/autoloop.lock

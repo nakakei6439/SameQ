@@ -1,7 +1,7 @@
 {
   "currentSprint": "08",
   "attempt": 2,
-  "status": "awaiting_eval",
+  "status": "passed",
   "history": [
     {
       "sprint": "01",
@@ -194,6 +194,12 @@
       "attempt": 2,
       "result": "awaiting_eval",
       "note": "eval-1.mdの指摘[1]に対応。RootViewに@State pendingNotificationTapを追加し、.onReceive(.sameQNotificationTapped)は即時dispatchせず、session.userとscreenの準備が整ってからattemptDispatchPendingNotificationTap()が遷移先を決める設計に変更（未回答→.today、回答済み→.timeline、お題待ち→.waiting、それ以外は保留継続）。.task（session.start()完了直後）と.onChange(of: session.screen)（画面遷移時）の両方から同関数を呼ぶことで起動レースと取りこぼしを両方防ぐ。Debug限定の起動引数 -SameQSimulateNotificationTap を追加し、RootView.task内のsession.start()完了直後にNotificationCenter.default.post(name: .sameQNotificationTapped)でアプリ内通知タップを再現。SprintEightAcceptanceTests.test05_notificationTapOpensCorrectScreenを全面更新し、ケース1（未回答→お題画面）とケース2（回答済み→タイムライン直接オープン）の両方を -SameQSimulateNotificationTap 経由で実経路検証する形に変更。launchFresh ヘルパに simulateNotificationTap / resetState パラメータを追加。ユニットテスト NotificationSchedulingTests.testHandleDeepLinkTimelineSetsPendingTarget を新規追加し、handleDeepLink(.timeline)が実際に.timelineを立たせてconsumeDeepLink()で消えることを確認。SameQTests 113本・SprintEightAcceptanceTests 6本すべて単独実行で0 failuresを確認（test05は新経路で29秒）。詳細は .product/sprints/08-random-notifications/self-review.md の attempt 2"
+    },
+    {
+      "sprint": "08",
+      "attempt": 2,
+      "result": "passed",
+      "note": "evaluatorが新規シミュレータ2台（自動テスト用Eval08、実通知タップ手動検証用Eval08-Manual）で検証。合格。eval-1.mdの不合格理由（通知タップの実経路が常に.todayを固定で呼び.timelineケースが到達不能）の解消を、generatorの自己申告テスト（-SameQSimulateNotificationTapのコールドスタート）だけでなく、それとは独立にeval-1.mdの元の再現手順（バックグラウンド維持＋本物のxcrun simctl pushでの通知配信＋通知バナーへの実タップ）で直接確認した。未回答アカウントは今日のお題画面、回答済みアカウントはタイムラインが、実際の通知タップで直接開くことをスクリーンショットで確認（自己申告テストのケース2はapp.terminate()後の再launchでstart()自体が回答済みなら自動でタイムラインを開く既存動作と混同しうる構造だったため、あえて独立検証した）。条件1,2,3,5,6はSprintEightAcceptanceTests（6/6）とNotificationSchedulingTests（10/10）を自分で再実行し確認。回帰はSprintOne/Three/SevenAcceptanceTests 18/18＋ユニット全件113/113。クラッシュ0、アプリ由来の未処理エラー0（simulatorノイズのみ）、データ整合性OK（schemaVersion 5）、使用性4（条件4の修正で前回指摘の二度タップの摩擦が解消）。詳細は .product/sprints/08-random-notifications/eval-2.md"
     }
   ]
 }

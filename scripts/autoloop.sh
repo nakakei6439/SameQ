@@ -18,6 +18,7 @@ set -uo pipefail
 REPO_DIR="/Users/nakagawakeita/Products/iOSApp/SameQ"
 STATE_FILE="$REPO_DIR/.product/state.json"
 LOGDIR="$REPO_DIR/.product/autoloop-logs"
+LOCK_FILE="$REPO_DIR/.product/autoloop.lock"
 MAX_ITERATIONS="${MAX_ITERATIONS:-60}"
 LAST_SPRINT="11"
 TIMEOUT_SECONDS=7200
@@ -28,6 +29,19 @@ cd "$REPO_DIR" || { echo "リポジトリに移動できません: $REPO_DIR"; e
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOGDIR/main.log"
 }
+
+# 多重起動防止: 生きている別プロセスのロックがあれば即座に終了する。
+# ロックファイルにPIDを記録し、そのPIDが実在しなければ古いロックとみなして上書きする。
+if [ -f "$LOCK_FILE" ]; then
+  existing_pid=$(cat "$LOCK_FILE" 2>/dev/null || echo "")
+  if [ -n "$existing_pid" ] && kill -0 "$existing_pid" 2>/dev/null; then
+    log "既に autoloop.sh が実行中です（PID $existing_pid）。多重起動を防ぐため終了します。"
+    exit 9
+  fi
+  log "古いロックファイル（PID $existing_pid、既に終了済み）を上書きします。"
+fi
+echo "$$" > "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT
 
 read_state() {
   # $1: JSONキー (currentSprint / attempt / status)

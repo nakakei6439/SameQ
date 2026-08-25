@@ -80,7 +80,7 @@ SwiftUI Viewにハードコードされた日本語文字列）は一切ロー�
   既にあるので、UI文字列の切り替えにも同じ言語判定を使い回せる可能性がある
 
 ## 現在の状態
-- **フェーズ**: スプリント08（ランダム通知）**attempt 1 完了・evaluator引き渡し待ち**（2026-08-25。F24/F25 を実装。`NotificationScheduling` プロトコル + `Live`/`Fake` 実装、`NotificationTimePicker`（純粋関数・8:00〜22:00 の半開区間・現在時刻以前なら翌日へ）、`AppSession` に `pendingDeepLinkTarget` / `nextScheduledNotificationAt` / `scheduleDailyReminderIfPossible` を追加、`RootView` に `UNUserNotificationCenterDelegate` ホスト + `.onReceive` 経路を実装、`SettingsView` に通知セクション（状態＋次のお知らせ）を追加、起動引数 `-SameQNotificationHour` と `-SameQNotificationForceDenied` を追加。ユニット9本（`NotificationSchedulingTests`）+ UIテスト6本（`SprintEightAcceptanceTests`）を新規追加。iPhone 17 / iOS 26.5 シミュレータでフルスイート（ユニット112本 + UI 41本）0 failures。詳細は [`self-review.md`](.product/sprints/08-random-notifications/self-review.md) を参照）
+- **フェーズ**: スプリント08（ランダム通知）**合格・完了**（attempt 2、2026-08-25）。F24/F25（8:00〜22:00のランダム通知予約、通知タップでの画面遷移、拒否時の通常利用）を実装。attempt 1はevaluatorが「通知タップの実経路が常に`.today`固定で`.timeline`ケースが到達不能」と指摘し不合格（[`eval-1.md`](.product/sprints/08-random-notifications/eval-1.md)）。attempt 2で`RootView`に`pendingNotificationTap`を追加し`session.user`/`screen`/`myPost`の準備が整ってから遷移先を決める設計に修正。evaluatorが`xcrun simctl push`による本物の通知配信とバナーへの実タップ（アプリを終了させずバックグラウンドのまま）で、未回答→今日のお題画面／回答済み→タイムライン直接オープンの両方を直接確認し合格（受け入れ条件6/6、クラッシュ0、回帰18/18＋ユニット113/113、使用性4）。詳細は [`eval-2.md`](.product/sprints/08-random-notifications/eval-2.md)。
 - **並行タスク**: ユーザー確定済みのUI変更3点（お題を世界タイムラインでも常時表示／✕ボタン削除・操作はスワイプ＋いいねのみ／いいねボタンの位置・見た目の調整）。スプリント06とは独立したタイムライン画面の変更（詳細は「並行タスク: タイムラインUI調整」節）。2026-08-19、evaluator 検証で合格・完了（受け入れ条件3/3、クラッシュ0、データ整合性OK、回帰90/90＋抜き取り6件、使用性4）。合否に影響しない改善提案4件は [`eval-1.md`](.product/sprints/timeline-ui-adjustment/eval-1.md) に記載。**同日、優先度高の改善提案[A][C]をスプリント外の小さな修正として対応済み**（カード外の余白でもスワイプが効くよう `.contentShape(Rectangle())` を追加、`SprintFiveAcceptanceTests` の検証漏れ2箇所を修正）。フルテスト90/90成功。**同日、evaluator の再確認でも合格**（前回の無反応座標 y=0.25 / y=0.68 が両方とも反応、余白スワイプのみで読み切り到達、いいね誤爆0、回帰90/90＋抜き取り4件、使用性4）。残った改善提案は [`eval-2.md`](.product/sprints/timeline-ui-adjustment/eval-2.md) に記載。**本タスクは完了**。
 - **スプリント06 attempt 1 の実装内容（generator、2026-08-18）**: Apple Translation Framework のみを使い（外部翻訳API・フォールバックは無し、サーバーへ本文を送らない）投稿本文とお題本文を端末言語へ変換して表示。`TranslationSession` は `.translationTask` からしか作れないため、`RootView` の背景に常駐させた不可視の `TranslationHostView` がセッションを供給し、`Translator`（`SameQ/Backend/Translator.swift`）が要求をさばく。お題・投稿とも翻訳が確定するまで表示せず「準備中…」を出すことで「ちらつき」を防止（F21）。同梱シードに `promptLanguage` を追加し、多言語投稿での翻訳確認ができるようにした。この attempt 1 は evaluator の検証で受け入れ条件3/7の不合格となり（詳細下記）、attempt 2 で4点を修正した。
 - **スプリント06 attempt 2 の修正内容（generator、2026-08-18）**: evaluatorの指摘4点すべてに対応。詳細は [`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 2」を参照。
@@ -96,12 +96,10 @@ SwiftUI Viewにハードコードされた日本語文字列）は一切ロー�
   - **[要修正] `invalidate()` の保険が効いていない**。`configuration?.invalidate()` の直後に同値の `Configuration` で上書きしているため `.translationTask` は再実行されず、一度タイムアウトした言語はそのプロセスの間ずっと復帰できない（`fireCount` で実測）。
   - attempt 1 の指摘のうち、**2（シミュレータでの検証手段）・3（お題が原文のまま）・4（スキップした回答の既読化）は解消を確認**。一時的な失敗が既読にならないことは `state.json` を直接読んで検証済み。回帰5/5、データ整合性OK（schemaVersion 4、翻訳結果は永続化されない）。使用性2。
 - **スプリント06 attempt 3 の修正内容（generator、2026-08-18）**: eval-2.mdの指摘[1][2]に対応。①`SessionRequestQueue` からセッションキャッシュを撤去し、取得したセッションは `.translationTask` のクロージャが生きているスコープの中で `session.translate(_:)` まで完結させる設計に変更（セッションを外へ持ち出す経路を型的に廃止）。`Configuration` の差し替えも「新規インスタンス」ではなく「既存インスタンスへの `invalidate()` + `source`/`target` 書き換え」に修正（新規インスタンス差し替えだとSwiftUIが再実行を検知できないことがattempt 2の直接原因だった）。②`session.translate(_:)` 自体にもタイムアウトを追加（`withTaskGroup` で競走、タイムアウト時は `session.cancel()` で中断）。シミュレータでのフルテストスイート（`SameQTests` + `SameQUITests`）**90/90 全件成功**。実機向けビルド・インストールも成功。詳細は [`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 3」。
-- **次にやること**: **スプリント06 attempt 5 の evaluator 再評価**。実装内容は下記のとおり。
-  受け入れ条件4の「準備中→読める」は実機で部分的にしか証明できていない（1言語は成功、
-  2言語は90秒予算内で未完了）。**もし evaluator が指でOSの確認シートに応答できる状況で
-  検証できるなら、シートが出た場合に実際にタップして先へ進めるか・その後タイムラインが
-  正しく開くか（閉じたり固まったりしないか）を最優先で見てほしい**。受け入れ条件7
-  （機内モード）はユーザー自身の操作が必要で引き続き未確認。
+- **次にやること**: **スプリント09（お題の自動生成、F26/F27）の実装（generator）**。
+  スプリント08は2026-08-25にevaluatorの検証で合格し完了した。受け入れ条件は
+  `.product/spec.md` 245〜251行を参照（1日1回の自動生成、生成条件を満たさない
+  候補の破棄、生成失敗時のフォールバック、世界共通であることの担保）。
 - **スプリント06 attempt 5 の修正内容（generator、2026-08-20）**: eval-4.md の指摘[1]
   （受け入れ条件4の未実装）に対応。詳細は [`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 5」を参照。
   1. **`AppSession.openTimeline()` が、世界タイムライン（`fullScreenCover`）を開く前に、
@@ -303,8 +301,9 @@ SwiftUI Viewにハードコードされた日本語文字列）は一切ロー�
 
 ### スプリント08: ランダム通知
 含む機能: F24, F25
-- [x] 実装（generator）— attempt 1、unit 9本 + UI 6本、フルスイート 0 failures、self-review.md 済み、`awaiting_eval`
-- [ ] 評価（evaluator）— 受け入れ条件は `.product/spec.md` 228〜234行
+- [x] 実装（generator）— attempt 1、unit 9本 + UI 6本、フルスイート 0 failures、self-review.md 済み
+- [x] 修正（generator / attempt 2）— 2026-08-25。eval-1.mdの指摘（通知タップの実経路が常に`.today`固定で`.timeline`ケースが到達不能）に対応。`RootView`に`pendingNotificationTap`を追加し、`session.user`/`screen`/`myPost`の準備が整ってから`attemptDispatchPendingNotificationTap()`が遷移先を決める設計に変更。Debug限定`-SameQSimulateNotificationTap`を追加。[`self-review.md`](.product/sprints/08-random-notifications/self-review.md)
+- [x] 評価（evaluator）— 2026-08-25 **合格**（attempt 2）。受け入れ条件6/6。条件4は、evaluatorが`xcrun simctl push`による本物の通知配信＋通知バナーへの実タップ（アプリはバックグラウンドのまま終了させない）で、未回答→今日のお題画面／回答済み→タイムライン直接オープンの両方を実際に確認。クラッシュ0・データ整合性OK（schemaVersion 5）・回帰18/18＋ユニット113/113・使用性4。[`eval-2.md`](.product/sprints/08-random-notifications/eval-2.md)（attempt 1 不合格の詳細は [`eval-1.md`](.product/sprints/08-random-notifications/eval-1.md)）
 
 ### スプリント09: お題の自動生成
 含む機能: F26, F27
