@@ -1,7 +1,7 @@
 {
   "currentSprint": "08",
   "attempt": 1,
-  "status": "in_progress",
+  "status": "awaiting_eval",
   "history": [
     {
       "sprint": "01",
@@ -176,6 +176,12 @@
       "attempt": 1,
       "result": "passed",
       "note": "evaluatorがiPhone 17 Pro シミュレータ（iOS 26.4, UDID 07C68712-95E0-4180-87E8-360963E3B391）で実機操作検証。合格。受け入れ条件5/5すべてを実操作で確認: (1) ar端末で\"Noor\"がアラビア文字\"نُر\"へ音写されるのを直接確認、ユニットテストのko/ar/en方向テストも実機シミュレータで全件成功。(2) 「景太」をen/ja/ko/arへ実際に変換し音写であり意味翻訳でないことを直接確認（jing tai / ジング タイ / 징 타이 / جِنگ تَِ）。(3)(4) 絵文字のみカードがja/en/ko/ar全端末でレイアウト崩れなく表示されることを確認（ar端末のRTLレイアウトも含む）。(5) オンボーディングでニックネームを\"keita\"に設定し、ja端末・ko端末それぞれで自分の識別行が原文のまま変化しないことを直接確認、加えてstate.json永続層を直接読み、原文\"keita\"がディスクに保存され音写結果で上書きされていないことを確認（表示層のみの変換であることの裏付け）。フルテストスイート（ユニット103本+UIテスト41本）を別のiPhone 17シミュレータで実行し0 failuresを確認。クラッシュ・未処理エラーはlog showで検索し該当なし。回帰は6領域（オンボーディング〜投稿、今日のお題、タイムライン読み切り空状態、ブロック一覧空状態、翻訳の自動表示とUIチャポン非存在、既存テストスイート全件）を確認しすべて問題なし。使用性4/5（主要動線完走・空状態は明瞭、ただし言語切替時にアプリUIチャポンの一部が日本語のまま残る点を改善提案とした。spec上の受け入れ条件外のため減点対象外）。詳細は .product/sprints/07-nickname-localization/eval-1.md"
+    },
+    {
+      "sprint": "08",
+      "attempt": 1,
+      "result": "awaiting_eval",
+      "note": "F24/F25 実装。NotificationScheduling プロトコル + Live/Fake 実装、NotificationTimePicker（純粋関数・8:00〜22:00 の半開区間・現在時刻以前なら翌日へ持ち越し）、AppSession に pendingDeepLinkTarget / nextScheduledNotificationAt / scheduleDailyReminderIfPossible を追加、RootView に UNUserNotificationCenterDelegate ホスト + .onReceive 経路を実装、SettingsView に通知セクション（状態＋次のお知らせ）を追加、起動引数 -SameQNotificationHour と -SameQNotificationForceDenied を追加。ユニット9本（NotificationSchedulingTests）+ UIテスト6本（SprintEightAcceptanceTests）を新規追加。フルテストスイート（ユニット112本 + UIテスト41本 = 153本）を iPhone 17 / iOS 26.5 シミュレータで単独実行し0 failures（TEST SUCCEEDED）"
     }
   ]
 }

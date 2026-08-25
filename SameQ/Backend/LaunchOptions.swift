@@ -27,6 +27,10 @@ import Foundation
 /// - `-SameQNicknameTranslitDebug`     `NicknameTransliterator` を「常に音写失敗」扱いにし、
 ///                                    絵文字のみ表示へのフォールバックを再現する（F23）。
 ///                                    受け入れ条件3（音写できないニックネーム）の検証用。
+/// - `-SameQNotificationHour <0〜23>`  通知の予約時刻をその時で固定する（Debug 限定・F24）。
+///                                    分のランダム化はそのまま。境界値（7, 8, 21, 22）の確認用。
+/// - `-SameQNotificationForceDenied`    通知許可状態を強制的に `.denied` として扱う（Debug 限定・F25）。
+///                                    拒否経路の検証に使う。
 struct LaunchOptions: Sendable {
     var resetsState: Bool = false
     var resetsViewed: Bool = false
@@ -46,6 +50,12 @@ struct LaunchOptions: Sendable {
     /// すべての入力に対して音写失敗扱いを返し、絵文字のみ表示へのフォールバックを
     /// 受け入れ条件3（音写できないニックネーム）の検証用に再現できるようにする（F23）。
     var forceNicknameTranslitFailure: Bool = false
+    /// `-SameQNotificationHour <時>`（Debug 限定・F24）。通知の予約時刻をその時で固定する。
+    /// 境界値（7, 8, 21, 22）の確認用。`nil` のときは 8〜21 のランダム。
+    var notificationForcedHour: Int? = nil
+    /// `-SameQNotificationForceDenied`（Debug 限定・F25）。許可状態を強制 `.denied` として扱い、
+    /// 通知を一切予約しない。拒否経路（設定画面に案内が出る）の検証用。
+    var notificationForceDenied: Bool = false
     /// いいねの連打制限（F17）。既定は15秒間に8回まで、超えたら15秒制限。
     var likeRateLimit = RateLimitSettings(maxActions: 8, windowSeconds: 15, cooldownSeconds: 15)
     /// 通報の連打制限（F17）。既定は30秒間に4回まで、超えたら20秒制限。
@@ -68,6 +78,11 @@ struct LaunchOptions: Sendable {
         options.isBanned = arguments.contains("-SameQBanned")
         options.fakeTranslate = arguments.contains("-SameQFakeTranslate")
         options.forceNicknameTranslitFailure = arguments.contains("-SameQNicknameTranslitDebug")
+        options.notificationForceDenied = arguments.contains("-SameQNotificationForceDenied")
+        if let hour = value(after: "-SameQNotificationHour").flatMap(Int.init),
+           (0...23).contains(hour) {
+            options.notificationForcedHour = hour
+        }
         if arguments.contains("-SameQRateLimitTestMode") {
             // 手動検証・UIテストで実時間を長く待たなくて済むように回数を減らす。
             // ウィンドウは「操作を数回繰り返す」のに十分な長さを残す

@@ -21,6 +21,16 @@ final class AppSession {
         case failure(String)
     }
 
+    /// 通知タップ時（ディープリンク / F25）の遷移先。
+    enum DeepLinkTarget: Equatable, Sendable {
+        /// 今日のお題画面（未回答なら入力欄、回答済みなら「あなたの回答」表示）。
+        case today
+        /// 世界タイムライン（回答済みのときのみ意味がある）。
+        case timeline
+        /// お題待ち（有効なお題が無い時間帯をタップしたとき）。
+        case waiting
+    }
+
     /// 世界タイムラインの表示内容（F11 / F12）。
     /// 「まだ誰も答えていない」と「自分が読み尽くした」は別の文言で出す。
     enum TimelineContent: Equatable {
@@ -45,6 +55,9 @@ final class AppSession {
     /// 端末言語の判定は `translator` と一貫させたいので、`Translator.targetLanguageCode` を
     /// そのまま借りて `NicknameTransliterator` を作る。
     let nicknameTransliterator: NicknameTransliterator
+    /// 通知の予約・取り消し・状態取得をまとめた窓口（F24 / F25）。
+    /// `nil` のときは通知を一切扱わない（既存ユニットテストの後方互換用）。
+    private let notificationScheduler: NotificationScheduling?
 
     private(set) var screen: Screen = .loading
     private(set) var user: AppUser?
@@ -76,6 +89,16 @@ final class AppSession {
     private(set) var timelineViewedCount = 0
     private(set) var reportedCount = 0
 
+    /// 現在の通知許可状態（F25）。設定画面で「通知はオフです」案内を出すか判定する。
+    /// `nil` のときは未確認（オンボーディング前など）。
+    private(set) var notificationAuthorizationStatus: NotificationAuthorizationStatus?
+    /// 次回の通知が予約されている時刻（Debug オーバーレイ用）。未予約は nil。
+    private(set) var nextScheduledNotificationAt: Date?
+    /// 通知タップ（F25）で「今日は入力したい」「世界タイムラインを見たい」
+    /// 「お題待ち画面を開きたい」のどれを開くべきかを `RootView` へ伝える。
+    /// `start()` 完了後に消費される（nil に戻すと RootView も追従する）。
+    private(set) var pendingDeepLinkTarget: DeepLinkTarget?
+
     /// 投稿失敗などの一時的なメッセージ。表示したら nil に戻す。
     var alertMessage: String?
 
@@ -95,7 +118,16 @@ final class AppSession {
     /// 競合してどちらかが失われる、という事態を避ける（`Backend` はアクターなので、
     /// 同じインスタンスへの呼び出しはすべて直列化される）。
     /// テストが `translator` を明示的に渡す場合はそのまま使う（挙動を変えない）。
-    init(backend: Backend = BackendProvider.make(), clock: AppClock = AppClock(), translator: Translator? = nil) {
+    ///
+    /// `notificationScheduler` を `nil` にすると通知関連を一切行わない（既存ユニットテスト用）。
+    /// `nil` を渡さないときは `-SameQNotificationForceDenied` の値を `LiveNotificationScheduler`
+    /// へ伝えて「拒否扱い」を強制できる（受け入れ条件6の検証用）。
+    init(
+        backend: Backend = BackendProvider.make(),
+        clock: AppClock = AppClock(),
+        translator: Translator? = nil,
+        notificationScheduler: NotificationScheduling? = nil
+    ) {
         self.backend = backend
         self.clock = clock
         let translator = translator ?? Translator(attemptPersistence: backend)
@@ -106,6 +138,13 @@ final class AppSession {
         self.nicknameTransliterator = NicknameTransliterator(
             targetLanguageCode: translator.targetLanguageCode
         )
+        if let notificationScheduler {
+            self.notificationScheduler = notificationScheduler
+        } else {
+            self.notificationScheduler = LiveNotificationScheduler(
+                forceDenied: LaunchOptions.current.notificationForceDenied
+            )
+        }
         self.now = clock.now
     }
 
@@ -125,6 +164,11 @@ final class AppSession {
             let loadedUser = try await backend.currentUser()
             user = loadedUser
 
+            // 通知許可状態を最初に一度読んでおく（設定画面・Debug オーバーレイ用）。
+            // 拒否だった場合は以降の `scheduleDailyReminderIfPossible` が何もしないので、
+            // ここで読んだ値が UI 表示の唯一の根拠になる。
+            await refreshNotificationAuthorizationStatus()
+
             guard loadedUser != nil else {
                 myPost = nil
                 screen = .onboarding
@@ -132,9 +176,68 @@ final class AppSession {
             }
 
             try await applyPromptState(openTimelineIfAnswered: true)
+            // オンボーディング完了アカウントで起動した時点で、お題待ち／今日の両方とも
+            // 「次の1回」の通知を予約し直す（F24）。発火後はこの経路を毎巡回で通る。
+            await scheduleDailyReminderIfPossible()
         } catch {
             screen = .failure(error.localizedDescription)
         }
+    }
+
+    /// 通知許可状態を OS から取り直してキャッシュに反映する（F25）。
+    /// 設定画面を開いたときなどに呼ぶ。許可が降りた瞬間に次の通知を予約するため、
+    /// 状態が `.authorized` に変わった場合はそのまま `scheduleDailyReminderIfPossible` を実行する。
+    @discardableResult
+    func refreshNotificationAuthorizationStatus() async -> NotificationAuthorizationStatus {
+        guard let scheduler = notificationScheduler else {
+            notificationAuthorizationStatus = .notDetermined
+            return .notDetermined
+        }
+        let status = await scheduler.authorizationStatus()
+        notificationAuthorizationStatus = status
+        return status
+    }
+
+    /// オンボーディング完了や、画面の前面復帰・お題切替のたびに呼ぶ。
+    /// 許可されているときだけ次の通知を予約する。拒否状態のときは何もしない
+    /// （F25「通知を拒否した場合もアプリは通常どおり利用でき」）。
+    func scheduleDailyReminderIfPossible() async {
+        guard let scheduler = notificationScheduler else { return }
+        let status: NotificationAuthorizationStatus
+        if let cached = notificationAuthorizationStatus {
+            status = cached
+        } else {
+            status = await refreshNotificationAuthorizationStatus()
+        }
+        guard status == .authorized || status == .provisional || status == .ephemeral else {
+            nextScheduledNotificationAt = nil
+            return
+        }
+        let options = LaunchOptions.current
+        let fireDate = await scheduler.scheduleNextRandomNotification(
+            now: clock.now,
+            timeZone: .current,
+            forceDenied: options.notificationForceDenied,
+            forcedHour: options.notificationForcedHour
+        )
+        nextScheduledNotificationAt = fireDate
+    }
+
+    // MARK: ディープリンク（F25）
+
+    /// 通知センターからアプリが起動されたときに呼ばれる（F25）。
+    /// `RootView` 側が `UNUserNotificationCenterDelegate` から委譲する。
+    /// `pendingDeepLinkTarget` が立つので、画面側は `onChange` で反応して遷移する。
+    ///
+    /// お題待ち中にタップされた場合は `.waiting` を返すだけで、
+    /// `RootView` は現在表示中のお題待ち画面をそのまま維持する。
+    func handleDeepLink(_ target: DeepLinkTarget) {
+        pendingDeepLinkTarget = target
+    }
+
+    /// `RootView` が消費したあとに nil へ戻すためのフック。
+    func consumeDeepLink() {
+        pendingDeepLinkTarget = nil
     }
 
     /// お題の有効期間をまたいだかどうかを見直す。
@@ -154,6 +257,9 @@ final class AppSession {
             promptState = latest
             // お題が変わった／終わったので、開いているタイムラインは閉じる（古い回答を出し続けない）。
             try await applyPromptState(openTimelineIfAnswered: false)
+            // お題切替をまたいだときこそ「次の1回」を再計算したいので、ここで通知を再予約する。
+            // 「日によって違う時刻」を満たすため、発火のたびに次に拾う時刻が変わる。
+            await scheduleDailyReminderIfPossible()
         } catch {
             alertMessage = error.localizedDescription
         }
@@ -229,6 +335,10 @@ final class AppSession {
             user = try await backend.createAnonymousUser(emoji: emoji, nickname: nickname)
             promptState = try await backend.promptState()
             try await applyPromptState(openTimelineIfAnswered: false)
+            // オンボーディング直後の通知許可状態を読み直してから、必要なら通知を予約する
+            // （F24・F25）。
+            await refreshNotificationAuthorizationStatus()
+            await scheduleDailyReminderIfPossible()
         } catch {
             alertMessage = error.localizedDescription
         }
@@ -506,6 +616,14 @@ final class AppSession {
         // 通報・ブロックの効き方を目で確かめられるようにする（F13 / F14）。
         parts.append("reported \(reportedCount)")
         parts.append("blocked \(blockedAuthors.count)")
+        // 通知の予約状態（F24）を目で確かめられるようにする。
+        if let next = nextScheduledNotificationAt {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "HH:mm"
+            parts.append("next notif \(formatter.string(from: next))")
+        } else {
+            parts.append("next notif none")
+        }
         return parts.joined(separator: " · ")
     }
 }

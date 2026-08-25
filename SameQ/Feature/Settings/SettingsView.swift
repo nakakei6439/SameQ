@@ -21,10 +21,13 @@ struct SettingsEntryButton: View {
     }
 }
 
-/// 設定（F15 ブロック管理）。
+/// 設定（F15 ブロック管理 / F25 通知設定）。
 ///
-/// スプリント04で必要なのは「ブロック中の一覧と解除」だけなので、それしか置かない。
-/// 絵文字・ニックネームの変更、規約、購入復元はスプリント11で足す。
+/// スプリント04で必要なのは「ブロック中の一覧と解除」だけだったので、
+/// ブロック管理セクションだけを置いた。スプリント08で「通知」セクションを
+/// 上に足し、拒否状態のときに「設定アプリからオンにしてね」案内を出すように
+/// した（アプリ内から直接許可を再要求するボタンは置かない。 iOS の仕様上、
+/// 一旦拒否された後は設定アプリでしか戻せないため）。
 ///
 /// 一覧に出すのは**絵文字と（あれば）ニックネームだけ**。
 /// 国・言語・回答本文・ブロックした時刻は出さない。相手について分かるのは
@@ -39,25 +42,9 @@ struct SettingsView: View {
                 Theme.canvas
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("ブロック中の人")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Theme.inkTertiary)
-                            .tracking(1)
-                            .padding(.horizontal, 4)
-
-                        if session.blockedAuthors.isEmpty {
-                            emptyState
-                        } else {
-                            ForEach(session.blockedAuthors) { author in
-                                row(author)
-                            }
-                            Text("解除すると、その人の回答がまた表示されるようになります。")
-                                .font(.system(size: 12))
-                                .foregroundStyle(Theme.inkTertiary)
-                                .padding(.horizontal, 4)
-                                .padding(.top, 2)
-                        }
+                    VStack(alignment: .leading, spacing: 24) {
+                        notificationSection
+                        blockedSection
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
@@ -76,9 +63,104 @@ struct SettingsView: View {
         // `children: .contain` が無いと、中のボタンの識別子まで上書きしてしまう。
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("settings.root")
+        .task {
+            // 設定を開いた瞬間に最新の許可状態を反映する（拒否 → 許可にした直後など）。
+            await session.refreshNotificationAuthorizationStatus()
+        }
     }
 
-    private var emptyState: some View {
+    /// 通知セクション（F25）。
+    private var notificationSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("通知")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.inkTertiary)
+                .tracking(1)
+                .padding(.horizontal, 4)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text(notificationHeadline)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
+                    .accessibilityIdentifier("settings.notification.status")
+                Text(notificationDetail)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let nextAt = session.nextScheduledNotificationAt {
+                    Text("次のお知らせ: \(Self.timeFormatter.string(from: nextAt))")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.inkTertiary)
+                        .accessibilityIdentifier("settings.notification.nextAt")
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cardBackground(cornerRadius: 18)
+        }
+    }
+
+    /// 現在の許可状態に応じた見出し。
+    private var notificationHeadline: String {
+        switch session.notificationAuthorizationStatus {
+        case .authorized, .provisional, .ephemeral:
+            return "お題のお知らせはオンです"
+        case .denied:
+            return "お題のお知らせはオフです"
+        case .notDetermined:
+            return "お題のお知らせはまだ決まっていません"
+        case nil:
+            return ""
+        }
+    }
+
+    /// 現在の許可状態に応じた説明文（F25）。
+    private var notificationDetail: String {
+        switch session.notificationAuthorizationStatus {
+        case .authorized, .provisional, .ephemeral:
+            return "1日1回、8:00〜22:00 の間のランダムな時刻に、新しいお題をお届けします。時刻は毎日変わります。"
+        case .denied:
+            return "通知をオンにすると、1日1回ランダムな時刻に新しいお題が届きます。iOS の「設定 › 通知 › SameQ」からオンにできます。"
+        case .notDetermined:
+            return "通知をオンにすると、1日1回ランダムな時刻に新しいお題が届きます。あとで設定 › 通知 › SameQ からいつでも変更できます。"
+        case nil:
+            return ""
+        }
+    }
+
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "M/d HH:mm"
+        return formatter
+    }()
+
+    /// ブロックセクション（F15）。
+    private var blockedSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("ブロック中の人")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.inkTertiary)
+                .tracking(1)
+                .padding(.horizontal, 4)
+
+            if session.blockedAuthors.isEmpty {
+                blockedEmptyState
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(session.blockedAuthors) { author in
+                        row(author)
+                    }
+                }
+                Text("解除すると、その人の回答がまた表示されるようになります。")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.inkTertiary)
+                    .padding(.horizontal, 4)
+                    .padding(.top, 2)
+            }
+        }
+    }
+
+    private var blockedEmptyState: some View {
         VStack(spacing: 8) {
             Text("🫧").font(.system(size: 32))
             Text("ブロックしている人はいません")

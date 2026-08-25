@@ -80,7 +80,7 @@ SwiftUI Viewにハードコードされた日本語文字列）は一切ロー�
   既にあるので、UI文字列の切り替えにも同じ言語判定を使い回せる可能性がある
 
 ## 現在の状態
-- **フェーズ**: スプリント06（投稿本文とお題の自動翻訳）**attempt 7 完了・evaluator引き渡し待ち**（2026-08-24。eval-6.mdの指摘[1]（`lastPrepareAttemptAt`がプロセス内メモリのみでアプリ再起動をまたがない）に対応し、`PersistedState`（schemaVersion 4→5）へ永続化。詳細は本ファイル冒頭の「2026-08-24時点の申し送り」と [`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 7」を参照）
+- **フェーズ**: スプリント08（ランダム通知）**attempt 1 完了・evaluator引き渡し待ち**（2026-08-25。F24/F25 を実装。`NotificationScheduling` プロトコル + `Live`/`Fake` 実装、`NotificationTimePicker`（純粋関数・8:00〜22:00 の半開区間・現在時刻以前なら翌日へ）、`AppSession` に `pendingDeepLinkTarget` / `nextScheduledNotificationAt` / `scheduleDailyReminderIfPossible` を追加、`RootView` に `UNUserNotificationCenterDelegate` ホスト + `.onReceive` 経路を実装、`SettingsView` に通知セクション（状態＋次のお知らせ）を追加、起動引数 `-SameQNotificationHour` と `-SameQNotificationForceDenied` を追加。ユニット9本（`NotificationSchedulingTests`）+ UIテスト6本（`SprintEightAcceptanceTests`）を新規追加。iPhone 17 / iOS 26.5 シミュレータでフルスイート（ユニット112本 + UI 41本）0 failures。詳細は [`self-review.md`](.product/sprints/08-random-notifications/self-review.md) を参照）
 - **並行タスク**: ユーザー確定済みのUI変更3点（お題を世界タイムラインでも常時表示／✕ボタン削除・操作はスワイプ＋いいねのみ／いいねボタンの位置・見た目の調整）。スプリント06とは独立したタイムライン画面の変更（詳細は「並行タスク: タイムラインUI調整」節）。2026-08-19、evaluator 検証で合格・完了（受け入れ条件3/3、クラッシュ0、データ整合性OK、回帰90/90＋抜き取り6件、使用性4）。合否に影響しない改善提案4件は [`eval-1.md`](.product/sprints/timeline-ui-adjustment/eval-1.md) に記載。**同日、優先度高の改善提案[A][C]をスプリント外の小さな修正として対応済み**（カード外の余白でもスワイプが効くよう `.contentShape(Rectangle())` を追加、`SprintFiveAcceptanceTests` の検証漏れ2箇所を修正）。フルテスト90/90成功。**同日、evaluator の再確認でも合格**（前回の無反応座標 y=0.25 / y=0.68 が両方とも反応、余白スワイプのみで読み切り到達、いいね誤爆0、回帰90/90＋抜き取り4件、使用性4）。残った改善提案は [`eval-2.md`](.product/sprints/timeline-ui-adjustment/eval-2.md) に記載。**本タスクは完了**。
 - **スプリント06 attempt 1 の実装内容（generator、2026-08-18）**: Apple Translation Framework のみを使い（外部翻訳API・フォールバックは無し、サーバーへ本文を送らない）投稿本文とお題本文を端末言語へ変換して表示。`TranslationSession` は `.translationTask` からしか作れないため、`RootView` の背景に常駐させた不可視の `TranslationHostView` がセッションを供給し、`Translator`（`SameQ/Backend/Translator.swift`）が要求をさばく。お題・投稿とも翻訳が確定するまで表示せず「準備中…」を出すことで「ちらつき」を防止（F21）。同梱シードに `promptLanguage` を追加し、多言語投稿での翻訳確認ができるようにした。この attempt 1 は evaluator の検証で受け入れ条件3/7の不合格となり（詳細下記）、attempt 2 で4点を修正した。
 - **スプリント06 attempt 2 の修正内容（generator、2026-08-18）**: evaluatorの指摘4点すべてに対応。詳細は [`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 2」を参照。
@@ -303,7 +303,7 @@ SwiftUI Viewにハードコードされた日本語文字列）は一切ロー�
 
 ### スプリント08: ランダム通知
 含む機能: F24, F25
-- [ ] 実装（generator）
+- [x] 実装（generator）— attempt 1、unit 9本 + UI 6本、フルスイート 0 failures、self-review.md 済み、`awaiting_eval`
 - [ ] 評価（evaluator）— 受け入れ条件は `.product/spec.md` 228〜234行
 
 ### スプリント09: お題の自動生成
