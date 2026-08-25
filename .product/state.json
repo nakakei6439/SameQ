@@ -1,8 +1,14 @@
 {
   "currentSprint": "11",
   "attempt": 1,
-  "status": "awaiting_eval",
+  "status": "passed",
   "history": [
+    {
+      "sprint": "11",
+      "attempt": 1,
+      "result": "passed",
+      "note": "evaluator評価: 合格。受け入れ条件6/6を実機シミュレータ操作・自動UIテスト・永続化ファイル直接確認で検証。ユニット158/158、UI(Sprint11+回帰Sprint01/04/09/10)30/30すべて成功。evaluator独自の一時UIテスト2本（アカウント削除→app.terminate()完全終了→再起動後も初回設定のままであることの確認／通報操作後のstate.jsonにpostExpiresAtが実データとして書き込まれることの確認）を追加実行し、検証後に削除してgit clean。クラッシュ0、未処理エラー0。使用性は3（下限）: アカウント削除の確認ダイアログにキャンセルボタンが画面上に表示されない（iOS26のconfirmationDialog+role:.cancelの既知挙動、コードには実装済みだが視覚的に消える）ことをスクリーンショットで確認。受け入れ条件の文言には抵触せず動線も完走できるため合否は下げていないが、次スプリントでの.alertへの切替を最優先の改善提案とした。詳細は .product/sprints/11-settings-account-delete/eval-1.md"
+    },
     {
       "sprint": "11",
       "attempt": 1,
