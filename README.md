@@ -132,6 +132,27 @@ BANは運営がサーバー側で切り替える運用のため、アプリ内�
 アプリはまだ `LocalBackend`（端末内）で動いており、サーバーには接続していない。
 詳細は [`PROGRESS.md`](PROGRESS.md) のブロッカー B01 を参照。
 
+## App Store 公開準備（進行中）
+
+仕様書の全12スプリント（`.product/spec.md`）は実装・評価とも完了。App Store 提出に向けて、
+コードから自動化できる範囲の準備を行った。
+
+- **App アイコン**: `AppIcon.appiconset` に 1024×1024 の実画像を追加（未設定だと提出時に弾かれるため）
+- **プライバシーマニフェスト**: `SameQ/Resources/PrivacyInfo.xcprivacy` を追加（`UserDefaults` /
+  ファイルタイムスタンプ参照の Required Reason API 申告）
+- **利用規約・プライバシーポリシー**: 実装済みの挙動（匿名認証・端末内翻訳・投稿の寿命・
+  安全ログ30日保持・StoreKit課金等）に沿った本文へドラフトを差し替え（[`LegalText.swift`](SameQ/Feature/Onboarding/LegalText.swift)）。
+  ただし運営者名・問い合わせ先・準拠法上の管轄地は `[ ]` のプレースホルダーのままなので、
+  **公開前に必ず運営者が内容を確認し記入すること**。
+
+上記はいずれもアプリ内で完結する範囲の対応であり、以下は運営者側の手作業が必要（自動化対象外）。
+
+- Apple Developer Program でのアプリ登録・Bundle ID (`com.nakakei6439.SameQ`) の紐付け
+- App Store Connect での Plus 課金商品 (`com.nakakei6439.SameQ.plus.monthly`) の登録
+- プライバシーポリシーの外部公開URLの用意（App Store Connect の登録項目として必須）
+- App Store 用スクリーンショット・プロモーション文言の作成
+- TestFlight での実機配信・最終確認
+
 ## ドキュメント
 
 - 製品仕様書: [`.product/spec.md`](.product/spec.md)（機能一覧・対象外・スプリント計画・受け入れ条件）
