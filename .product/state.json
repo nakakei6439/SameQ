@@ -1,8 +1,14 @@
 {
   "currentSprint": "10",
   "attempt": 2,
-  "status": "awaiting_eval",
+  "status": "passed",
   "history": [
+    {
+      "sprint": "10",
+      "attempt": 2,
+      "result": "passed",
+      "note": "evaluator評価: 合格。受け入れ条件7/7すべて実機操作で確認。attempt1で不合格だった条件6（購入を復元でPlus状態が戻る）は、FakePlusServiceのUserDefaults永続化により解消。eval-1.mdの再現手順を自動化したSprintTenAcceptanceTests.test07が合格し、evaluatorも直接UserDefaultsのplistファイルを開いてエンタイトルメントJSONが書き込まれていることを確認した。条件4/5はシードデータに140文字超の投稿が無いためevaluatorが一時的に1件を147文字へ書き換えて独自の一時UIテストで折り畳み・展開・無料ユーザーでの全文閲覧を確認し、検証後に元へ復元済み（git status clean）。ユニット147/147、SprintTenAcceptanceTests 7/7、回帰（Sprint01/04/09）19/19すべて成功。クラッシュ0、未処理エラー0、使用性4。詳細は .product/sprints/10-plus/eval-2.md"
+    },
     {
       "sprint": "10",
       "attempt": 2,
