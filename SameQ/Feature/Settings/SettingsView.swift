@@ -44,6 +44,7 @@ struct SettingsView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         notificationSection
+                        plusSection
                         blockedSection
                     }
                     .padding(.horizontal, 20)
@@ -133,6 +134,69 @@ struct SettingsView: View {
         formatter.dateFormat = "M/d HH:mm"
         return formatter
     }()
+
+    /// Plus セクション（F28 / F31）。現在の Plus 状態と、購入復元・Plus 画面の入り口を置く。
+    /// 設定の中なので「Plus をやめたい」ユーザーがここに来る想定。「購入を復元」も
+    /// 同じ場所からアクセスできるようにしておく（F31）。
+    private var plusSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Plus")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.inkTertiary)
+                .tracking(1)
+                .padding(.horizontal, 4)
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(plusHeadline)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Theme.ink)
+                        .accessibilityIdentifier("settings.plus.status")
+                    Spacer()
+                    if session.isPlus {
+                        Image(systemName: "checkmark.seal.fill")
+                            .foregroundStyle(Theme.accent)
+                    }
+                }
+                Text(plusDetail)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 12) {
+                    Button("Plus を見る") {
+                        session.isPlusViewPresented = true
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("settings.plus.open")
+
+                    Button("購入を復元") {
+                        Task { await session.restorePlus() }
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("settings.plus.restore")
+                }
+                .padding(.top, 4)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cardBackground(cornerRadius: 18)
+        }
+    }
+
+    private var plusHeadline: String {
+        session.isPlus ? "Plus に登録済みです" : "Plus を使うと、もっと書ける"
+    }
+
+    private var plusDetail: String {
+        if session.isPlus {
+            return "長文と装飾（スタンプ・太字・斜体・吹き出し）が使えます。購読の管理は iOS の「設定 › Apple ID › サブスクリプション」から行えます。"
+        }
+        return "長文（140 文字超）と、スタンプ・太字・斜体・吹き出しの装飾が使えます。購入は App Store 経由で、解約はいつでもできます。"
+    }
 
     /// ブロックセクション（F15）。
     private var blockedSection: some View {

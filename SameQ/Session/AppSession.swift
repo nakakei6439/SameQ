@@ -58,6 +58,9 @@ final class AppSession {
     /// 通知の予約・取り消し・状態取得をまとめた窓口（F24 / F25）。
     /// `nil` のときは通知を一切扱わない（既存ユニットテストの後方互換用）。
     private let notificationScheduler: NotificationScheduling?
+    /// Plus 購入・復元の窓口（F28 / F29 / F30 / F31）。`isPlus` の判定は
+    /// `currentEntitlement()` を毎回見ず、`isPlus` キャッシュを更新して UI へ配る。
+    private let plusService: PlusService?
 
     private(set) var screen: Screen = .loading
     private(set) var user: AppUser?
@@ -102,6 +105,16 @@ final class AppSession {
     /// 「お題待ち画面を開きたい」のどれを開くべきかを `RootView` へ伝える。
     /// `start()` 完了後に消費される（nil に戻すと RootView も追従する）。
     private(set) var pendingDeepLinkTarget: DeepLinkTarget?
+    /// Plus 画面（F28）の表示状態。RootView の `.sheet` から監視する。
+    var isPlusViewPresented = false
+    /// 直近の Plus エンタイトルメント（復元ボタンや購入後の状態表示に使う）。
+    /// `nil` の間は未購入扱い（`isPlus == false`）。
+    private(set) var plusEntitlement: PlusEntitlement?
+    /// 直近の Plus 商品の表示情報（`PlusView` で価格を出すためにキャッシュ）。
+    private(set) var plusProducts: [PlusProduct] = []
+    /// 投稿フォームに現在入っている装飾（F30）。投稿完了または画面離脱でクリア。
+    /// `@Observable` で追跡される View 側の状態として公開する。
+    var pendingDecorations: [PostDecoration] = []
 
     /// 投稿失敗などの一時的なメッセージ。表示したら nil に戻す。
     var alertMessage: String?
@@ -126,11 +139,16 @@ final class AppSession {
     /// `notificationScheduler` を `nil` にすると通知関連を一切行わない（既存ユニットテスト用）。
     /// `nil` を渡さないときは `-SameQNotificationForceDenied` の値を `LiveNotificationScheduler`
     /// へ伝えて「拒否扱い」を強制できる（受け入れ条件6の検証用）。
+    ///
+    /// `plusService` を `nil` にすると Plus 機能を一切行わない（既存ユニットテスト用）。
+    /// `nil` を渡さないときは `-SameQFakePlus` を見て `FakePlusService` を使うか
+    /// `StoreKitPlusService` を使うかを切り替える（受け入れ条件6,3,4,5 の検証用）。
     init(
         backend: Backend = BackendProvider.make(),
         clock: AppClock = AppClock(),
         translator: Translator? = nil,
-        notificationScheduler: NotificationScheduling? = nil
+        notificationScheduler: NotificationScheduling? = nil,
+        plusService: PlusService? = nil
     ) {
         self.backend = backend
         self.clock = clock
@@ -149,7 +167,19 @@ final class AppSession {
                 forceDenied: LaunchOptions.current.notificationForceDenied
             )
         }
+        if let plusService {
+            self.plusService = plusService
+        } else if LaunchOptions.current.fakePlus {
+            self.plusService = FakePlusService(active: LaunchOptions.current.plusActiveAtLaunch)
+        } else {
+            self.plusService = StoreKitPlusService()
+        }
         self.now = clock.now
+    }
+
+    /// Plus 状態が現在有効かどうか（F28）。`plusService` が `nil` のときも `false`。
+    var isPlus: Bool {
+        plusEntitlement?.isActive(at: clock.now) ?? false
     }
 
     /// 起動時の読み込み。アカウントが無ければ初回設定へ、
@@ -163,6 +193,11 @@ final class AppSession {
             screen = .banned
             return
         }
+        // Plus のエンタイトルメントを起動直後に読む（F28）。サンドボックス購入は
+        // OS 側で永続化されているので、アプリを削除して再インストールしても
+        // `currentEntitlement()` 経由で復元される。「購入を復元」ボタンの
+        // 動作確認（受け入れ条件6）はここでも一定度の再現になる。
+        await refreshPlusEntitlement()
         do {
             promptState = try await backend.promptState()
             let loadedUser = try await backend.currentUser()
@@ -188,6 +223,80 @@ final class AppSession {
         } catch {
             screen = .failure(error.localizedDescription)
         }
+    }
+
+    /// Plus の現在のエンタイトルメントを `plusService` から取り直して `plusEntitlement` に
+    /// 反映する（F28 / F31）。「購入を復元」の直後、購入直後、`PlusView` を開いた
+    /// タイミングで呼ぶ。
+    @discardableResult
+    func refreshPlusEntitlement() async -> PlusEntitlement? {
+        guard let plusService else {
+            plusEntitlement = nil
+            return nil
+        }
+        let entitlement = await plusService.currentEntitlement()
+        plusEntitlement = entitlement
+        return entitlement
+    }
+
+    /// Plus 画面の表示中に SKU 一覧を取り直す（F28）。初回ロード・復元後に呼ぶ。
+    @discardableResult
+    func refreshPlusProducts() async -> [PlusProduct] {
+        guard let plusService else {
+            plusProducts = []
+            return []
+        }
+        let products = await plusService.availableProducts()
+        plusProducts = products
+        return products
+    }
+
+    /// 指定した Plus 商品を購入する（F28）。成功時はエンタイトルメントを更新する。
+    /// 失敗時は `alertMessage` にユーザー向けメッセージを流す。
+    @discardableResult
+    func purchasePlus(_ product: PlusProduct) async -> Bool {
+        guard let plusService else { return false }
+        do {
+            let entitlement = try await plusService.purchase(product)
+            plusEntitlement = entitlement
+            return true
+        } catch let error as PlusPurchaseError {
+            // ユーザーキャンセルはエラー表示しない（受け皿がないだけで異常ではない）。
+            if case .userCancelled = error { return false }
+            alertMessage = error.errorDescription
+            return false
+        } catch {
+            alertMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    /// 購入復元を実行する（F31）。Sandbox 購入の検証用でもある。
+    @discardableResult
+    func restorePlus() async -> Bool {
+        guard let plusService else { return false }
+        do {
+            let entitlement = try await plusService.restore()
+            plusEntitlement = entitlement
+            return entitlement != nil
+        } catch let error as PlusPurchaseError {
+            alertMessage = error.errorDescription
+            return false
+        } catch {
+            alertMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    /// Plus 画面を開く前の準備（F28）。SKU を読み込む。エラーは無い（空配列を返すだけ）。
+    func preparePlusView() async {
+        await refreshPlusProducts()
+        await refreshPlusEntitlement()
+    }
+
+    /// 投稿フォームの装飾選択をクリアする（F30）。送信成功後・お題切替時に呼ぶ。
+    func clearPendingDecorations() {
+        pendingDecorations = []
     }
 
     /// 通知許可状態を OS から取り直してキャッシュに反映する（F25）。
@@ -366,7 +475,16 @@ final class AppSession {
         isSubmitting = true
         defer { isSubmitting = false }
         do {
-            myPost = try await backend.submitPost(promptID: prompt.id, body: body)
+            let posts = pendingDecorations
+            let plus = isPlus
+            myPost = try await backend.submitPost(
+                promptID: prompt.id,
+                body: body,
+                decorations: posts,
+                isPlus: plus
+            )
+            // 投稿確定後に装飾選択は破棄する（同じ装飾が次の投稿に引き継がれないように）。
+            clearPendingDecorations()
         } catch {
             alertMessage = error.localizedDescription
             // 投稿しようとした瞬間にお題が終わっていた場合は、お題待ちへ落とす。
@@ -622,6 +740,8 @@ final class AppSession {
         // 通報・ブロックの効き方を目で確かめられるようにする（F13 / F14）。
         parts.append("reported \(reportedCount)")
         parts.append("blocked \(blockedAuthors.count)")
+        // Plus 状態（F28）を `-SameQDebugOverlay` で目視確認できるようにする。
+        parts.append(isPlus ? "plus" : "free")
         // お題自動生成の破棄件数（F26 / 受け入れ条件 4）。
         parts.append("discarded \(discardedCandidatesCount)")
         // 通知の予約状態（F24）を目で確かめられるようにする。

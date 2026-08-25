@@ -9,8 +9,17 @@ import Foundation
 /// お題の日程は起動時に `PromptSchedule` として1回だけ組み立て、
 /// 「今」の判定はすべて `AppClock` を通す（F09 / F10）。
 actor LocalBackend: Backend {
-    /// 回答の最大文字数（無料ユーザー。Plus の長文はスプリント10）。
+    /// 無料ユーザーの最大文字数（F04 / F29）。Plus の長文は `plusBodyCharacterLimit`。
     static let bodyCharacterLimit = 140
+    /// Plus ユーザーの最大文字数（F29）。本文の折りたたみターゲットは
+    /// 無料と同じ 140 文字（`PostBodyInspector.isLongForm` の判定）。
+    static let plusBodyCharacterLimit = 2_000
+
+    /// `isPlus` の状態に応じた本文文字数上限を返す。
+    /// Plus でないユーザーが長文を投稿しようとしたら `bodyTooLong`（F29 / F30）。
+    static func bodyCharacterLimit(isPlus: Bool) -> Int {
+        isPlus ? plusBodyCharacterLimit : bodyCharacterLimit
+    }
 
     private let store: LocalStore
     private let clock: AppClock
@@ -117,7 +126,12 @@ actor LocalBackend: Backend {
     }
 
     @discardableResult
-    func submitPost(promptID: String, body: String) async throws -> Post {
+    func submitPost(
+        promptID: String,
+        body: String,
+        decorations: [PostDecoration] = [],
+        isPlus: Bool = false
+    ) async throws -> Post {
         let now = clock.now
         pruneExpired(at: now)
         guard let user = state.user else { throw BackendError.notSignedIn }
@@ -128,8 +142,9 @@ actor LocalBackend: Backend {
         let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
         // 空白・改行のみ（F17）。
         guard !trimmed.isEmpty else { throw BackendError.emptyBody }
-        guard trimmed.count <= Self.bodyCharacterLimit else {
-            throw BackendError.bodyTooLong(limit: Self.bodyCharacterLimit)
+        let limit = Self.bodyCharacterLimit(isPlus: isPlus)
+        guard trimmed.count <= limit else {
+            throw BackendError.bodyTooLong(limit: limit)
         }
         // 同一文字の過剰な繰り返し（F17）。
         guard !PostValidator.isMeaninglessRepetition(trimmed) else {
@@ -143,6 +158,8 @@ actor LocalBackend: Backend {
         if let lastBody = state.lastPostBody, lastBody == trimmed {
             throw BackendError.duplicateBody
         }
+        // 装飾は無料ユーザーは付けられない（F30）。Plus のときだけ装飾を受理する。
+        let safeDecorations: [PostDecoration] = isPlus ? decorations : []
 
         let post = Post(
             id: UUID(),
@@ -154,7 +171,8 @@ actor LocalBackend: Backend {
             bodyLanguage: Locale.current.language.languageCode?.identifier ?? "und",
             createdAt: now,
             // 表示期限はお題の終了時刻に揃える（置いた前提2 / F10）。
-            expiresAt: prompt.endsAt
+            expiresAt: prompt.endsAt,
+            decorations: safeDecorations
         )
         var next = state
         next.myPosts.append(post)

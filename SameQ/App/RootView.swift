@@ -131,6 +131,18 @@ struct RootView: View {
                 .fontDesign(.rounded)
                 .environment(session)
         }
+        // Plus 購入画面（F28）。`PlusEntryButton`（Today / Waiting の右上）と
+        // 設定画面の「Plus を見る」ボタンから開く。
+        .sheet(
+            isPresented: Binding(
+                get: { session.isPlusViewPresented },
+                set: { session.isPlusViewPresented = $0 }
+            )
+        ) {
+            PlusView()
+                .fontDesign(.rounded)
+                .environment(session)
+        }
     }
 
     private var loadingView: some View {

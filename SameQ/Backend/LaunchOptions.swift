@@ -76,6 +76,15 @@ struct LaunchOptions: Sendable {
     /// `PromptGenerator` の自動生成だけを追加する。シードに依存しない
     /// お題自動生成の動作を UI から確認したいときに使う。
     var skipSeed: Bool = false
+    /// `-SameQFakePlus`（Debug 限定・スプリント10）。true の間は `PlusService` を
+    /// `StoreKitPlusService` ではなく `FakePlusService` で動かし、
+    /// `Purchase` などの挙動を UI テストで決定的に再現できるようにする。
+    /// 既定（false）は App Store と接続する `StoreKitPlusService`。
+    var fakePlus: Bool = false
+    /// `-SameQPlusActive`（Debug 限定・スプリント10）。`fakePlus` と組み合わせると、
+    /// 起動時から Plus 購入済みの状態で開始する。受け入れ条件3,4,5 を UI テストで
+    /// 確認するためのショートカット。
+    var plusActiveAtLaunch: Bool = false
     /// いいねの連打制限（F17）。既定は15秒間に8回まで、超えたら15秒制限。
     var likeRateLimit = RateLimitSettings(maxActions: 8, windowSeconds: 15, cooldownSeconds: 15)
     /// 通報の連打制限（F17）。既定は30秒間に4回まで、超えたら20秒制限。
@@ -102,6 +111,8 @@ struct LaunchOptions: Sendable {
         options.simulateNotificationTap = arguments.contains("-SameQSimulateNotificationTap")
         options.seedOnly = arguments.contains("-SameQSeedOnly")
         options.skipSeed = arguments.contains("-SameQSkipSeed")
+        options.fakePlus = arguments.contains("-SameQFakePlus")
+        options.plusActiveAtLaunch = arguments.contains("-SameQPlusActive")
         if let hour = value(after: "-SameQNotificationHour").flatMap(Int.init),
            (0...23).contains(hour) {
             options.notificationForcedHour = hour

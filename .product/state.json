@@ -1,8 +1,14 @@
 {
   "currentSprint": "10",
   "attempt": 1,
-  "status": "in_progress",
+  "status": "awaiting_eval",
   "history": [
+    {
+      "sprint": "10",
+      "attempt": 1,
+      "result": "awaiting_eval",
+      "note": "F28/F29/F30/F31 実装。spec.md が RevenueCat を指定しているが外部依存ゼロの方針を維持するため StoreKit 2 を直接叩く実装に置き換えた（PlusService プロトコルで抽象化し、将来 RevenueCat SDK に差し替え可能）。新規ファイル: SameQ/Backend/PlusService.swift（プロトコル/PlusProduct/PlusEntitlement/PlusPurchaseError）、SameQ/Backend/FakePlusService.swift（FakePlusService.init(active:)・setPlusActive(_:)、テスト用）、SameQ/Backend/StoreKitPlusService.swift（Product.products(for:) と Transaction.currentEntitlements を用いた実 StoreKit 実装、restore() は AppStore.sync() を先に呼ぶ）、SameQ/Model/PostDecoration.swift（装飾のKind列挙+NSRangeエンコード）、SameQ/Feature/Plus/PlusView.swift（hero/benefits/purchase/restoreの4セクション+透過アンカー plus.root.anchor）、SameQ/Feature/Plus/PlusDecorationPicker.swift（スタンプ6種+太字/斜体/吹き出しトグル）。変更: Post.decorations、Backend.submitPost の拡張（既存呼び出しを保つためデフォルト値）、LocalBackend.bodyCharacterLimit(isPlus:)、LaunchOptions.fakePlus/plusActiveAtLaunch、AppSession.plusService/isPlus/plusEntitlement/plusProducts/pendingDecorations/purchasePlus/restorePlus/refreshPlusEntitlement、RootView に2つ目の .sheet、TodayPromptView の characterLimit分岐と composerHeight切替（150/240）、AnswerCardView の previewLimit+isExpanded+decoratedBody、TimelineView から previewLimit: LocalBackend.bodyCharacterLimit を渡す、SettingsView に Plus セクション、WaitingPromptView に PlusEntryButton。ユニットテスト 9 本（PlusServiceTests）+ UI テスト 6 本（SprintTenAcceptanceTests）を追加。シミュレータ単独実行で SameQTests 144/144 + SprintTenAcceptanceTests 6/6 + SameQUITests フルスイート 60/60 すべて 0 failures（exit code 0）。PlusService プロトコルは RevenueCat Purchases / CustomerInfo / offerings の構造を踏襲して作ってあるので SDK 移行時は同じ呼び出し側に保ったまま差し替え可能。Sandbox 購入・復元の e2e は自動テスト未対応（Fake 経由のみ）。詳細は .product/sprints/10-plus/self-review.md"
+    },
     {
       "sprint": "01",
       "attempt": 1,

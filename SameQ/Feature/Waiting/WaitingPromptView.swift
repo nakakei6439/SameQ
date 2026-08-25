@@ -17,6 +17,7 @@ struct WaitingPromptView: View {
                 HStack(spacing: 0) {
                     identityRow
                     SettingsEntryButton()
+                    PlusEntryButton()
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 16)

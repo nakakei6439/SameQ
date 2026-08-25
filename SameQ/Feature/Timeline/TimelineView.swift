@@ -175,7 +175,12 @@ struct TimelineView: View {
                 displayedNickname: post.displayedNickname(
                     transliterator: session.nicknameTransliterator,
                     isOwn: post.authorID == session.user?.id
-                )
+                ),
+                // 無料ユーザーの上限（140 文字）を境界として長文を折り畳む（F29）。
+                // Plus ユーザーであっても、表示上の折り畳みは同じ 140 文字でよい
+                // （受け手側の画面では Free / Plus 関係なく同じ動作にする＝「閲覧に
+                // 課金制限がかからない」方針を保つ）。
+                previewLimit: LocalBackend.bodyCharacterLimit
             )
                 .padding(.horizontal, 20)
                 .offset(dragOffset)

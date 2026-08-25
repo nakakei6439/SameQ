@@ -47,9 +47,19 @@ protocol Backend: Sendable, TranslationAttemptPersisting {
     /// 表示期限を過ぎた回答は nil を返す（お題が変われば再び未回答になる）。
     func myPost(promptID: String) async throws -> Post?
 
-    /// 回答を投稿する。1つのお題につき1回だけ。
+    /// 回答を投稿する。1つのお題につき1回だけ（F04 / F29 / F30）。
+    /// - Parameters:
+    ///   - promptID: 投稿先のお題
+    ///   - body: 本文（前後空白は内部で trim される）
+    ///   - decorations: Plus 限定装飾（F30）。`isPlus == false` のときは無視される
+    ///   - isPlus: 呼び出し時点の Plus 状態（F29 の長文上限、F30 の装飾受理に使う）
     @discardableResult
-    func submitPost(promptID: String, body: String) async throws -> Post
+    func submitPost(
+        promptID: String,
+        body: String,
+        decorations: [PostDecoration],
+        isPlus: Bool
+    ) async throws -> Post
 
     // MARK: 世界タイムライン（F06 / F11 / F12）
 
@@ -123,6 +133,17 @@ extension Backend {
     /// 後方互換のデフォルト（プロトコル本体に既定値は書けないため extension で用意する）。
     func nextTimelinePost(promptID: String) async throws -> TimelineDraw {
         try await nextTimelinePost(promptID: promptID, excluding: [], autoMarkViewed: true)
+    }
+
+    /// 装飾と Plus 状態を渡さない従来の `submitPost`（スプリント10 より前の呼び出し元
+    /// ・既存テストを通すための後方互換デフォルト）。
+    func submitPost(promptID: String, body: String) async throws -> Post {
+        try await submitPost(
+            promptID: promptID,
+            body: body,
+            decorations: [],
+            isPlus: false
+        )
     }
 }
 

@@ -4,12 +4,21 @@ import SwiftUI
 ///
 /// 未回答のときは入力欄とロック表示だけを置き、世界タイムラインへの導線を一切出さない。
 /// 回答済みのときは自分の回答と、タイムラインを開くボタンを出す。
+///
+/// **Plus 対応（スプリント10 / F28 / F29 / F30）**:
+/// - 文字数上限を `session.isPlus` によって切り替える（140 ⇄ 2000）
+/// - Plus のときは装飾ピッカー（`PlusDecorationPicker`）を composer の下に出す
+/// - 入力欄の最大高さを Plus のとき自動で伸ばす（長文が打ちやすいように）
 struct TodayPromptView: View {
     @Environment(AppSession.self) private var session
     @State private var draft: String = ""
     @FocusState private var isEditorFocused: Bool
 
-    private var characterLimit: Int { LocalBackend.bodyCharacterLimit }
+    /// 現在のモードに応じた文字数上限（F04 / F29）。
+    /// `session.isPlus` が変わったら即座に反映する（購入直後の再 compose に対応）。
+    private var characterLimit: Int {
+        LocalBackend.bodyCharacterLimit(isPlus: session.isPlus)
+    }
 
     var body: some View {
         @Bindable var session = session
@@ -23,7 +32,14 @@ struct TodayPromptView: View {
                     answeredSection(myPost: myPost)
                 } else {
                     composer
+                    if session.isPlus {
+                        PlusDecorationPicker()
+                    }
                     lockedNotice
+                }
+
+                if !session.isPlus {
+                    plusHint
                 }
             }
             .padding(.horizontal, 24)
@@ -36,6 +52,7 @@ struct TodayPromptView: View {
             // お題が新しくなったら書きかけは持ち越さない（前のお題の言葉は消える）。
             draft = ""
             isEditorFocused = false
+            session.clearPendingDecorations()
         }
         // タイムラインは `fullScreenCover` で重ねているだけで、この画面は裏で生き続けている。
         // タイムライン表示中は `TimelineView` 側の `.alert` にだけ出す
@@ -75,6 +92,7 @@ struct TodayPromptView: View {
         HStack(spacing: 0) {
             identityRow
             SettingsEntryButton()
+            PlusEntryButton()
         }
     }
 
@@ -124,13 +142,15 @@ struct TodayPromptView: View {
                     .font(.system(size: 16))
                     .foregroundStyle(Theme.ink)
                     .scrollContentBackground(.hidden)
-                    .frame(height: 150)
+                    .frame(height: composerHeight)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                     .focused($isEditorFocused)
                     .accessibilityIdentifier("today.input")
                     .onChange(of: draft) { _, newValue in
                         if newValue.count > characterLimit {
+                            // 受け入れ条件1: 140文字（無料）/ 2000文字（Plus）を超える入力は
+                            // ここで止まる。Plus のときは 2000 文字まで打てる。
                             draft = String(newValue.prefix(characterLimit))
                         }
                     }
@@ -145,7 +165,7 @@ struct TodayPromptView: View {
             .cardBackground(cornerRadius: 18)
 
             HStack {
-                Text("1つのお題に答えられるのは1回だけです")
+                Text(messageText)
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.inkTertiary)
                 Spacer()
@@ -164,6 +184,19 @@ struct TodayPromptView: View {
             .disabled(!canSubmit)
             .accessibilityIdentifier("today.submit")
         }
+    }
+
+    /// Plus のときは高さを広げて、長文が打ちやすいように調整する（F29）。
+    private var composerHeight: CGFloat {
+        session.isPlus ? 240 : 150
+    }
+
+    /// 1お題1投稿の説明と、Plus モードの案内（無料ユーザーだけ）。
+    private var messageText: String {
+        if session.isPlus {
+            return "1つのお題に答えられるのは1回だけです（Plus 長文対応）"
+        }
+        return "1つのお題に答えられるのは1回だけです"
     }
 
     /// ボタンの有効条件は「何か入力されているか」だけにする（trim 後の判定にしない）。
@@ -226,5 +259,64 @@ struct TodayPromptView: View {
             .disabled(session.isPreparingTimeline)
             .accessibilityIdentifier("today.openTimeline")
         }
+    }
+
+    /// 無料ユーザー向け Plus の案内（F28）。強制ではなく「あってもいいかも」程度の小さなカード。
+    private var plusHint: some View {
+        Button {
+            session.isPlusViewPresented = true
+        } label: {
+            HStack(spacing: 10) {
+                Text("✨").font(.system(size: 22))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("もっと書きたいときは")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Theme.ink)
+                    Text("Plus なら長文と装飾が使えます")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.inkSecondary)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cardBackground(cornerRadius: 18)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("today.plusHint")
+    }
+}
+
+/// Plus 画面の入り口（スプリント10 / F28）。
+/// 設定ボタン（F15）の右にそっと置く。「Plus」の文字を直接出さず、控えめな星マークで
+/// 察せる形にして、無料ユーザーの画面を圧迫しない。
+struct PlusEntryButton: View {
+    @Environment(AppSession.self) private var session
+
+    var body: some View {
+        Button {
+            session.isPlusViewPresented = true
+        } label: {
+            HStack(spacing: 2) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(session.isPlus ? Theme.accent : Theme.inkSecondary)
+                if session.isPlus {
+                    Text("Plus")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                }
+            }
+            .frame(minWidth: 32, minHeight: 32)
+            .padding(.horizontal, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("plus.open")
+        .accessibilityLabel(Text(session.isPlus ? "Plus に登録済み" : "Plus を見る"))
     }
 }
