@@ -1,8 +1,14 @@
 {
   "currentSprint": "10",
   "attempt": 1,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
+    {
+      "sprint": "10",
+      "attempt": 1,
+      "result": "needs_fix",
+      "note": "evaluator評価: 不合格。受け入れ条件6（購入を復元してPlus状態が戻る）が実機（FakePlusService経由）で失敗。Plus購入後にアプリを再起動すると状態が失われ、設定画面の「購入を復元」を押してもPlus状態に戻らない（FakePlusServiceのlastEntitlementがメモリ保持のみで永続化されていないため）。条件1/2/3/4/5/7は実機操作で達成を確認（条件4/5は同梱シードデータに140文字超の投稿が1件も無かったため、evaluatorが一時的にSeedData.jsonを書き換えて検証、検証後に元へ復元済み）。回帰確認（スプリント01/04/05）は最終的に全件合格。詳細は .product/sprints/10-plus/eval-1.md"
+    },
     {
       "sprint": "10",
       "attempt": 1,
