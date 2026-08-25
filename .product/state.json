@@ -1,8 +1,14 @@
 {
   "currentSprint": "10",
-  "attempt": 1,
-  "status": "needs_fix",
+  "attempt": 2,
+  "status": "awaiting_eval",
   "history": [
+    {
+      "sprint": "10",
+      "attempt": 2,
+      "result": "awaiting_eval",
+      "note": "eval-1.mdの指摘[1]（FakePlusService の lastEntitlement がメモリのみで永続化されておらず、アプリ再起動後に『購入を復元』を押しても Plus 状態に戻らない）に対応。SameQ/Backend/FakePlusService.swift に UserDefaults 永続化（キー FakePlusService.lastEntitlementKey）を追加：purchase(_:) / setPlusActive(_:) は lastEntitlement の didSet で書き込み、setPlusActive(false) はキーを削除。init は永続化キーを読まずに起動（StoreKit の Transaction.currentEntitlements が「購入を復元まで露出しない」のと同じ振る舞い）、restore() が呼ばれた瞬間に UserDefaults を読んで active == true へ戻る。期限切れの永続化値は restore() が nil を返し、ついでにキーも片付ける。ユニットテスト 3本追加（test10_FakePlusServicePersistsEntitlementAcrossInstances / test11_FakePlusServiceDoesNotRehydrateExpiredEntitlement / test12_FakePlusServiceDeactivateClearsPersistedEntitlement）、UIテスト 1本追加（test07_purchaseThenRestoreAfterRelaunch_returnsPlusState、eval-1.md の再現手順をそのまま自動化）。PlusServiceTests に setUp/tearDown で UserDefaults.standard の永続化キーをクリアする処理を追加（既存テスト間の UserDefaults 共有によるリーク防止）。SameQTests 147/147、SprintTenAcceptanceTests 7/7 全件成功（シミュレータ単独実行）。実機/Sandbox 購入の e2e は引き続き未検証（FakePlusService の永続化は Debug 限定で、Release は StoreKitPlusService が動くため本番経路に影響しない）。詳細は .product/sprints/10-plus/self-review.md の attempt 2"
+    },
     {
       "sprint": "10",
       "attempt": 1,

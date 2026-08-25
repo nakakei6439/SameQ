@@ -9,6 +9,21 @@ import XCTest
 @MainActor
 final class PlusServiceTests: XCTestCase {
 
+    override func setUp() {
+        super.setUp()
+        // attempt 2: 永続化導入後のテスト間リーク防止。
+        // 既存テスト（test01〜test09）は引数なしの `FakePlusService()` を経由して
+        // `UserDefaults.standard` を共有するため、各テスト開始時に永続化キーを
+        // クリアしないとテスト順序で結果が変わる（test04 などが影響を受けていた）。
+        UserDefaults.standard.removeObject(forKey: FakePlusService.lastEntitlementKey)
+    }
+
+    override func tearDown() {
+        // 念のため後片付け
+        UserDefaults.standard.removeObject(forKey: FakePlusService.lastEntitlementKey)
+        super.tearDown()
+    }
+
     // MARK: PlusService プロトコル
 
     func test01_FakePlusServiceStartsInactive() async {
@@ -178,5 +193,87 @@ final class PlusServiceTests: XCTestCase {
         XCTAssertFalse(PostBodyInspector.isLongForm("short", limit: 140))
         let preview = PostBodyInspector.previewBody(of: body, limit: 140)
         XCTAssertEqual(preview.count, 140, "折り畳みは previewLimit 文字")
+    }
+
+    // MARK: FakePlusService の永続化（attempt 2: eval-1.md [1] の修正）
+
+    /// 購入後に `FakePlusService` を破棄し、別インスタンスで `restore()` を呼ぶと
+    /// Plus 状態が戻ること（受け入れ条件6・attempt 2）。
+    /// `UserDefaults` のテスト用スイート（`UserDefaults(suiteName:)`）で分離して、
+    /// 本物の `UserDefaults.standard` を汚さない。
+    func test10_FakePlusServicePersistsEntitlementAcrossInstances() async throws {
+        let suiteName = "FakePlusServiceTests.persistence"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        // 念のため初期化
+        defaults.removePersistentDomain(forName: suiteName)
+
+        // 1回目: 購入して永続化
+        do {
+            let service = FakePlusService(defaults: defaults)
+            let products = await service.availableProducts()
+            let product = try XCTUnwrap(products.first)
+            _ = try await service.purchase(product)
+        }
+
+        // インスタンスを破棄し、新たに作る（アプリ再起動を模倣）
+        let rehydrated = FakePlusService(defaults: defaults)
+        // 起動直後はまだ無料ユーザー扱い（永続化は restore() が引く）
+        let beforeRestore = await rehydrated.currentEntitlement()
+        XCTAssertNil(beforeRestore, "再起動直後はまだ Plus ではない（restore 前）")
+        let restored = try await rehydrated.restore()
+        XCTAssertNotNil(restored, "再起動後の restore() で Plus 状態が戻る")
+        XCTAssertTrue(restored?.isActive(at: Date()) == true)
+        // restore 後は active
+        let afterRestore = await rehydrated.currentEntitlement()
+        XCTAssertNotNil(afterRestore, "restore 後は currentEntitlement() が非 nil")
+
+        // 後片付け（テスト用スイートを削除）
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    /// 永続化されたエンタイトルメントが期限切れなら、新規 `FakePlusService` は
+    /// 未購入状態として起動すること（attempt 2: 期限切れの偽 Plus を持ち越さない）。
+    func test11_FakePlusServiceDoesNotRehydrateExpiredEntitlement() async throws {
+        let suiteName = "FakePlusServiceTests.expired"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        // 過去に切れたエンタイトルメントを直接書き込む
+        let past = Date().addingTimeInterval(-60 * 60)        // 1時間前
+        let expired = PlusEntitlement(
+            productID: "com.nakakei6439.SameQ.plus.monthly",
+            purchasedAt: past.addingTimeInterval(-60 * 60 * 24 * 30),
+            expiresAt: past
+        )
+        let data = try JSONEncoder().encode(expired)
+        defaults.set(data, forKey: FakePlusService.lastEntitlementKey)
+
+        // 新規インスタンスで起動 → 期限切れのため未購入扱いに落ちる
+        let service = FakePlusService(defaults: defaults)
+        let current = await service.currentEntitlement()
+        XCTAssertNil(current, "期限切れのエンタイトルメントは復元されない")
+        // 古い値もクリーンされている（再度 restore() を押しても反応しない）
+        let restored = try await service.restore()
+        XCTAssertNil(restored, "期限切れ状態からの restore() は nil")
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    /// `setPlusActive(false)` を呼ぶと永続化されたエントリも削除されること
+    ///（attempt 2: 「Plus をキャンセルした」状態を再現するため）。
+    func test12_FakePlusServiceDeactivateClearsPersistedEntitlement() async {
+        let suiteName = "FakePlusServiceTests.deactivate"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let service = FakePlusService(defaults: defaults)
+        service.setPlusActive(true)
+        XCTAssertNotNil(defaults.data(forKey: FakePlusService.lastEntitlementKey),
+                        "setPlusActive(true) で UserDefaults に書き込まれる")
+        service.setPlusActive(false)
+        XCTAssertNil(defaults.data(forKey: FakePlusService.lastEntitlementKey),
+                     "setPlusActive(false) で UserDefaults のエントリが削除される")
+
+        defaults.removePersistentDomain(forName: suiteName)
     }
 }

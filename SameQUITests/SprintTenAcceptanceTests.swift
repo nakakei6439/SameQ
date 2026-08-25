@@ -156,6 +156,109 @@ final class SprintTenAcceptanceTests: XCTestCase {
         XCTAssertTrue(app.buttons["settings.plus.restore"].exists, "設定から購入を復元できる")
     }
 
+    // MARK: 受け入れ条件 6（再起動をまたいだ購入復元の end-to-end）
+
+    /// 受け入れ条件6「アプリを削除して入れ直しても『購入を復元』で Plus 状態が戻る」を
+    /// FakePlusService 経路で end-to-end に確かめる（attempt 2: eval-1.md [1] の修正）。
+    ///
+    /// 手順:
+    /// 1. `-SameQFakePlus -SameQResetState` で初回起動し、オンボーディングを完了
+    /// 2. Plus 画面で「Plus に登録する」を押して購入（`plus.open` のラベルが「Plus に登録済み」に変わる）
+    /// 3. アプリを完全に終了し、`-SameQResetState` 抜きで再起動（同じアカウントで復帰）
+    /// 4. 起動直後はまだ無料ユーザー状態（`plus.open` のラベルが「Plus を見る」）
+    /// 5. 設定 → 「購入を復元」を押すと Plus 状態が戻る（`plus.open` のラベルが「Plus に登録済み」に戻り、
+    ///    設定画面のステータス文言が「Plus に登録済みです」に切り替わる）
+    func test07_purchaseThenRestoreAfterRelaunch_returnsPlusState() {
+        // ---- 1回目: 購入まで ----
+        let app = launchFresh(free: true)
+        completeOnboarding(app)
+        XCTAssertTrue(app.staticTexts["today.promptText"].waitForExistence(timeout: 8))
+
+        // Plus 画面を開く
+        XCTAssertTrue(app.buttons["plus.open"].waitForExistence(timeout: 5))
+        app.buttons["plus.open"].tap()
+        XCTAssertTrue(app.staticTexts["plus.root.anchor"].waitForExistence(timeout: 5))
+
+        // 購入ボタンをタップ（テキスト一致で取得、アクセシビリティ識別子の伝播不備を回避）
+        let purchaseButton = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Plus に登録'")).firstMatch
+        XCTAssertTrue(purchaseButton.waitForExistence(timeout: 5))
+        purchaseButton.tap()
+
+        // ヘッダの `plus.open` のラベルが「Plus に登録済み」に変わる（購入成功の目印）
+        let registeredEntryButton = app.buttons["plus.open"]
+        XCTAssertTrue(registeredEntryButton.waitForExistence(timeout: 8))
+        // Plus 画面を閉じて今日の画面へ戻る
+        let cancelButton = app.buttons.matching(NSPredicate(format: "label == '閉じる' OR label == 'Cancel'")).firstMatch
+        if cancelButton.exists { cancelButton.tap() }
+        // 「Plus に登録済み」アクセシビリティラベルが付いた plus.open を待つ
+        XCTAssertTrue(
+            waitForLabel(registeredEntryButton, equals: "Plus に登録済み", timeout: 8),
+            "購入直後にヘッダ右の plus.open が『Plus に登録済み』に切り替わる"
+        )
+
+        // ---- アプリを完全に終了 ----
+        app.terminate()
+
+        // ---- 2回目: 再起動（-SameQResetState 抜き） ----
+        let relaunched = XCUIApplication()
+        relaunched.launchArguments = [
+            "-SameQScenario", "live",
+            "-SameQFakePlus",
+        ]
+        relaunched.launch()
+
+        // 起動直後はまだ無料ユーザー状態（永続化が壊れたままだと最初から『Plus に登録済み』が出てしまう）
+        XCTAssertTrue(relaunched.staticTexts["today.promptText"].waitForExistence(timeout: 8))
+        let entryAfterRelaunch = relaunched.buttons["plus.open"]
+        XCTAssertTrue(entryAfterRelaunch.waitForExistence(timeout: 5))
+        // 再起動直後はまだ「Plus を見る」（= 無料ユーザー扱い）
+        XCTAssertTrue(
+            waitForLabel(entryAfterRelaunch, equals: "Plus を見る", timeout: 5),
+            "再起動直後はまだ無料ユーザー（ラベルが『Plus を見る』）"
+        )
+
+        // 設定を開いて Plus セクションの復元ボタンをタップ
+        XCTAssertTrue(relaunched.buttons["settings.open"].waitForExistence(timeout: 5))
+        relaunched.buttons["settings.open"].tap()
+        XCTAssertTrue(relaunched.otherElements["settings.root"].waitForExistence(timeout: 5))
+        XCTAssertTrue(relaunched.staticTexts["settings.plus.status"].waitForExistence(timeout: 3))
+        let restoreButton = relaunched.buttons["settings.plus.restore"]
+        XCTAssertTrue(restoreButton.waitForExistence(timeout: 3))
+        restoreButton.tap()
+
+        // 復元が成功すればステータス文言が「Plus に登録済みです」に切り替わる
+        // （旧来は無料ユーザー向けの「Plus を使うと、もっと書ける」だった）
+        let plusActiveStatus = relaunched.staticTexts.matching(
+            NSPredicate(format: "label == 'Plus に登録済みです'")
+        ).firstMatch
+        XCTAssertTrue(
+            plusActiveStatus.waitForExistence(timeout: 8),
+            "「購入を復元」後にステータス文言が『Plus に登録済みです』に切り替わる（受け入れ条件6）"
+        )
+
+        // 設定を閉じてヘッダの plus.open も「Plus に登録済み」に戻っていることを確認
+        let settingsClose = relaunched.buttons["settings.close"]
+        XCTAssertTrue(settingsClose.waitForExistence(timeout: 3))
+        settingsClose.tap()
+        XCTAssertTrue(relaunched.staticTexts["today.promptText"].waitForExistence(timeout: 5))
+        let entryAfterRestore = relaunched.buttons["plus.open"]
+        XCTAssertTrue(entryAfterRestore.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            waitForLabel(entryAfterRestore, equals: "Plus に登録済み", timeout: 8),
+            "復元後にヘッダの plus.open が『Plus に登録済み』に切り替わる"
+        )
+    }
+
+    /// `XCUIElement` の `label` が指定した文字列に一致するまで待つ（attempt 2: test07 のヘルパ）。
+    /// `wait(for:timeout:)` は `NSPredicate` を直接取らないため、`XCTNSPredicateExpectation` で
+    /// 待ってから `XCUIElement` の存在とラベルを確認する。
+    private func waitForLabel(_ element: XCUIElement, equals expected: String, timeout: TimeInterval) -> Bool {
+        let predicate = NSPredicate(format: "label == %@", expected)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        let result = XCTWaiter().wait(for: [expectation], timeout: timeout)
+        return result == .completed
+    }
+
     // MARK: ヘルパー
 
     private func launchFresh(free: Bool) -> XCUIApplication {
