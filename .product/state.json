@@ -1,7 +1,7 @@
 {
   "currentSprint": "09",
   "attempt": 1,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "01",
@@ -206,6 +206,12 @@
       "attempt": 1,
       "result": "awaiting_eval",
       "note": "F26/F27 実装。PromptCatalog（新・手書き50件の候補プール+安全チェッカー+2件のフォールバック）+PromptGenerator（UTC暦日ベースの決定的な生成、startIndexローテーション、安全でない候補を破棄して次に進む、結果に discarded を同梱）+SeedCatalog.loadScheduleWithAutoGeneration（シードが今日をカバーしていなければ自動生成をマージ、scheduleAlreadyCoversToday で重複防止）+LocalBackend（生成結果を discardedCandidatesCount に積算）+PersistedState（discardedCandidatesCount を decodeIfPresent で後方互換導入、schemaVersion 据え置き）+LaunchOptions（-SameQSeedOnly / -SameQSkipSeed を追加）+Debug オーバーレイ（discarded N 表示）。ユニット18本（新規）+UIテスト7本（新規）を追加。シミュレータ単独実行でユニット131/131・UIテスト7/7すべて成功。フルUI回帰テストはバックグラウンド実行中。詳細は .product/sprints/09-auto-prompt-generation/self-review.md"
+    },
+    {
+      "sprint": "09",
+      "attempt": 1,
+      "result": "needs_fix",
+      "note": "evaluatorがiPhone 16 Proシミュレータで実操作検証。受け入れ条件1（翌日に別のお題）が本番相当の起動経路（シードあり・-SameQSkipSeedなし）で未達：SeedCatalog.startDatesのliveシナリオが常にreference-2hでシードを動的再構築するため、scheduleAlreadyCoversTodayが常にtrueになりPromptGeneratorが本番経路から到達不能。24時間進めて再起動しても同じprompt_001のまま変化しないことを実機で確認（テキスト・デバッグオーバーレイとも同一）。-SameQSkipSeed経由のPromptGenerator単体ロジック自体は正常（sanity 2/2成功、ユニット18/18成功）。回帰はSprintOne/Two/Six計14/14成功。詳細は .product/sprints/09-auto-prompt-generation/eval-1.md"
     }
   ]
 }

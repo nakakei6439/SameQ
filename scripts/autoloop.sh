@@ -21,7 +21,7 @@ LOGDIR="$REPO_DIR/.product/autoloop-logs"
 LOCK_FILE="$REPO_DIR/.product/autoloop.lock"
 MAX_ITERATIONS="${MAX_ITERATIONS:-60}"
 LAST_SPRINT="11"
-TIMEOUT_SECONDS=7200
+TIMEOUT_SECONDS=10800
 
 mkdir -p "$LOGDIR"
 cd "$REPO_DIR" || { echo "リポジトリに移動できません: $REPO_DIR"; exit 1; }
@@ -161,7 +161,7 @@ while [ "$iteration" -lt "$MAX_ITERATIONS" ]; do
     awaiting_eval)
       log "evaluator を起動します（sprint=${current_sprint}）..."
       with_timeout "$TIMEOUT_SECONDS" claude --agent evaluator -p \
-        "PROGRESS.md と .product/state.json を読んで、現在のスプリントを実際に動かして評価してください。" \
+        "PROGRESS.md と .product/state.json を読んで、現在のスプリントを実際に動かして評価してください。重要: これは非対話・一回きりの実行です。バックグラウンドでテストを実行して「後で報告します」という形で終わらせることはできません（このプロセスはこのターンが終われば消え、フォローアップは一切発生しません）。フルテストスイートやビルドがどれだけ時間がかかっても、必ず全て完了させてから、このターン内で合否判定・eval-N.mdの作成・state.jsonのstatus更新まで完結させてください。" \
         --permission-mode bypassPermissions \
         --output-format text >> "$LOGDIR/evaluator_$(date +%Y%m%d_%H%M%S).log" 2>&1
       eval_exit=$?
