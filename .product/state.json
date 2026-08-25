@@ -1,7 +1,7 @@
 {
   "currentSprint": "09",
   "attempt": 3,
-  "status": "awaiting_eval",
+  "status": "passed",
   "history": [
     {
       "sprint": "01",
@@ -230,6 +230,12 @@
       "attempt": 3,
       "result": "awaiting_eval",
       "note": "eval-2 [1] に対応。3 点修正: (1) SeedCatalog.loadSchedule の `.live` 分岐で `reference > liveAnchor + duration` のとき `effectivePrompts = []`（seed 完全排除）、空 schedule → PromptGenerator が必ず走る。dead zone 解消。 (2) `loadScheduleWithAutoGeneration` で `scenario != .live` のとき auto-gen を skip（`.expired` / `.upcoming` / `.expiring` の SprintTwo test01/test02 の「お題待ち」前提が auto-gen 経由で active な prompt が出る事故を防ぐ）。 (3) `.live` coverage 外では `merge` を経由せず `generated` だけで PromptSchedule を組み立てる（全 base.posts を `result.prompt.id` に rebased し period overlap なし）。`merge` 関数は attempt 2 の seed 残す挙動に戻し、`.live` 限定で schedule 構築を分岐。 検証結果: SameQTests 135/135、SprintTwoAcceptanceTests 5/5、SprintOne/Six/Nine 16/16、SprintThree/Seven 12/12、全 156 件 pass。testSeedCatalogScheduleStaysTimeOrdered 含む prompt period overlap 系の unit test もすべて pass。実機検証手順は self-review.md「翌日に別のお題が出ることを本番経路で確認する方法」に記載"
+    },
+    {
+      "sprint": "09",
+      "attempt": 3,
+      "result": "passed",
+      "note": "evaluatorがiPhone 17シミュレータ（+世界共通性確認用にEval09を追加）で実操作検証。合格。受け入れ条件6/6。特にeval-1・eval-2で2回連続不合格になった条件1（翌日に別のお題）は、evaluator自身が本番相当の経路（シードあり・-SameQSkipSeed/-SameQSeedOnly無し・scenario=live）でterminate→offset変更→再launchを5段階（0h/21h40m/45h40m/69h40m/93h40m）繰り返し、liveAnchor+28h（coverage）超過直後に即座にprompt_20260826へ切り替わり、以降4日連続でprompt_20260827→28→29と単調に切り替わることを確認、eval-2で見つかった約4.7日間のdead zoneが解消されていることを直接確認した。条件2（世界共通）は同一offsetで別シミュレータに新規インストールし同一prompt_20260829が出ることを確認。条件4はPromptCatalog.disallowedKeywordsが仕様7観点を過不足なく網羅していることをソースで確認。条件6はdefaultDuration=28h・testSeedCatalogScheduleStaysTimeOrderedで担保。データ整合性はアプリコンテナのstate.jsonを直接読み、schemaVersion 5・discardedCandidatesCount・myPosts.expiresAtがliveAnchor+28hと正確に一致することを確認。回帰はSprintOne(5)/SprintTwo(5)/SprintThree(7)/SprintSix(4)の計21件すべて成功。ユニット135/135・UI28/28すべて自分で再実行し成功を確認。クラッシュ0、未処理エラー0、使用性4。詳細は .product/sprints/09-auto-prompt-generation/eval-3.md"
     }
   ]
 }
