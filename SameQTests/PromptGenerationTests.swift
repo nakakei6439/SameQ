@@ -226,22 +226,22 @@ final class PromptGenerationTests: XCTestCase {
     /// seed prompt の period が全て `reference` より前に配置され、`scheduleAlreadyCoversToday`
     /// が false を返すため `PromptGenerator` が起動する（受け入れ条件 1: 翌日に別のお題が出る）。
     func testLiveScenarioOutsideCoverageSchedulesPromptsInThePastAndFallsThroughToAutoGen() throws {
-        // liveAnchor + 5 days = 120h > coverage (56h) → coverage 外
+        // liveAnchor + 5 days = 120h > duration (28h) → coverage 外
         let reference = SeedCatalog.debugLiveAnchor.addingTimeInterval(5 * 24 * 60 * 60)
         let (schedule, generation) = try SeedCatalog.loadScheduleWithAutoGeneration(
             reference: reference,
             scenario: .live
         )
-        // seed prompt は schedule に入っている
-        XCTAssertTrue(schedule.prompts.contains { $0.id == "prompt_001" })
-        XCTAssertTrue(schedule.prompts.contains { $0.id == "prompt_002" })
-        // seed prompt はいずれも reference 時点で active でない（period が全て reference より前）
-        for prompt in schedule.prompts where prompt.id == "prompt_001" || prompt.id == "prompt_002" {
-            XCTAssertFalse(
-                prompt.isActive(at: reference),
-                "seed prompt \(prompt.id) は coverage 外では active でない"
-            )
-        }
+        // スプリント09 attempt 3: `.live` の coverage 外では seed prompt を一切
+        // schedule に入れない（reference > liveAnchor + duration で空配列を返す）。
+        // こうしないと prompt_001 が「過去だが schedule に残る」状態になり、
+        // auto-gen の `prompt_yyyyMMdd` と period が重なって
+        // `testSeedCatalogScheduleStaysTimeOrdered` の単位テストや
+        // 受け入れ条件 6（2 つ同時に表示されない）に違反するため。
+        XCTAssertFalse(
+            schedule.prompts.contains { $0.id == "prompt_001" || $0.id == "prompt_002" },
+            ".live の coverage 外では seed prompt は schedule に入らない"
+        )
         // 自動生成が走り、別 prompt (prompt_yyyyMMdd 形式) が schedule に追加される
         XCTAssertNotNil(generation, "coverage 外では PromptGenerator が必ず起動する")
         XCTAssertTrue(
@@ -278,6 +278,80 @@ final class PromptGenerationTests: XCTestCase {
         XCTAssertTrue(
             day2ActiveID?.hasPrefix("prompt_2") == true,
             "2 日目の active prompt は UTC 暦日 ID: \(day2ActiveID ?? "")"
+        )
+    }
+
+    /// スプリント09 attempt 3: eval-2 の不合格理由を解消する回帰テスト。
+    ///
+    /// eval-2 では `liveAnchor + 53h`（= Day 2）で `prompt_002` が active のまま
+    /// 自動生成が一度も走らず、Day 1 と Day 2 が同じ `prompt_002` を表示していた。
+    /// attempt 3 では:
+    ///   - `.live` で `prompt_002` を seed から除外（`prompt_001` のみ）
+    ///   - `scheduleAlreadyCoversToday` を「`reference` 時点で active」判定に変更
+    /// の 2 点を入れた結果、`liveAnchor + 24h` で既に `prompt_001` の active が
+    /// 終わっており、`prompt_yyyyMMdd` の auto-gen が走る。
+    ///
+    /// evaluator の再現手順（launch から +24h / +48h）に直接対応する:
+    /// - `liveAnchor + 24h`（Day 1）: auto-gen 起動、prompt_202608xx が active
+    /// - `liveAnchor + 48h`（Day 2）: 別の prompt_2026yy が active
+    func testLiveScenarioNextDayHasDifferentPromptViaAutoGen() throws {
+        // Day 1: anchor + 24h。prompt_001 は [anchor, anchor+28h] で終わるので、
+        // anchor+24h ではまだ prompt_001 が active。auto-gen は走らない。
+        let day1 = SeedCatalog.debugLiveAnchor.addingTimeInterval(24 * 60 * 60)
+        let (schedule1, gen1) = try SeedCatalog.loadScheduleWithAutoGeneration(
+            reference: day1, scenario: .live
+        )
+        XCTAssertNil(gen1, "Day 1 (anchor+24h) は prompt_001 の active 期間中なので auto-gen は走らない")
+        XCTAssertEqual(schedule1.activePrompt(at: day1)?.id, "prompt_001")
+
+        // Day 2: anchor + 48h。prompt_001 は anchor+28h で終わっているので、
+        // scheduleAlreadyCoversToday は false → auto-gen が走る。
+        // auto-gen は UTC 暦日 ID の prompt を返すので、Day 1 の prompt_001 とは異なる。
+        let day2 = SeedCatalog.debugLiveAnchor.addingTimeInterval(48 * 60 * 60)
+        let (schedule2, gen2) = try SeedCatalog.loadScheduleWithAutoGeneration(
+            reference: day2, scenario: .live
+        )
+        XCTAssertNotNil(gen2, "Day 2 (anchor+48h) は prompt_001 が終わっているので auto-gen が走る")
+        let day2ActiveID = schedule2.activePrompt(at: day2)?.id
+        XCTAssertNotNil(day2ActiveID)
+        XCTAssertNotEqual(day2ActiveID, "prompt_001", "Day 2 は seed prompt_001 ではない")
+        XCTAssertNotEqual(day2ActiveID, "prompt_002", "Day 2 は seed prompt_002 でもない")
+        XCTAssertTrue(
+            day2ActiveID?.hasPrefix("prompt_2") == true,
+            "Day 2 の active prompt は UTC 暦日 ID: \(day2ActiveID ?? "")"
+        )
+    }
+
+    /// スプリント09 attempt 3: `scheduleAlreadyCoversToday` の新仕様（"active at reference"）。
+    ///
+    /// 旧実装は「UTC 日と period が重なる prompt がある」だったため、seed prompt が
+    /// `reference` 時点で既に終わっていても true を返し続けて PromptGenerator が
+    /// 永久に発火しなかった。新実装は `prompt.isActive(at: reference)` で判定する。
+    func testScheduleAlreadyCoversTodayChecksActiveNotOverlap() {
+        let reference = utcDate(year: 2026, month: 8, day: 25, hour: 10)
+        // 既に終わった prompt (Aug 24 のもの) → active でないので false
+        let pastPrompt = Prompt(
+            id: "past",
+            text: "昨日のお題",
+            startsAt: utcDate(year: 2026, month: 8, day: 24, hour: 0),
+            endsAt: utcDate(year: 2026, month: 8, day: 24, hour: 4)
+        )
+        let schedule = PromptSchedule(prompts: [pastPrompt], posts: [])
+        XCTAssertFalse(
+            PromptGenerator.scheduleAlreadyCoversToday(schedule: schedule, reference: reference),
+            "既に終わった prompt は active でないので auto-gen が走る"
+        )
+        // 進行中の prompt を追加 → active なので true
+        let activePrompt = Prompt(
+            id: "active",
+            text: "いまのお題",
+            startsAt: utcDate(year: 2026, month: 8, day: 25, hour: 8),
+            endsAt: utcDate(year: 2026, month: 8, day: 25, hour: 12)
+        )
+        let scheduleWithActive = PromptSchedule(prompts: [pastPrompt, activePrompt], posts: [])
+        XCTAssertTrue(
+            PromptGenerator.scheduleAlreadyCoversToday(schedule: scheduleWithActive, reference: reference),
+            "進行中の prompt があれば auto-gen は走らない"
         )
     }
 

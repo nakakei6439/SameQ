@@ -1,7 +1,7 @@
 {
   "currentSprint": "09",
-  "attempt": 2,
-  "status": "needs_fix",
+  "attempt": 3,
+  "status": "awaiting_eval",
   "history": [
     {
       "sprint": "01",
@@ -224,6 +224,12 @@
       "attempt": 2,
       "result": "needs_fix",
       "note": "evaluatorがiPhone 17 / Eval09シミュレータ（iOS 26.5）で実操作検証。不合格。受け入れ条件5/6。条件1（翌日に別のお題が自動で作られる）が本番相当の経路で依然未達：SeedCatalog.startDatesの.live分岐（attempt2の絶対アンカー方式）はcoverage(56h)超過時にfirstStart=liveAnchor+coverageという固定日時へ再アンカーするが、これは即座に自動生成へフォールスルーせず、シード2件（prompt_001/002）がさらに56h分「再アクティブ化」される。真にPromptGeneratorへ到達するのはliveAnchor+112h（coverageの2倍）経過後のみ。evaluatorが一時UIテストで0h/24h/48h/60h/84h/115h/120h/144h/168hの9地点を実機検証した結果、検証時点（2026-08-25）から起算して約4.7日間は一度も自動生成が発火せず、prompt_001とprompt_002を往復するだけだった（day1(24h)とday2(48h)は同一お題が連続表示）。offset 115h以降でprompt_20260830→20260831→20260901と真の自動生成が正しく毎日切り替わることは確認できたため、PromptGenerator自体のロジックは健全。self-review.mdの手動検証はDay0/Day1の2点のみで打ち切っており、Day2以降の重複やdead zoneの長さ（自己申告の2.3日ではなく実測4.7日）を見落としていた。条件2（世界共通）はdead zone内でも2プロセス独立起動で同一テキストを確認、条件3/5/6も達成。回帰はSprintOne/Two/Six 14/14件成功。安定性（クラッシュ0）・データ整合性（discarded/answers等の永続に問題なし）・使用性（4、致命的機能欠陥のため参考値）は閾値を満たすが、条件1の未達により総合不合格。検証後に追加した一時UIテスト2本は削除しgit statusクリーンを確認済み。詳細は .product/sprints/09-auto-prompt-generation/eval-2.md"
+    },
+    {
+      "sprint": "09",
+      "attempt": 3,
+      "result": "awaiting_eval",
+      "note": "eval-2 [1] に対応。3 点修正: (1) SeedCatalog.loadSchedule の `.live` 分岐で `reference > liveAnchor + duration` のとき `effectivePrompts = []`（seed 完全排除）、空 schedule → PromptGenerator が必ず走る。dead zone 解消。 (2) `loadScheduleWithAutoGeneration` で `scenario != .live` のとき auto-gen を skip（`.expired` / `.upcoming` / `.expiring` の SprintTwo test01/test02 の「お題待ち」前提が auto-gen 経由で active な prompt が出る事故を防ぐ）。 (3) `.live` coverage 外では `merge` を経由せず `generated` だけで PromptSchedule を組み立てる（全 base.posts を `result.prompt.id` に rebased し period overlap なし）。`merge` 関数は attempt 2 の seed 残す挙動に戻し、`.live` 限定で schedule 構築を分岐。 検証結果: SameQTests 135/135、SprintTwoAcceptanceTests 5/5、SprintOne/Six/Nine 16/16、SprintThree/Seven 12/12、全 156 件 pass。testSeedCatalogScheduleStaysTimeOrdered 含む prompt period overlap 系の unit test もすべて pass。実機検証手順は self-review.md「翌日に別のお題が出ることを本番経路で確認する方法」に記載"
     }
   ]
 }

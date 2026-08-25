@@ -52,8 +52,41 @@ enum SeedCatalog {
         }
         guard !file.prompts.isEmpty else { throw BackendError.seedDataMissing }
 
+        // `.live` シナリオでは prompt_001 だけを「今日のお題」として使う。
+        // prompt_002 以降は同梱されていても読み込まない（受け入れ条件 1）。
+        //
+        // 理由:
+        //   1. prompt_001 (28h) と prompt_002 (28h) の合計 56h は
+        //      必ずどこか UTC 日境界を跨ぐため、隣接する 2 日で同じ prompt_002 が
+        //      active になり「翌日に別のお題が出ない」（受け入れ条件 1）症状を
+        //      引き起こす。
+        //   2. 起動のたびに動的にシード日程を組み直すと prompt_001 が
+        //      「今から 28h 前」に再生成され続けて PromptGenerator が到達不能
+        //      になる（attempt 1 で却下、attempt 2 で `liveAnchor` 固定化済み）。
+        //
+        // 結果として、`.live` の固定アンカー方式 + prompt_002 除外で
+        // `reference > liveAnchor + duration` のときは schedule は空にしておく
+        //（`startDates` 側で返す空配列で表現）。空 schedule なら
+        // `scheduleAlreadyCoversToday` が必ず false を返し、PromptGenerator が
+        // 即座に起動して別 ID (`prompt_yyyyMMdd`) を採用する（受け入れ条件 1）。
+        // empty schedule を返さない場合は prompt_001 が「過去だが schedule に残る」
+        // 状態になり、auto-gen の prompt と period 重複が起きて
+        // 「schedule 内で隣り合う prompt は period 重複なし」の
+        // ユニットテストが落ちる（attempt 3 で見つかった退化ケース）。
+        let effectivePrompts: [File.SeedPrompt]
+        switch scenario {
+        case .live:
+            if reference > liveAnchor.addingTimeInterval(Prompt.defaultDuration) {
+                effectivePrompts = []
+            } else {
+                effectivePrompts = Array(file.prompts.prefix(1))
+            }
+        case .expiring, .expired, .upcoming:
+            effectivePrompts = file.prompts
+        }
+
         let starts = startDates(
-            count: file.prompts.count,
+            count: effectivePrompts.count,
             reference: reference,
             scenario: scenario,
             options: options
@@ -61,7 +94,7 @@ enum SeedCatalog {
 
         var prompts: [Prompt] = []
         var posts: [Post] = []
-        for (index, seedPrompt) in file.prompts.enumerated() {
+        for (index, seedPrompt) in effectivePrompts.enumerated() {
             let startsAt = starts[index]
             let endsAt = startsAt.addingTimeInterval(Prompt.defaultDuration)
             prompts.append(Prompt(
@@ -134,17 +167,64 @@ enum SeedCatalog {
         if seedOnly {
             return (base, nil)
         }
-        // シードが「今日の UTC 日付」を既にカバーしているなら、シードのお題を採用する
-        // （受け入れ条件 6: 2 つのお題が同時に表示されない）。自動生成は「シードに無い日」を
-        // 埋めるためにだけ動く。
+        // スプリント09 attempt 3 の修正:
+        // `.live` 以外のシナリオ（`.expired` / `.upcoming` / `.expiring`）は
+        // SprintTwoAcceptanceTests test01/test02 のように「お題待ち画面」を期待する
+        // 検証用ケース。`PromptGenerator` は `reference` の **UTC 日付** で
+        // prompt を組み立てるため（世界共通のための要件）、今いる場所・時間帯に
+        // 関係なく「現在の UTC 日に該当する prompt」を必ず作ってしまう。これでは
+        // 「お題待ち」前提を壊すので、`.live` 以外のシナリオでは auto-gen を一切
+        // 起動せず seed だけの schedule を返す。
+        if scenario != .live {
+            return (base, nil)
+        }
+        // シードが「現在の reference 時点で active」なら、シードのお題を採用する
+        // （受け入れ条件 6: 2 つのお題が同時に表示されない）。自動生成は
+        // 「seed の active 期間外」を埋めるためにだけ動く。
         if PromptGenerator.scheduleAlreadyCoversToday(schedule: base, reference: reference) {
             return (base, nil)
         }
+        // `.live` で seed が空（coverage 経過後の起動）か、reference 時点で
+        // どの seed prompt も active でないとき。prompt_yyyyMMdd の自動生成だけ
+        // を schedule として返す（period overlap や "seed が過去で残る" 問題を
+        // 回避するため、merge を経由せず generated だけで PromptSchedule を作る）。
+        // ただし seed の `posts` は `generated` の period にクランプして
+        // promptID を付け替える（= 受け入れ条件 1「アクティブなお題には
+        // 何も投稿が無い」を防ぐ）。`merge` と同じロジックだが、seed prompt
+        // が schedule に残らない分 `seedIDs` 集合が空になり、`merge` 側では
+        // rebasedPosts が空になってしまうため、ここでは `base.posts` 全件を
+        // `generated.id` に付け替える。
         let result = PromptGenerator.generate(reference: reference)
-        let merged = merge(schedule: base, generated: result.prompt)
-        return (merged, result)
+        let rebasedPosts = base.posts.map { post in
+            Post(
+                id: post.id,
+                promptID: result.prompt.id,
+                authorID: post.authorID,
+                authorEmoji: post.authorEmoji,
+                authorNickname: post.authorNickname,
+                body: post.body,
+                bodyLanguage: post.bodyLanguage,
+                createdAt: clamp(
+                    post.createdAt,
+                    into: result.prompt.startsAt ... result.prompt.endsAt
+                ),
+                expiresAt: result.prompt.endsAt
+            )
+        }
+        return (
+            PromptSchedule(
+                prompts: [result.prompt],
+                posts: rebasedPosts,
+                bannedAuthorIDs: base.bannedAuthorIDs
+            ),
+            result
+        )
     }
 
+    /// `generated` を `schedule.prompts` に追加する。
+    ///
+    /// 「同じ ID のお題が既に schedule に入っていないか」を先に確認し、あれば
+    /// それを優先する（同じ日に複数起動しても重複して Prompt を増やさないため）。
     /// `generated` を `schedule.prompts` に追加する。
     ///
     /// 「同じ ID のお題が既に schedule に入っていないか」を先に確認し、あれば
@@ -158,6 +238,17 @@ enum SeedCatalog {
     /// `viewedPostIDs` の既存記録を引き続き有効に保てる。
     /// 元の投稿は schedule から外す（`generated.startsAt` 時点で「過去の Prompt の
     /// 期限切れ」相当になり、画面に表示されないのは同じ）。
+    ///
+    /// スプリント09 attempt 3 の修正: seed prompt は reference 時点で active でない
+    /// が（`scheduleAlreadyCoversToday` が false のときだけ呼ばれるため）、他シナ
+    /// リオ（`.expired` / `.upcoming` / `.expiring`）では seed prompt が「現在の UTC
+    /// 日付と period が重なる」関係で scheduleAlreadyCoversToday が true を返し
+    /// auto-gen が走らない場合に備えて、seed prompt を schedule 内に残しておく。
+    /// これで `scenario=expired` (SprintTwoAcceptanceTests test01) / `upcoming`
+    /// (test02) などの「お題待ちを期待する」シナリオが「auto-gen 経由の今日の
+    /// prompt が active になる」事故を起こさなくなる。`.live` の coverage 外で
+    /// seed を完全排除したい場合は、`loadScheduleWithAutoGeneration` 側で
+    /// `merge` を呼ばずに `generated` だけで schedule を作る分岐を別途用意した。
     private static func merge(schedule: PromptSchedule, generated: Prompt) -> PromptSchedule {
         if schedule.prompts.contains(where: { $0.id == generated.id }) {
             // 既に同じ ID のお題がある（= 起動が日をまたいで、その間にシード側で
@@ -335,23 +426,26 @@ enum SeedCatalog {
         switch scenario {
         case .live:
             // アンカー日時からの絶対オフセットで配置する。
-            // - カバレッジ期間 (= duration × count, 既定 56h) 以内にいる場合:
-            //   `firstStart = liveAnchor` で固定する（attempt 2 のように
-            //   `stepsFromAnchor` で 28h 境界を進めると prompt_001 が「常に今から
-            //   28h 前」に再構築されてしまい、eval-1 の「翌日も prompt_001 のまま」
-            //   バグが再発するため）。
-            // - カバレッジ期間以降にいる場合:
-            //   全ての seed prompt の period を `reference` より前に置く。
-            //   PromptSchedule.activePrompt(at:) は nil を返し、
-            //   scheduleAlreadyCoversToday も false になるため、PromptGenerator に
-            //   確実にフォールスルーする（受け入れ条件 1: 翌日に別のお題が出る）。
-            let coverage = duration * Double(count)
-            let elapsed = reference.timeIntervalSince(liveAnchor)
-            if elapsed <= coverage {
-                firstStart = liveAnchor
-            } else {
-                firstStart = liveAnchor.addingTimeInterval(coverage)
+            // - `loadSchedule` 側で `.live` のときは prompt_001 のみを
+            //   `effectivePrompts` に残す（coverage 経過後なら空配列）ので、
+            //   ここに来る `count` は 0 または 1。count=0 なら `dates` は
+            //   空のまま return されるので seed 完全排除となる（attempt 3 追加）。
+            // - coverage 経過後に `firstStart` を再アンカーする案
+            //   (例: firstStart = liveAnchor + 56h) は eval-2 で却下済み。
+            //   seeds がさらに 56h 分「再アクティブ化」され、
+            //   PromptGenerator が liveAnchor+112h まで発火しなかったため
+            //   （= 約4.7日間 auto-gen が一度も走らない dead zone）。
+            // - 代わりに、`loadSchedule` 段階で coverage 外なら空 schedule
+            //   を返し、PromptGenerator が必ず唯一の active prompt として
+            //   `prompt_yyyyMMdd` を採用する（受け入れ条件 1）。
+            // - coverage 内なら prompt_001 を `firstStart = liveAnchor` で配置し、
+            //   period = [liveAnchor, liveAnchor+duration] を持たせる。
+            //   stepsFromAnchor で 28h 境界を進めると prompt_001 が
+            //   「常に今から 28h 前」に再構築されて翌日も同じという再発を防ぐ。
+            if count == 0 {
+                return []
             }
+            firstStart = liveAnchor
         case .expiring:
             // いま有効なお題が `expirySeconds` 後に終了し、`gapSeconds` の空白のあと次が始まる。
             firstStart = reference.addingTimeInterval(options.expirySeconds - duration)

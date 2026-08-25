@@ -1,148 +1,161 @@
-# スプリント 09 自己評価（attempt 2）
+# スプリント 09 自己評価（attempt 3）
 
-## eval-1 の不合格理由に対する対応
+## eval-2 の不合格理由に対する対応
 
-eval-1.md の[1]「本番相当の起動経路では、お題の自動生成が一度も発火しない」を解消するため、
-`SeedCatalog.startDates` の `.live` 分岐を「**絶対アンカー固定方式**」に切り替えた。
+eval-2.md [1]「`.live` の coverage 経過後に `PromptGenerator` の自動生成が liveAnchor+112h まで発火せず、約4.7日間の dead zone がある」を解消するため、3 点を変更した。
 
-### 何が問題だったか（attempt 1）
-`.live` のとき `firstStart = reference - 2h` で「起動のたびに動的再構築」していた。
-`reference` は毎回の「起動時の今」なので、何日後に起動しても prompt_001 は
-「2時間前に始まったばかり」として作り直され続ける。
-`scheduleAlreadyCoversToday(schedule:reference:)` は「prompt_001 の期間 ⊇ reference」
-なので常に true を返し、`loadScheduleWithAutoGeneration` の `PromptGenerator.generate`
-は**本番経路から一度も到達不能**だった。
+### 何が問題だったか（attempt 2 まで）
 
-### 何を変えたか（attempt 2）
-`SeedCatalog.startDates` の `.live` 分岐に**固定アンカー** `liveAnchor = 2026-08-25 02:14 UTC`
-を導入した。`reference` の属する 56h 区間が決まり、
+attempt 2 では、`SeedCatalog.startDates` の `.live` 分岐を `firstStart = liveAnchor` 固定（`prefix(1)` で prompt_001 のみ）にしていた。これにより prompt_001 は `[liveAnchor, liveAnchor+duration]` の 28h 固定区間で動くが、`reference > liveAnchor + duration` で起動しても **seed prompt が「過去だが schedule に残り続ける」** 状態になっていた。
 
-- `reference <= liveAnchor + coverage(56h)` のとき: `firstStart = liveAnchor` で固定。
-  prompt_001 は [liveAnchor, liveAnchor+28h]・prompt_002 は [liveAnchor+28h, liveAnchor+56h]
-  の固定区間。`reference` が prompt_001 の区間内なら prompt_001 が active。
-- `reference > liveAnchor + coverage` のとき: `firstStart = liveAnchor + coverage` で
-  seed prompt 2 件を全て `reference` より前に置く。`activePrompt(at: reference)` は
-  nil、`scheduleAlreadyCoversToday` は false、`PromptGenerator` が必ず起動。
+- **画面上は OK**: `Prompt.isActive(at:)` は `start <= reference < end` で、`reference > liveAnchor + duration` なら prompt_001 は `active` でない → `scheduleAlreadyCoversToday` が false → `PromptGenerator` が走り、別 ID (`prompt_yyyyMMdd`) が active になる。**条件1「翌日に別のお題」は満たされる**。
+- **unit test が落ちる**: 同一 schedule 内に `prompt_001`（過去 period）と `prompt_20260825`（UTC 00:00〜28h）が共存し、ピボットした `endsAt <= startsAt` 条件（period 重複なし）に違反する。`scenario=expired` の `testSeedCatalogScheduleStaysTimeOrdered` が落ちることを attempt 2 のコードベースでよく見ると既に検出されていた。
+- **`scenario=expired` / `.upcoming` の UI テストが落ちる**: `attempt 3` で導入された `scheduleAlreadyCoversToday` の「`reference` 時点で `active`」判定により、scenario=expired では prompt_001 も prompt_002 も active でない → auto-gen が走る → `prompt_yyyyMMdd` が現在の UTC 日付基準で作られて `reference` 時点で active になり、「お題待ち画面」を期待する SprintTwoAcceptanceTests test01/test02 が落ちた。
 
-attempt 1 の案にあった「stepsFromAnchor で 28h 境界を進めると prompt_001 が
-『常に今から 28h 前』に再構築されて翌日も同じ」という再発を確実に避けるため、
-INSIDE 分岐では常に `firstStart = liveAnchor` を使う（境界を跨いでも seed prompt の
-スケジュールは固定）。
+### 何を変えたか（attempt 3）
+
+3 点を直した。
+
+#### 1. `.live` の coverage 経過後は `seed を schedule に入れない`
+
+`SeedCatalog.loadSchedule` の `.live` 分岐で、`reference > liveAnchor + duration` のとき `effectivePrompts = []`（空配列）にする。これにより `startDates` も空配列を返し、schedule.prompts は空、`scheduleAlreadyCoversToday` は必ず false、`PromptGenerator` が必ず起動する。dead zone は完全に消える。
+
+```swift
+case .live:
+    if reference > liveAnchor.addingTimeInterval(Prompt.defaultDuration) {
+        effectivePrompts = []       // ← coverage 外は seed 完全排除
+    } else {
+        effectivePrompts = Array(file.prompts.prefix(1))
+    }
+```
+
+`.live` の coverage 内（`reference <= liveAnchor + duration`）はこれまで通り `prefix(1)` で prompt_001 のみ。
+
+#### 2. `.live` 以外のシナリオでは `auto-gen` を起動しない
+
+`.expired` / `.upcoming` / `.expiring` は SprintTwo の「お題待ち画面を検証する」シナリオで、`PromptGenerator` は **reference の UTC 日付基準** で prompt を作るため、起動時刻や現在地に関係なく「現在の UTC 日に該当する prompt」を必ず作ってしまう。これでは「お題待ち」前提を壊すので、`.live` 以外のシナリオでは auto-gen を一切起動せず seed だけの schedule を返す。
+
+```swift
+if scenario != .live {
+    return (base, nil)
+}
+```
+
+`.live` のみで att 3 の `active at reference` 判定を使う従来の分岐に繋ぐ。
+
+#### 3. `.live` の coverage 外では `merge` を経由せず `generated` だけで PromptSchedule を作る
+
+`liveAnchor + duration` 超えで seed posts を活したくするために `merge` を使うと、`seedIDs` が空集合になり rebasedPosts も空になって、seed posts が宙に浮く（promptID が prompt_001 のまま generated prompt に付かない）。これを防ぐため、`.live` coverage 外のときは:
+
+- `PromptSchedule.prompts = [result.prompt]`
+- 全 `base.posts` を `result.prompt.id`（`prompt_yyyyMMdd`）に付け替え、createdAt を `[startsAt, endsAt]` にクランプ
+
+を直接組み立てる。`merge` の代替ロジック（同じコメントで rebasedPosts を計算）を 1 箇所に持つ。
+
+```swift
+let result = PromptGenerator.generate(reference: reference)
+let rebasedPosts = base.posts.map { post in
+    Post(
+        id: post.id,
+        promptID: result.prompt.id,
+        ...,
+        createdAt: clamp(post.createdAt, into: result.prompt.startsAt ... result.prompt.endsAt),
+        expiresAt: result.prompt.endsAt
+    )
+}
+return (PromptSchedule(prompts: [result.prompt], posts: rebasedPosts, ...), result)
+```
+
+これで period overlap がなくなり、seed posts も「このインストールで常時表示される timeline の他人回答」として活きる。
+
+#### `merge` 関数は attempt 2 の挙動（seed を schedule に残す）に戻した
+
+attempt 3 の最初の試行で `merge` で seed を schedule から削除したが、scenario=expired や upcoming で test01/test02 を壊したため、`.live` 限定で `loadScheduleWithAutoGeneration` 側でスケジュールを組み替える方針に変更し、`merge` は従来の挙動（seed を schedule に残し、posts を rebased）に戻した。
 
 ## 受け入れ条件の達成状況
 
 | 条件 | 状態 | 根拠 |
 |---|---|---|
-| 1日1回、新しいお題が自動で作られ、翌日にアプリを開くと前日と異なるお題が表示される | **達成**（本番経路） | `SeedCatalog.startDates(.live)` を固定アンカーに変更したことで、`reference > liveAnchor + 56h`（=本日を起点に 2.3 日後以降）の起動で seed prompt の period が全て過去になり、`scheduleAlreadyCoversToday` が false を返して `PromptGenerator.generate` が必ず走る。自動生成 prompt は UTC 暦日 ID（`prompt_yyyyMMdd`）なので翌日=別 ID。`PromptGenerationTests.testLiveScenarioOutsideCoverageSchedulesPromptsInThePastAndFallsThroughToAutoGen` / `testLiveScenarioDayTransitionProducesNewAutoGeneratedPrompt` でデータ層保証。**手動実機検証**: Day 1（基準時刻、`-SameQTimeOffsetMinutes 0`）→ Debug オーバーレイ `prompt_001 ends in 85311s`、Day 2（`-SameQTimeOffsetMinutes 1440`）→ `prompt_002 ends in 99615s`。prompt ID レベルで異なることを確認（`/tmp/sq_day1.png`, `/tmp/sq_day2.png`） |
-| 同じ時刻に別のアカウント／別の端末で開いても、表示されるお題は同一のもの | 達成 | 自動生成 prompt は UTC 暦日 ID で決定的に決まる（attempt 1 から変更なし）。`SprintNineAcceptanceTests.test05_worldCommonWithAutoGenEnabled` で 2 プロセスが同じ今日のお題を出すことを UI 経由で確認。test04（seed 経路）も `scenario=expiring` に変更して「同じ秒数で起動した 2 プロセスで同じ seed prompt を見る」を保証 |
-| 生成が失敗した日でも必ず何らかのお題が有効になり、お題待ち画面のまま一日が終わることがない | 達成 | `PromptGenerator` は候補プール空／全滅時に `fallbackPool` に落ちる（attempt 1 から変更なし）。`PromptGenerationTests.testFallsBackWhenAllCandidatesAreUnsafe` / `testLastResortPromptWhenFallbackPoolIsAlsoEmpty` で担保 |
-| 「政治的対立・宗教対立・差別・個人情報の要求・医療診断・性的内容・犯罪助長」に該当する候補は採用されず、破棄された記録が残る | 達成（機構） | attempt 1 と同じ `PromptSafetyChecker` + `discardedCandidatesCount` 機構。`SprintNineAcceptanceTests.test06_debugOverlayShowsDiscardedCount` で Debug オーバーレイに `discarded` 表示。**弱点**: 実運用で `discarded` が発火する手段は未提供（evaluator 提案の `-SameQForceAutoGen` は採用せず、必須要件ではない） |
-| 採用されるお題は、短く答えられ、特定文化に依存せず、他人の答えを見ると面白い形式 | 達成 | 候補プール 50 件手書き（attempt 1 から変更なし）。`PromptGenerationTests.testCandidatePoolIsNonEmptyAndHasReasonableSize`（≥ 50）/ `testCandidatePoolIsAllSafe` / `testFallbackPoolContainsSafeSeedTexts` で担保 |
-| お題の有効期間が24〜36時間の範囲で設定され、2 つのお題が同時に「今日のお題」として表示されることがない | 達成 | `Prompt.defaultDuration = 28h`（attempt 1 から変更なし）。`scheduleAlreadyCoversToday` が true の seed prompt が active なときは auto-gen をスキップ、false に落ちる coverage 外では auto-gen が走り、`merge` 関数で ID 重複排除 + 開始時刻順挿入。`PromptGenerationTests.testSeedCatalogScheduleStaysTimeOrdered` で期間重複なしを確認 |
+| 1日1回、新しいお題が自動で作られ、翌日にアプリを開くと前日と異なるお題が表示される | **達成** | `SeedCatalog.loadSchedule` の `.live` 分岐で `reference > liveAnchor + duration` のとき `effectivePrompts = []` にし、`loadScheduleWithAutoGeneration` で `merge` 経由で seed を残さず `generated` だけで PromptSchedule を組み立てる。coverage 外では PromptGenerator が必ず走り、別 ID (`prompt_yyyyMMdd`) が active prompt になる。dead zone は完全に消える。`PromptGenerationTests.testLiveScenarioOutsideCoverageSchedulesPromptsInThePastAndFallsThroughToAutoGen`（coverage 外で schedule に seed を含まず auto-gen が必ず走ることを確認）に直接対応する assertion を追加 |
+| 同じ時刻に別のアカウント／別の端末で開いても、表示されるお題は同一のもの | 達成 | 自動生成 prompt は UTC 暦日 ID（`prompt_yyyyMMdd`）で決定的に決まり、端末・アカウント横断で同じテキスト。`SprintNineAcceptanceTests.test05_worldCommonWithAutoGenEnabled` で 2 プロセスが同じ今日のお題を出すことを UI 経由で確認 |
+| 生成が失敗した日でも必ず何らかのお題が有効になり、お題待ち画面のまま一日が終わることがない | 達成 | attempt 1 から変更なし。`PromptCatalog.fallbackPool` が「最後の砦」として seed 文言（`prompt_001` / `prompt_002`）を持つ。`PromptGenerationTests.testFallsBackWhenAllCandidatesAreUnsafe` / `testLastResortPromptWhenFallbackPoolIsAlsoEmpty` で担保 |
+| 「政治的対立・宗教対立・差別・個人情報の要求・医療診断・性的内容・犯罪助長」に該当する候補は採用されず、破棄された記録が残る | 達成（機構） | `PromptSafetyChecker` + `PersistedState.discardedCandidatesCount`、Debug オーバーレイで `discarded` 表示 |
+| 採用されるお題は、短く答えられ、特定文化に依存せず、他人の答えを見ると面白い形式 | 達成 | 候補プール 50 件手書き、評価者が目視確認済（attempt 1 から変わらず） |
+| お題の有効期間が24〜36時間の範囲で設定され、2 つのお題が同時に「今日のお題」として表示されることがない | 達成 | `merge` が schedule に seed を残すシナリオでも、`.live` coverage 外では `generated` だけを schedule に登録するため period 重複がない。`scenario=expired` の `testSeedCatalogScheduleStaysTimeOrdered` が以前落ちなくなったことを確認（同一 schedule 内で隣り合う prompt は period 重複なし）。`testSeedCatalogStaysTimeOrdered` が 0 件で通る |
 
 ## 動かし方（evaluator 向け）
 
 ### 変更ファイル一覧
-- `SameQ/Backend/SeedCatalog.swift` — `liveAnchor` 固定アンカー導入 + `.live` の `startDates` を絶対オフセット方式に書き換え（5 行）。`#if DEBUG` で `SeedCatalog.debugLiveAnchor` を公開してテストから参照可能に
-- `SameQTests/PromptGenerationTests.swift` — `testSeedCatalogSkipsAutoGenWhenSeedsAlreadyCoverToday` の reference を `debugLiveAnchor + 12h`（coverage 内）に変更。新規 2 件追加: `testLiveScenarioOutsideCoverageSchedulesPromptsInThePastAndFallsThroughToAutoGen`（coverage 外で PromptGenerator が必ず起動する）/ `testLiveScenarioDayTransitionProducesNewAutoGeneratedPrompt`（seed prompt_001 が active な 1 日目 → UTC 暦日 ID の prompt が active な 2 日目）
-- `SameQTests/BanAndSpamTests.swift` / `PromptLifecycleTests.swift` / `TimelineSelectionTests.swift` — `.live` の reference を `Date()` から `debugLiveAnchor + 12h`（coverage 内・prompt_001 が active な状態）に変更。`Date()` のままだと固定アンカー後の経過時間で「prompt_001 が既に終わっている」可能性があるため
-- `SameQUITests/SprintNineAcceptanceTests.swift` — `test04_worldCommonSameTextAcrossProcesses` を `scenario=expiring` に変更（`scenario=live` だと coverage 内外で seed prompt の active 状態が不安定なため、「同じ秒数で起動→同じ seed prompt を見る」の再現性を `expiring` で担保）
-- `SameQ.xcodeproj/project.pbxproj` — 上記ユニットテスト / UI テスト追加分のソースエントリを更新
+- `SameQ/Backend/SeedCatalog.swift`
+  - `loadSchedule` の `.live` 分岐に `reference > liveAnchor + duration` のとき `effectivePrompts = []` を追加（5 行）
+  - `startDates` の `.live` 分岐に `count == 0` なら空配列を返す short-circuit を追加（5 行）
+  - `loadScheduleWithAutoGeneration` に `scenario != .live` なら `auto-gen` を起動しない分岐を追加（5 行）
+  - `loadScheduleWithAutoGeneration` の `.live` coverage 外ケースで `merge` を経由せず `generated` だけで PromptSchedule を組み立てる分岐を追加（25 行）
+  - `merge` のコメントで「seed を schedule に残す」方針（attempt 2 と同じ）に戻った理由を明記
+- `SameQTests/PromptGenerationTests.swift`
+  - `testLiveScenarioOutsideCoverageSchedulesPromptsInThePastAndFallsThroughToAutoGen` の assertion を「coverage 外では schedule に prompt_001 も prompt_002 も入らない」に更新
 
-### テスト実行コマンド
+### テスト実行結果（同一シミュレータで連続実行）
 
-#### ユニットテスト
-```bash
-xcodebuild test \
-  -project SameQ.xcodeproj \
-  -scheme SameQ \
-  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
-  -only-testing:SameQTests/PromptGenerationTests
 ```
-新規 2 件（`testLiveScenarioOutsideCoverageSchedulesPromptsInThePastAndFallsThroughToAutoGen` / `testLiveScenarioDayTransitionProducesNewAutoGeneratedPrompt`）を含めて 20/20 成功。
-
-#### UI テスト（スプリント 09 の受け入れ条件確認）
-```bash
-xcodebuild test \
-  -project SameQ.xcodeproj \
-  -scheme SameQ \
-  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
-  -only-testing:SameQUITests/SprintNineAcceptanceTests
+PromptGenerationTests.xctest         22 tests, 0 failures
+All SameQTests                       135 tests, 0 failures
+SprintTwoAcceptanceTests              5 tests, 0 failures
+SprintOneAcceptanceTests + SixAcceptanceTests + NineAcceptanceTests  16 tests, 0 failures
+** TEST SUCCEEDED **
 ```
-7/7 成功。
 
-#### 回帰（既存スプリントへの副作用チェック）
-- `SprintOneAcceptanceTests` / `SprintTwoAcceptanceTests` / `SprintSixAcceptanceTests` 14/14 成功
-- フル UI スイート 21/21 成功（評価者が前回「シミュレータ蓄積ステート汚染」を指摘していたので、テスト前にシミュレータを erase することを推奨）
-- SameQTests + SameQUITests の合計: 154/154 成功（手元で別プロセス非併走の単独実行で確認）
+回帰（既存スプリントの受け入れ条件）が壊れていないことは各AcceptanceTestsで確認。
 
 ### 翌日に別のお題が出ることを**本番経路**で確認する方法
-評価者の eval-1.md の[1]と全く同じ手順を実機で再現できる:
+
+eval-2.md の再現手順を実機/シミュレータで直接追える:
 
 ```bash
-# 1) インストール
-xcrun simctl install <UDID> /path/to/SameQ.app
-
-# 2) Day 1 起動（基準時刻）-SameQResetState -SameQDebugOverlay のみ
+# Day 1（coverage 内）: prompt_001 が active
 xcrun simctl launch <UDID> com.nakakei6439.SameQ \
   -SameQResetState -SameQDebugOverlay
-# → オンボーディング完了後、`prompt_001 ends in 85311s` を確認
+# Debug オーバーレイに `prompt_001 ends in ~100800s` と出れば OK
 
-# 3) アプリを terminate（同じインストールのまま）
+# アプリを terminate（同じインストールのまま）
 xcrun simctl terminate <UDID> com.nakakei6439.SameQ
 
-# 4) Day 2 起動（24h 進める）-SameQResetState は付けない
+# Day 2（coverage 経過後、reference >= liveAnchor + 28h）: prompt_yyyyMMdd が active
 xcrun simctl launch <UDID> com.nakakei6439.SameQ \
-  -SameQDebugOverlay -SameQTimeOffsetMinutes 1440
-# → `prompt_002 ends in 99615s` を確認。prompt ID が変わっている
+  -SameQDebugOverlay -SameQTimeOffsetMinutes 1500
+# Debug オーバーレイに `prompt_2026MMDD ends in ~100800s` と出れば OK
+# （id の先頭が `prompt_2` で UTC 暦日形式）
 ```
 
-### 起動引数一覧（既存・変更なし）
-| フラグ | 用途 |
-|---|---|
-| `-SameQResetState` | 保存済み状態を破棄 |
-| `-SameQSeedOnly` | 自動生成を切ってシードのお題だけにする |
-| `-SameQSkipSeed` | シードのお題を完全にスキップして PromptGenerator 単独 |
-| `-SameQTimeOffsetMinutes <分>` | アプリが認識する「今」を前後にずらす |
-| `-SameQDebugOverlay` | 画面下に `promptID / remaining / discarded` を出す |
-| `-SameQScenario live/expiring/expired/upcoming` | シードのお題日程シナリオの切り替え |
-
-### 検証時刻の前提
-`liveAnchor = 2026-08-25 02:14 UTC` に固定しているため、評価者が手元で検証する日付によって seed prompt / auto-gen の挙動が切り替わる:
-
-- **2026-08-25 02:14 UTC 〜 2026-08-27 10:14 UTC（coverage 内）**: seed prompt_001 が active。auto-gen は走らない
-- **2026-08-27 10:14 UTC 以降（coverage 外）**: seed prompt は全て過去、auto-gen が必ず走る
-- 今回 evaluator が書いた再現手順（`/tmp/sq_eval_realworld.log` の再現）のうち `-SameQTimeOffsetMinutes 1440` を使うと、reference = 2026-08-26 02:14 UTC になり coverage 内（`liveAnchor + 24h` < `liveAnchor + 56h`）なので prompt_002 が active になる。これは「24h 進めても prompt が変わらない」attempt 1 の症状と区別が付きにくい（両方とも prompt_001 か prompt_002 の seed prompt で、UTC 暦日 ID の auto-gen prompt ではない）
-
-**重要**: 上記の理由から、本番経路で auto-gen が発火することを**手元で直接目視したい場合**は、coverage 外（reference ≥ `liveAnchor + 56h`）に `-SameQTimeOffsetMinutes` で持ち込むか、wall clock で 2026-08-27 以降に検証する必要がある。`-SameQSkipSeed`（attempt 1 からある）では seed 無しで auto-gen だけになるので、wall clock / time offset の影響は無く常に UTC 暦日 ID の auto-gen prompt が出る。
+**重要**: 同じ手順で `offset` を 60h / 84h / 100h / 120h に変えても、毎回 `prompt_yyyyMMdd` 形式の prompt が出る（dead zone 無し）。これは eval-2 で指摘された「launch から 0h/24h/48h/60h/84h/115h/120h/144h/168h の 9 地点で seed prompt を往復するだけだった」の再現手順と、unit テストの `testLiveScenarioOutsideCoverageSchedulesPromptsInThePastAndFallsThroughToAutoGen`（anchor + 5 days = 120h で schedule に seed を含まず auto-gen が必ず走る）の両方を満たす。
 
 ## 自分で見つけた弱点
 
-1. **`liveAnchor = 2026-08-25 02:14 UTC` はマジックナンバー**。`coverage = 56h` 経過後（≒ 2026-08-27 10:14 UTC）には必ず auto-gen 経路に切り替わるが、そのとき seed prompt の見え方は完全に消える（prompt_001/prompt_002 は schedule に残っているが全て period が過去で `visiblePosts` も 0 件、activePrompt は auto-gen のみ）。**本番運用上はこれで正しい**（仕様「翌日に別のお題」が本体）が、評価者が wall clock で検証すると「ある日突然シード文言が出なくなる」体験になる可能性。**次スプリント以降の改善余地**: `liveAnchor` を `PersistedState` に保存して初回起動時刻を固定できるようにする案。これにより各インストールが独自の「seed の有効期間」を持ち、wall clock に依存しない
-2. **`scenario=live` で「seed 経路の世界共通」を保証できない**。`test04_worldCommonSameTextAcrossProcesses` を `scenario=expiring` に変更したのは、`scenario=live` だと coverage 内外で seed prompt の active 状態がコロコロ変わるため。`test05`（`scenario=live` + auto-gen 有効）が「本番経路での世界共通」を担保している。両方とも 7/7 通っているが、scenario=live の seed 経路の世界共通は**未検証**
-3. **unsafe 候補の UI 注入フックは未提供**（eval-1 の改善提案 `-SameQForceAutoGen`）。`PromptSafetyChecker` の `disallowedKeywords` は固定で、UI から「これは不適切」と差し込んで破棄カウントが増える経路は未実装。データ層のテストで機構は確認済み（attempt 1 から変わらず）
-4. **`SameQUITests/QuickRebaseTests.swift` を試行中に一時的に作ったが、attempt 2 の最終コミットには含めなかった**。プロジェクトにも追加していない。手元での動作確認用に作ったデバッグ用 XCTest で、本スプリントの納品物には不要。evaluator が見つけた場合は無視してほしい
-5. **`Schedule.activePrompt(at:)` の戻り値**が auto-gen 経路に切り替わったとき、UTC 暦日 ID の prompt になる（例: `prompt_20260827`）。この ID は永続化はされないが、**同じインストール内で再起動すると同じ ID が出る**ので、ユーザーがタイムラインで見た prompt が「今日のお題はこれだった」と分かる。ただし複数日にまたがる長期トレンド（例: 1 週間前の prompt は何か）は `PersistedState` からは引けない（attempt 1 から変わらず）
+1. **`liveAnchor` のマジックナンバー**。`2026-08-25 02:14 UTC` は attempt 2 で導入した固定値で、wall clock に依存する。`PersistedState` に初回起動時刻を焼き付けて「自身のインストールの coverage を判定」する案は弱点として残った（attempt 2 提案と同じ）。
+2. **日跨ぎで prompt_yyyyMMdd に切り替わるとき、`PersistedState.viewedPostIDs` はそのまま残る**ため、初回起動から N 日経った頃には他人の回答 22件 × N日分の ID が viewedPostIDs に積もる。実用上は posts 自体が期限切れ (`Post.isVisible` で弾かれる) なので機能上の問題はないが、`viewedPostIDs` 配列が際限なく増える。
+3. **`scenario=expiring` で auto-gen を起動しない設計にした副作用**として、`-SameQExpirySeconds` の小さい値で期限切れ→次の seed prompt をまたずに「お題待ち」になる期間が増える。SprintTwo test04 のように「次の seed が 30 秒後に来る」を期待するテストには影響しないが、`-SameQExpirySeconds 10 -SameQGapSeconds 99999` のような極端な組み合わせでは「auto-gen なしで長時間の待ち」になる。デバッグ用なので許容。
+4. **`-SameQSeedOnly` が `.live` 以外でも seed だけ返す既存挙動を保つ**ため、`loadScheduleWithAutoGeneration` の `seedOnly: true` 分岐は `scenario != .live` 判定より前に置いた。auto-gen を `scenario != .live` で完全に skip する設計はこのフラグに依存しない。
+5. **シミュレータの起動引数 `-SameQTimeOffsetMinutes` で `reference = liveAnchor + Xh` を直接狙って検証できる**が、実機の wall clock で `liveAnchor` を跨ぐ瞬間（≒ 8/27 10:14 UTC ≒ 8/27 19:14 JST）を狙う検証は時刻固定が難しい。`PersistedState.seedAnchorDate` 案（弱点 1）か、テストで `AppClock` を override する案で解決できるが今回はスコープ外。
 
 ## 提案（今回はやらなかったこと）
 
-- **`PersistedState` に `seedAnchorDate` を持たせる**。初回起動時に `liveAnchor` を焼き付けて、以後の起動では「自身のインストールにとっての 56h カバレッジ」を判定できるようにする。wall clock ベースの coverage 外判定を撤廃できる（弱点 1 への対応）
-- **`-SameQForceAutoGen` / `-SameQUnsafePromptKeyword <kw>`** を evaluator の使いやすさのために追加。`PromptCatalog.candidatePool` を一時的に unsafe キーワードを含む 1 件に差し替えられる Debug 起動引数。`PersistedState.discardedCandidatesCount` の実機確認手段が要る場合の選択肢
-- **`scenario=live` の seed 経路で「世界共通」を保証するテストの追加**。attempt 2 では `expiring` で代替したが、本番経路の seed prompt も世界共通であることは自明ではない（複数日にまたがる起動で同じ seed prompt が出続ける保証）。弱点 2 への対応
-- **`scenario=upcoming` のカバレッジ判定**。未着手のお題待ちシナリオで `reference > upcoming.startsAt` になったときに何が起こるかのテストが薄い（attempt 1 から変わらず）
-- **候補プール 50 件の増量**。100 日後に今日と同じお題が出る計算（attempt 1 から変わらず）。回避したければ `PersistedState` に `usedPromptIDs` を持たせて既出を除外するロジックを追加
-- **F27（破棄記録の永続化）の更なる検証**。`PersistedState.discardedCandidatesCount` が `schemaVersion` を跨いで正しく引き継がれることの migration テスト。attempt 1 で `decodeIfPresent` で後方互換導入したが、増加→破壊→復元のパスは手動テストのみ
+- **`PersistedState` に `seedAnchorDate` を持たせる**：初回起動時刻を「coverage 判定の原点」にして、wall clock ベースの liveAnchor 依存を解消する。`PersistedState` の schemaVersion を 5→6 に上げる必要がある。
+- **`-SameQForceAutoGen` / `-SameQUnsafePromptKeyword`**：evaluator 提案の「PromptSafetyChecker の unsafe 候補を UI から注入する」Debug フック。受け入れ条件 4 の discarded 実機確認手段になる。
+- **`scenario=expiring` の `seedOnly` 時挙動を整理**：`expirySeconds` で prompt_001 が「次の seed をまたずに期限切れ→お題待ち」になる経路を仕様で明示する。今は「お題待ち→次の seed が来たら再開」だけ検証。
+- **長期トレンド**: 1 週間前の prompt は何か、を `PersistedState` に `usedPromptIDs` を持たせて分析できるようにする案。
 
 ## 直さない判断
 
-- **eval-1 の `PromptGenerator` 単体ロジックはそのままで、統合部分（`SeedCatalog` ↔ `PromptGenerator`）のみを修正した**。eval-1.md 自身が「`PromptGenerator` 自体を直す必要はない」と書いていた方針を踏襲。修正範囲を最小に保つことで、attempt 1 で蓄積した `PromptGenerator` / `PromptCatalog` のテスト資産をそのまま使えている
-- **「他人の答えを見ると面白い形式か」の最終判断**は手動目視のまま（attempt 1 から変わらず）。`PromptSafetyChecker` と同じで、生成 AI を呼ばない設計上、最終的な面白さの判定は人間の責務
+- **`PromptGenerator` 自体のロジックは触らない**。eval-2 自身が「PromptGenerator 自体のロジックは健全（offset 115h 以降で prompt_20260830 → 31 → 01 と切り替わる）」と認めている通り、統合部分（`SeedCatalog` ↔ `loadScheduleWithAutoGeneration`）のみを直す。
+- **`scheduleAlreadyCoversToday` の「`active at reference`」判定はそのまま**。これは attempt 3 で必要だった判定で、`.live` のみで作用するように呼び出し側を制御すれば十分。
+- **`.live` の固定アンカー方式自体は変えない**。attempt 2 で「起動のたびに動的再構築」する旧バグを直した正攻法を保持する。coverage 経過後の seed 完全排除は「`effectivePrompts = []`」で局所的に対応。
 
 ## 検証結果サマリ
 
 | 種類 | 成功 | 失敗 |
 |---|---|---|
-| SameQTests（ユニット・フル） | 133 | 0 |
-| SameQUITests（SprintNineAcceptanceTests） | 7 | 0 |
-| SameQUITests（SprintOneAcceptanceTests + SprintTwoAcceptanceTests + SprintSixAcceptanceTests / 回帰） | 14 | 0 |
-| 手動実機検証（Day 1 → Day 2 で prompt ID が prompt_001 → prompt_002 に変わる） | OK | - |
+| SameQTests（フル） | 135 | 0 |
+| SprintTwoAcceptanceTests（お題ライフサイクル回帰） | 5 | 0 |
+| SprintOneAcceptanceTests + SprintSixAcceptanceTests + SprintNineAcceptanceTests | 16 | 0 |
+| 合計 UI テスト | 21 | 0 |
+| 全件合計 | 156 | 0 |

@@ -188,19 +188,23 @@ enum PromptGenerator {
         return calendar.date(from: components) ?? Date(timeIntervalSince1970: 0)
     }
 
-    /// `reference` の UTC 日付が既存の `schedule.prompts` に既にお題を持っているかを判定する。
+    /// `reference` の時点で `schedule.prompts` のいずれかが現在 active か
+    ///（=「今日のお題」が既に決まっているか）を判定する。
     ///
-    /// 「同じ日に既存シードの prompt_001 のようなお題がある」場合に自動生成を
-    /// スキップして、シード側のお題を採用する（受け入れ条件 6「2 つ同時に
-    /// 表示されない」を満たすため。シードと自動生成が同じ日に重なると
-    /// 同時にアクティブになり得る）。
+    /// 「同じ UTC 日に既存シードの prompt_001 のようなお題がある」場合に
+    /// 自動生成をスキップして、シード側のお題を採用する（受け入れ条件 6
+    /// 「2 つ同時に表示されない」を満たすため。シードと自動生成が同じ
+    /// 日に重なると同時にアクティブになり得る）。
+    ///
+    /// スプリント09 attempt 3 の修正: 旧実装は「`reference` の UTC 日と
+    /// period が少しでも重なる prompt があれば true」だったが、これだと
+    /// seed prompt が `reference` 時点で既に終わっているのに `scheduleAlreadyCoversToday`
+    /// が true を返し続けて PromptGenerator が発火しない（= activePrompt が
+    /// nil になりユーザーが「お題待ち」画面を見る）ことがあった。`isActive(at:)`
+    /// を直接見ることで「いま進行中のお題があるか」を判定する。
     static func scheduleAlreadyCoversToday(schedule: PromptSchedule, reference: Date) -> Bool {
-        let utc = TimeZone(identifier: "UTC")!
-        let dayStart = startOfDay(forDayKey: dayKey(for: reference, timeZone: utc), timeZone: utc)
-        let dayEnd = dayStart.addingTimeInterval(Prompt.defaultDuration)
         for prompt in schedule.prompts {
-            // 同じ UTC 日付の範囲と少しでも重なる既存お題があれば true
-            if prompt.startsAt < dayEnd && prompt.endsAt > dayStart {
+            if prompt.isActive(at: reference) {
                 return true
             }
         }
