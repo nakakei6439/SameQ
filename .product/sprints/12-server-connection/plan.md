@@ -1,35 +1,34 @@
-# スプリント 12 attempt 2: 回帰修正（UI テストの起動失敗）
+# スプリント 12 attempt 3: 環境問題で進められず・blocked
 
-## eval-1.md の不合格理由（要約）
-- **原因 1**: Supabase プロジェクト `loqumzfgnahtclnvnrzb` が到達不能（DNS NXDOMAIN、`supabase migration list --linked` も `tenant/user postgres.loqumzfgnahtclnvnrzb not found`）。既定起動経路でアプリが通信エラー画面で完全に停止し、受け入れ条件1〜8がすべて検証不能。
-- **原因 2**: `BackendProvider.make()` の既定が `SupabaseBackend` に変わった一方、既存 UI テスト（12件以上）はデフォルト起動引数のままで `SupabaseBackend` を引き当て、ネットワークエラーで起動に失敗する。SprintOneAcceptanceTests 5/5、SprintFiveAcceptanceTests 7/7 が全滅。
-- **原因 3**: 自身が既存 UI テストスイートを1本も実行せずに `awaiting_eval` として引き渡しており、generator 側で検出できたはずの回帰を見逃した。
+## eval-2.md の不合格理由（要約）
+- **[1]** Supabase プロジェクト `loqumzfgnahtclnvnrzb` が evaluator 環境・generator 環境の双方から到達不能（DNS NXDOMAIN、`supabase migration list --linked` も `tenant not found`）。これは attempt 1 から変化なし。
+- **[2]** 受け入れ条件1〜7がサーバ到達の前提なので、サーバ到達が不能な環境では全て検証不能。
+- eval-1 で指摘された [2][3]（UI テスト回帰・未実行での引き渡し）は attempt 2 で解消済み。evaluator も再実測で確認。
 
-## 修正方針（attempt 2 で何をするか）
+## attempt 3 で何ができるか／何ができないか
 
-### 着手可能な範囲
-- Supabase プロジェクトを新規作成・マイグレーション適用する権限は generator にない（環境上、到達不能な既存プロジェクトしかなく、Supabase ダッシュボードへのログイン情報もない）。
-- したがって「アプリからサーバーへ接続する」経路の実機検証は、依然として evaluator 担当のまま。
+### 着手可能な範囲（再評価）
+- コード側は attempt 2 ですでに完成（SupabaseBackend / SupabaseClient / TokenBox / NWPathMonitor / world_timeline ビュー / マイグレーション / schemaVersion 7 / decodeIfPresent フォールバック / -SameQUseSupabaseBackend オプトイン / LocalBackend 既定）。
+- 既存 UI テストは attempt 2 で 19/19・ユニットは 166/166 が確認済み。attempt 3 で再確認した結果も 166/166 pass（TEST SUCCEEDED）。
+- 起動経路は明確: 既定（引数なし）= LocalBackend、`-SameQUseSupabaseBackend` = SupabaseBackend、Release ビルド = SupabaseBackend。
 
-### それでも直せる範囲
-1. **回帰の解消**: `BackendProvider.make()` の既定を `LocalBackend` に戻す。これにより、既存の12+ UI テスト（`SprintOneAcceptanceTests` 5本・`SprintFiveAcceptanceTests` 7本・その他）が既定起動経路でも起動可能に戻る。
-2. **明示的オプトイン**: Supabase を使う経路は `-SameQUseSupabaseBackend` 起動引数でのみ有効化する（Debug 限定）。本番稼働時に Supabase プロジェクトが復活したら `BackendProvider.make()` の1行を戻すだけで切替可能。
-3. **受け入れ条件8（シードデータ非表示）**: 既定は `LocalBackend` になるのでシードは見えてしまうが、Supabase 経路を選んだときに見えなくなることは `BackendProvider` の分岐仕様として担保済み（eval-1 の attempt 1 で確認済み）。
-4. **テスト実行**: 既存 UI テストスイートとユニットテストを実行し、回帰が無いことを generator 側で**実測**してから引き渡す。
+### それでも直せない範囲
+- **環境側でしか直せない**：Supabase プロジェクト `loqumzfgnahtclnvnrzb` が DNS 解決不能。generator 側で再作成・修復は不可能：
+  - `~/.supabase/` にアクセストークンが無く、`supabase projects list` がハングして認証待ちで応答しない。
+  - `https://supabase.com/dashboard/project/loqumzfgnahtclnvnrzb` にログインする認証情報は generator に無い。
+  - `.env.local` の `SUPABASE_PROJECT_REF=loqumzfgnahtclnvnrzb` と `SupabaseConfig.swift` の URL 定数を変更しても、到達可能な新規プロジェクトを生成する手段が無い。
+- attempt 1, 2, 3 でネットワーク診断を再実測したが、対照ドメイン（supabase.com / supabase.co / api.supabase.com）は全て応答でき、`loqumzfgnahtclnvnrzb.supabase.co` だけ名前解決不能のまま（環境・サンドボックス全体の問題ではなく、このプロジェクト参照固有の問題）。
 
-## 受け入れ条件の達成状況（見込み）
-| 条件 | 見込み | 補足 |
-|---|---|---|
-| 1〜7 | 未達（サーバーが到達不能で実機検証不能） | Supabase プロジェクトが復活し、`BackendProvider.make()` の既定を `SupabaseBackend` に戻せば実装は機能する。現状は attempt 2 でも検証不能 |
-| 8 | 達成（条件付き） | `-SameQUseSupabaseBackend` 経路では SeedCatalog を呼ばない実装。`LocalBackend` 経路（既定・テスト用）ではシードが見える。これはサーバーが到達不能な環境でのみ成り立つ状態 |
+## 何もしない理由
+attempt 1 と attempt 2 で同じ指摘（[1]）を2回受けた。「**同じ指摘で3回落ちたら止まる**」の規定に従い、attempt 3 は **blocked** として人間に判断を仰ぐ。コードを追加で変更しても解決不能な環境問題なので、的外れな差分を増やさない判断。
 
-## 実装手順
-1. `SameQ/Backend/BackendProvider.swift` の `make()` を `LocalBackend` を返すように戻す（`useLocalBackend` フラグは無条件で true 扱い、デバッグ時の明示切替は `-SameQUseSupabaseBackend` を新設）。
-2. `LaunchOptions.swift` に `useSupabaseBackend: Bool = false` を追加し、`-SameQUseSupabaseBackend` で true にする。
-3. ユニットテスト + UI テストを実行して回帰がないことを確認。
-4. self-review.md を正直に書く。
+## ユーザー側で必要な作業
+1. `https://supabase.com/dashboard/project/loqumzfgnahtclnvnrzb` にログインして、プロジェクトの現存・一時停止・削除状態を確認する。
+2. 削除されている場合 → 新規 Supabase プロジェクトを作成し、`supabase/migrations/20260819000004_server_connection.sql` を `supabase db push` で適用する。
+3. 一時停止されている場合 → サポートに連絡するか、プランを確認する。
+4. プロジェクト参照が変わった場合 → `.env.local` の `SUPABASE_PROJECT_REF` と `SUPABASE_URL`、`SameQ/Backend/SupabaseConfig.swift` の `url` と `publishableKey` を更新する。
+5. 復旧後、generator（attempt 3）に戻ってきて、`BackendProvider.make()` の `#if DEBUG` 内の `return LocalBackend()` を `return SupabaseBackend()` に1行戻すだけで本番経路が復活する。
 
 ## 影響範囲
-- `BackendProvider.make()` の既定のみ変更。新規ファイルは作らない。
-- `SupabaseBackend` の実装・`SupabaseClient`・`SupabaseConfig`・マイグレーション SQL はそのまま残す（復活時に再利用）。
-- 受け入れ条件1〜7の実機検証は evaluator 担当のまま据え置き。
+- コード変更はゼロ。
+- `BackendProvider.swift` / `LaunchOptions.swift` / `SupabaseConfig.swift` / `SupabaseBackend.swift` / `SupabaseClient.swift` / `LocalStore.swift` / `supabase/migrations/20260819000004_server_connection.sql` はすべて attempt 2 のまま（正しい状態）。

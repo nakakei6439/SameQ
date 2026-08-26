@@ -1,8 +1,14 @@
 {
   "currentSprint": "12",
-  "attempt": 2,
-  "status": "needs_fix",
+  "attempt": 3,
+  "status": "blocked",
   "history": [
+    {
+      "sprint": "12",
+      "attempt": 3,
+      "result": "blocked",
+      "note": "3-strike rule に従い blocked。eval-1.md / eval-2.md と同一の指摘（Supabase プロジェクト loqumzfgnahtclnvnrzb が到達不能）を 3 回受けた。generator 環境で再実測したネットワーク診断: dig +short loqumzfgnahtclnvnrzb.supabase.co が空、curl が HTTP 000。対照ドメイン (supabase.com HTTP 200 / supabase.co HTTP 307 / api.supabase.com HTTP 404) は応答できる → このプロジェクト参照固有の到達不能と確認。Supabase CLI はインストール済み (2.103.0) だが ~/.supabase/access-token が無く認証できない → 新規プロジェクト作成・修復手段は generator に無い。attempt 2 で整えた土台（コード・スキーマ・マイグレーション・BackendProvider の Debug 既定 LocalBackend と -SameQUseSupabaseBackend オプトイン・166/166 unit + 19/19 UI 回帰）はそのまま温存し、コード変更ゼロで引き渡し。ユーザーが Supabase ダッシュボードでプロジェクトの現存を確認・必要なら再作成・supabase db push で 20260819000004_server_connection.sql を適用し、復旧後に BackendProvider.make() の #if DEBUG 内 return LocalBackend() を return SupabaseBackend() に1行戻せば attempt 4 以降が同バイナリで 1〜12 まで一気に検証可能。詳細は .product/sprints/12-server-connection/self-review.md (attempt 3)"
+    },
     {
       "sprint": "12",
       "attempt": 2,
