@@ -17,6 +17,8 @@ import Foundation
 enum BackendProvider {
     static func make() -> Backend {
         #if DEBUG
+        // attempt 2 の判断どおり Debug 既定は LocalBackend。
+        // SupabaseBackend を使いたいときは -SameQUseSupabaseBackend を明示する。
         if LaunchOptions.current.useSupabaseBackend {
             return SupabaseBackend()
         }
