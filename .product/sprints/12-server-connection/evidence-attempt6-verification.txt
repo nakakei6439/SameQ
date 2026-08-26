@@ -1,0 +1,57 @@
+# attempt 6 evaluator 検証ログ（抜粋）
+検証日時: 2026-08-27 05:15〜05:47 JST
+
+## [1] 匿名サインイン無効化（未解決・変わらず）
+$ curl -s -X POST "https://loqumzfgnahtclnvnrzb.supabase.co/auth/v1/signup" \
+    -H "apikey: sb_publishable_-N3uUwv7XYfRIdr4WI_39Q_23swTNEL" -H "Content-Type: application/json" -d '{}'
+{"code":422,"error_code":"anonymous_provider_disabled","msg":"Anonymous sign-ins are disabled"}
+
+$ supabase migration list --linked
+Local          | Remote         | Time (UTC)
+20260817000001 | 20260817000001 | 2026-08-17 00:00:01
+20260817000002 | 20260817000002 | 2026-08-17 00:00:02
+20260818000003 | 20260818000003 | 2026-08-18 00:00:03
+20260819000004 |                | 2026-08-19 00:00:04
+（eval-4 時点と完全に同じ状態。migration 4 は依然未適用）
+
+$ curl .../rest/v1/prompts?select=id&limit=5 -> []
+$ curl .../rest/v1/posts?select=id&limit=5   -> []
+$ curl .../rest/v1/users?select=id&limit=5   -> []
+（データは依然すべて0件）
+
+## [2] OnboardingView alert 修正の検証（一時UIテストで実機確認・修正確認済み）
+一時テスト EvaluatorTempSprint12Test（評価後に削除・リポジトリに残していない）で
+eval-4.md [2] の再現手順を再実行:
+  t = 8.62s Tap "onboarding.notification.later" Button
+  t = 8.99s Waiting 30.0s for Alert (First Match) to exist
+  t = 10.04s Find the Alert (First Match)
+  EVALUATOR_RESULT: alert appeared. label=うまくいきませんでした / Something went wrong
+  Test Case '...test_onboardingShowsAlertWhenSupabaseSignupFails' passed (10.304 seconds)
+→ attempt5では23秒待っても無反応だったのに対し、attempt6では約1.4秒でアラートが表示される。
+  [2]の修正は実機（シミュレータ）で動作確認済み。
+
+## [3] migration ファイル修正の検証（読み合わせ）
+supabase/migrations/20260819000004_server_connection.sql 冒頭に
+  alter table public.posts add column if not exists decorations jsonb not null default '[]'::jsonb;
+が追加されていることを確認。posts テーブルの既存列（init.sql）と突き合わせ、
+world_timeline ビューが参照する残りの列（body_language/created_at/expires_at/status）は
+すべて20260817000001_init.sqlで定義済みであることも確認。ファイル単体としては
+自己完結しているように読めるが、実際の `supabase db push` は [1] と同じ理由
+（access-tokenでのlink自体はできるがユーザー側の意思決定が必要な本番DB変更のため）
+evaluatorの権限では実施していない。
+
+## Release ビルドでの BackendProvider 確認
+BackendProvider.swift の #else 分岐（Release）は無条件で SupabaseBackend() を返すことを
+ソースで確認。実際に Release configuration でビルド・起動し、-SameQUseSupabaseBackend を
+付けなくても Supabase 経路（サインアップ待ち）に入ることをスクリーンショットで確認
+（evidence-attempt6-release-onboarding.png）。LocalBackend/SeedCatalog を経由しないため、
+Release の通常操作からシードは出ない。
+
+## 回帰（フルスイート・要求最低3件 → 5スプリント分実施）
+SprintOneAcceptanceTests    5/5  passed
+SprintFourAcceptanceTests   7/7  passed
+SprintFiveAcceptanceTests   7/7  passed
+SprintNineAcceptanceTests   7/7  passed
+SprintElevenAcceptanceTests 4/4  passed
+SameQTests（ユニット全体）  166/166 passed
+クラッシュ・Fault ログ: log show で検索し検出0件
