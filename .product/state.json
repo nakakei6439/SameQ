@@ -1,8 +1,14 @@
 {
   "currentSprint": "12",
-  "attempt": 1,
-  "status": "needs_fix",
+  "attempt": 2,
+  "status": "awaiting_eval",
   "history": [
+    {
+      "sprint": "12",
+      "attempt": 2,
+      "result": "awaiting_eval",
+      "note": "eval-1.md [2] の UI テスト回帰を修正。BackendProvider.make() の Debug 既定を SupabaseBackend から LocalBackend に戻し、-SameQUseSupabaseBackend を付けたときだけ SupabaseBackend に切り替わる Debug 限定オプトインに変更（LaunchOptions.useLocalBackend → useSupabaseBackend リネーム）。Release は引き続き SupabaseBackend を返すため本番稼働前提のまま。eval-1.md [1]（Supabase プロジェクト loqumzfgnahtclnvnrzb が到達不能）は環境制約で generator 側では修復不能なため未対応：DNS NXDOMAIN・supabase migration list --linked が tenant not found を返す・Supabase ダッシュ板の認証情報が generator に無い。eval-1.md [3]（既存 UI テストを1本も実行せず awaiting_eval 引き渡し）の再発防止のため、本 attempt では自前で SprintOneAcceptanceTests 5/5・SprintTwoAcceptanceTests 5/5・SprintThreeAcceptanceTests 7/7・SprintFiveAcceptanceTests 7/7（計 24/24 passed）+ ユニット 166/166 passed を iPhone 17 / iOS 26.5 シミュレータ単独実行で確認してから引き渡し。受け入れ条件 1〜7 は依然未達（Supabase 到達不能で実機検証不能・generator 側からは修復不可）。受け入れ条件 8（シード非表示）は -SameQUseSupabaseBackend 経路のコード上は満たすが、現環境で同経路を起動してもサーバーが応答しないため画面が通信エラーで止まり実機確認もできない。Supabase プロジェクトが復活し BackendProvider.make() の LocalBackend 早期 return を1行削除するだけで 1〜12 全スプリントの検証が同バイナリで完走できる土台に戻った。詳細は .product/sprints/12-server-connection/self-review.md"
+    },
     {
       "sprint": "12",
       "attempt": 1,
