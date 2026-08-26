@@ -1,8 +1,14 @@
 {
   "currentSprint": "12",
-  "attempt": 6,
-  "status": "needs_fix",
+  "attempt": 7,
+  "status": "blocked",
   "history": [
+    {
+      "sprint": "12",
+      "attempt": 7,
+      "result": "blocked",
+      "note": "3-strike rule 再発動・blocked。コード変更ゼロ。eval-5 で確認された generator 側の修正（[2] OnboardingView alert・[3] migration の posts.decorations 追加）は evaluator によって実機・読み合わせで動作確認済み。本日（2026-08-27）朝に generator 環境で curl 再実測した結果、Supabase の anonymous_provider_disabled 状態は eval-5 時点から完全に変化なし（422 応答・同一文字列）。attempt 1・2・4・5・6 の 5 回連続で同一のユーザー側ブロッカー（Supabase ダッシュボードの Anonymous Sign-ins が無効化されており、generator 側からは修復不可能）に直面。attempt 3 で一度 blocked とした後、DNS 復活により attempt 4 以降を再開したが、根本ブロッカー（匿名サインイン無効化）は依然解消されていない。3-strike rule に従い generator 作業を停止し、ユーザー側での（1）Supabase ダッシュボード → Authentication → Sign In / Providers → Anonymous Sign-ins を ON、（2）supabase login --token + supabase link + supabase db push、（3）supabase/seed.sql 投入 の対応を要請。対応後に generator は attempt 8 として BackendProvider 1 行戻し・11 ファイルの launchFresh への -SameQUseLocalBackend 注入・SprintTwelveAcceptanceTests 新規追加 を取り組む。詳細: .product/sprints/12-server-connection/self-review.md (attempt 7)"
+    },
     {
       "sprint": "12",
       "attempt": 6,
