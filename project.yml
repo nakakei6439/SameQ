@@ -24,7 +24,7 @@ targets:
       path: SameQ/Info.plist
       properties:
         CFBundleDisplayName: SameQ
-        CFBundleShortVersionString: "0.1.0"
+        CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
