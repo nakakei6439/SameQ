@@ -1,0 +1,41 @@
+# Supabase backend reachability diagnosis (2026-08-26, evaluator)
+
+## 1. DNS resolution of the project's REST endpoint fails (NXDOMAIN)
+$ dig @8.8.8.8 +short loqumzfgnahtclnvnrzb.supabase.co
+(empty — NXDOMAIN)
+
+$ curl -v --max-time 10 https://loqumzfgnahtclnvnrzb.supabase.co/rest/v1/ -H "apikey: <redacted>"
+* Could not resolve host: loqumzfgnahtclnvnrzb.supabase.co
+
+Control check — general internet access from the same shell works fine (https://www.google.com returns 200,
+aws pooler hostname aws-0-ap-northeast-1.pooler.supabase.com resolves to real IPs). So this is not a
+network/sandbox restriction; only this specific project's hostname fails to resolve.
+
+## 2. supabase CLI confirms the project/tenant does not exist on Supabase's side
+$ supabase migration list --linked
+Connecting to remote database...
+failed to connect to postgres: failed to connect to
+`host=aws-0-ap-northeast-1.pooler.supabase.com user=postgres.loqumzfgnahtclnvnrzb database=postgres`:
+server error (FATAL: (ENOTFOUND) tenant/user postgres.loqumzfgnahtclnvnrzb not found (SQLSTATE XX000))
+
+The pooler host itself resolves and accepts the connection, but Supabase's infrastructure reports that the
+tenant (project ref loqumzfgnahtclnvnrzb, the same ref hardcoded in SameQ/Backend/SupabaseConfig.swift and
+in .env.local) does not exist.
+
+## 3. Real app launch reproduces the failure on-device (not just curl)
+Two booted iOS 26.5 simulators (iPhone 17 / iPhone 17 Pro), default launch (no launch args, i.e. the exact
+configuration a real user would run — SupabaseBackend is now the default per BackendProvider.swift):
+Both show, ~2s after launch:
+  「読み込めませんでした」/「通信できません。ネットワーク接続を確認してください。」
+  with a 「もう一度試す」(retry) button that can never succeed because the target host does not exist.
+See evidence-deviceA-offline-error.png / evidence-deviceB-offline-error.png.
+
+## 4. Underlying app logic itself is not broken — only the server wiring is
+Launching the same build with -SameQUseLocalBackend reaches onboarding normally
+(evidence-localbackend-onboarding-still-works.png), and `xcodebuild ... -only-testing:SameQTests test`
+(166 unit tests) passes 100%.
+
+## 5. Existing per-sprint UI acceptance tests now fail because they launch with the new default (Supabase) backend
+SprintOneAcceptanceTests: 5/5 failed (all time out waiting for onboarding.next; screen shows the error above)
+SprintFiveAcceptanceTests: 7/7 failed (same root cause)
+Full xcodebuild logs kept in this run's transcript; xcresult bundles under DerivedData if re-run is needed.

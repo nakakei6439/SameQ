@@ -1,8 +1,14 @@
 {
   "currentSprint": "12",
   "attempt": 1,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
+    {
+      "sprint": "12",
+      "attempt": 1,
+      "result": "needs_fix",
+      "note": "evaluatorがiPhone 17 / iPhone 17 Pro シミュレータ2台（iOS 26.5）で実機操作検証。不合格。受け入れ条件0/8。原因はアプリが接続するSupabaseプロジェクト（loqumzfgnahtclnvnrzb、.env.local・SupabaseConfig.swiftにハードコード）が実際には到達不能で、既定の起動経路（引数なし）で両端末とも起動2秒後に「読み込めませんでした／通信できません」の画面のまま完全に停止しオンボーディングにすら到達しないため。根拠は3系統: (1) dig @8.8.8.8でloqumzfgnahtclnvnrzb.supabase.coがNXDOMAIN（同一環境からgoogle.comやSupabaseのプーラーhost自体は名前解決できるため環境側の問題ではない）。(2) supabase migration list --linkedがFATAL: tenant/user postgres.loqumzfgnahtclnvnrzb not foundを返し、Supabase側がプロジェクトの存在を否定。(3) 2台のシミュレータで実際に引数なし起動し同一エラー画面で停止することを画面キャプチャで確認。-SameQUseLocalBackendを付ければ同じビルドで正常にオンボーディングへ到達し、xcodebuild -only-testing:SameQTestsも166/166成功するため、アプリのロジック自体は壊れていない。回帰は既存のper-sprint UIテスト（デフォルト起動引数のまま）SprintOneAcceptanceTests 5/5失敗・SprintFiveAcceptanceTests 7/7失敗で確認（要求最低3件を大幅に超えるサンプル数）、原因はBackendProvider.make()の既定がSupabaseBackendに変わったにもかかわらずテスト側の起動引数を更新していないこと。安定性はクラッシュ0だが主要動線が1歩も完走できず、データ整合性はサーバー操作が1件も成功せず検証不能、使用性は1（完走できない）。self-review.mdは「実機検証はevaluator担当」「ユニットテストのみ実行」と述べているが既存UIテストスイートを1本も実行せずに引き渡しており、実行していれば到達性問題を自ら検出できたはず。詳細は .product/sprints/12-server-connection/eval-1.md"
+    },
     {
       "sprint": "12",
       "attempt": 1,
