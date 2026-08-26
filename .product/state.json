@@ -1,7 +1,7 @@
 {
   "currentSprint": "12",
   "attempt": 5,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "12",
@@ -326,6 +326,12 @@
       "attempt": 3,
       "result": "passed",
       "note": "evaluatorがiPhone 17シミュレータ（+世界共通性確認用にEval09を追加）で実操作検証。合格。受け入れ条件6/6。特にeval-1・eval-2で2回連続不合格になった条件1（翌日に別のお題）は、evaluator自身が本番相当の経路（シードあり・-SameQSkipSeed/-SameQSeedOnly無し・scenario=live）でterminate→offset変更→再launchを5段階（0h/21h40m/45h40m/69h40m/93h40m）繰り返し、liveAnchor+28h（coverage）超過直後に即座にprompt_20260826へ切り替わり、以降4日連続でprompt_20260827→28→29と単調に切り替わることを確認、eval-2で見つかった約4.7日間のdead zoneが解消されていることを直接確認した。条件2（世界共通）は同一offsetで別シミュレータに新規インストールし同一prompt_20260829が出ることを確認。条件4はPromptCatalog.disallowedKeywordsが仕様7観点を過不足なく網羅していることをソースで確認。条件6はdefaultDuration=28h・testSeedCatalogScheduleStaysTimeOrderedで担保。データ整合性はアプリコンテナのstate.jsonを直接読み、schemaVersion 5・discardedCandidatesCount・myPosts.expiresAtがliveAnchor+28hと正確に一致することを確認。回帰はSprintOne(5)/SprintTwo(5)/SprintThree(7)/SprintSix(4)の計21件すべて成功。ユニット135/135・UI28/28すべて自分で再実行し成功を確認。クラッシュ0、未処理エラー0、使用性4。詳細は .product/sprints/09-auto-prompt-generation/eval-3.md"
+    },
+    {
+      "sprint": "12",
+      "attempt": 5,
+      "result": "needs_fix",
+      "note": "evaluatorがiPhone 17 / iPhone 17 Pro シミュレータ2台（iOS 26.3）で実操作検証。不合格。受け入れ条件0/8（条件8のみSupabase経路限定で条件付き達成）。self-review.mdの自己申告どおり条件1〜7は検証不能だが、evaluatorはそれに加えて新規の致命的欠陥を発見した: -SameQUseSupabaseBackend でオンボーディングを最後まで進めて通知許可画面のボタンをタップすると、アカウント作成(auth/v1/signup)がHTTP 422 (\"Anonymous sign-ins are disabled\"、Supabase プロジェクト側の設定で匿名サインインが無効化されている)で失敗し、画面が23秒待っても一切変化せず無言のまま永久に止まることをlog stream・screenshotで直接確認した。OnboardingView.swiftはsession.alertMessageを一切購読しておらず(grep -rn alertMessage で確認、TodayPromptView/TimelineViewの2箇所にしか無い)、RootView.failureViewのリトライ可能なエラー表示パターンも新規ユーザーのオンボーディング失敗には使われない設計。これはSupabase側の設定を直しても、通信が一時的に失敗する限り再現するアプリ側の独立したバグ。また、保留中のmigration 20260819000004_server_connection.sql 自体がworld_timelineビューで存在しないposts.decorations列を参照しており、access-token取得後にsupabase db pushしても失敗する可能性が高いことをソース精読で新規発見(self-review.mdの提案通りに進めても解決しない)。evaluator環境ではsupabase CLIがログイン・link済みだったため、self-review.mdが\"generator側では手段がない\"としていたmigration list --linked等をevaluator側で独立に再実行し、migration 4未適用・prompts/posts/usersテーブルが全て空であることを確認した。一方、attempt 4で見つかったLocalBackend既定経路のregression(投稿後に他人の回答が出ない)はevaluator自身がSprintOneAcceptanceTests 5/5・SprintFourAcceptanceTests 7/7に加え抜き取りをSprintFive 7/7・SprintNine 7/7まで広げ(計4スプリント、要求最低3件を上回る)、ユニット166/166とあわせて解消を確認した。クラッシュ0・アプリ由来のFault 0。安定性(Supabase経路の主要動線が1歩も完走できない)・データ整合性(検証不能)・使用性(1)は閾値未達。判定基準5項目中4項目が未達のため不合格。詳細は .product/sprints/12-server-connection/eval-4.md"
     }
   ]
 }
