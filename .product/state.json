@@ -1,8 +1,14 @@
 {
   "currentSprint": "12",
   "attempt": 2,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
+    {
+      "sprint": "12",
+      "attempt": 2,
+      "result": "needs_fix",
+      "note": "evaluatorがiPhone 17（既定=LocalBackend）/ iPhone 17 Pro（-SameQUseSupabaseBackendでSupabase経路を明示指定）の2台構成で実機操作検証。不合格。受け入れ条件0/8（1〜8すべてSupabase到達不能により検証不能）。attempt 1のeval-1.md [1]（Supabaseプロジェクト loqumzfgnahtclnvnrzb が到達不能）は今回もevaluatorが独立に再現：dig/curlでloqumzfgnahtclnvnrzb.supabase.coが名前解決不能（対照としてsupabase.comやSupabaseプーラーのホスト名は正常に解決・到達できるため、evaluator環境やネットワーク全体の制限ではなくこのプロジェクト参照固有の問題と確認）。-SameQUseSupabaseBackendを付けて明示的にSupabase経路へ入っても起動直後の通信エラー画面（読み込めませんでした／通信できません）で停止しオンボーディング後の画面に一切到達しない。一方、eval-1.md [2][3]（既存UIテストの回帰・未実行のまま引き渡し）はattempt 2で解消を確認：SprintOneAcceptanceTests 5/5・SprintFourAcceptanceTests 7/7・SprintFiveAcceptanceTests 7/7（計19/19 passed）をevaluatorが自前で実機再実行しself-review.mdの申告と一致。回帰基準（最低3件）は満たす。動作の安定性はクラッシュ0・未処理例外0だがSupabase経路の主要動線が1歩も完走できず、データ整合性はサーバー操作が1件も成功せず検証不能、使用性はSupabase経路のみ見ると1（完走できない）。原因はgenerator側のコードでは修復不可能な環境要因（Supabaseプロジェクトの到達性）であり、ユーザー側でのSupabaseダッシュボード確認・プロジェクト復旧または再作成が必要。詳細は .product/sprints/12-server-connection/eval-2.md"
+    },
     {
       "sprint": "12",
       "attempt": 2,
