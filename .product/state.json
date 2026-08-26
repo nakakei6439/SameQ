@@ -1,8 +1,14 @@
 {
   "currentSprint": "12",
   "attempt": 5,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
+    {
+      "sprint": "12",
+      "attempt": 4,
+      "result": "needs_fix",
+      "note": "evaluatorがiPhone 17 / iPhone 17 Proシミュレータ2台で実操作検証し不合格。self-review(attempt4)申告のSupabase到達性(DNS解決・HTTP200・6テーブルSELECT可)は独立に再確認できたが、-SameQUseSupabaseBackendで実際に起動すると prompts テーブルへのクエリが「column prompts.language does not exist」HTTP400で失敗し、起動直後の読み込みエラー画面から一歩も進めない（self-review自身が予見していたカラム不一致リスクが的中）。加えてevaluatorが独立に発見した新規regression: sprint12の変更と無関係に見えるが、現時点(2026-08-26 19時台)でLocalBackend既定経路（引数なし通常起動）でもSprint01/04の中核動線が壊れている。オンボーディング・投稿までは成功するが、投稿後にtimeline.card.body（他人の回答カード）が一度も出現せず、SprintOneAcceptanceTestsが2/5、SprintFourAcceptanceTestsが0/6で失敗（2台のシミュレータ・3回の独立実行すべてで同一箇所が再現、SprintElevenAcceptanceTestsは5/5成功のため試験環境全体の不調ではない）。eval-2(同日14時台)ではSprintOne 5/5成功していたため、コード変更(BackendProviderへのコメント追加のみとgit showで確認済み)ではなく時刻依存の状態遷移が疑わしいが原因特定はgenerator側の宿題。判定基準5項目すべて閾値未達（受け入れ条件0/8、安定性NG、データ整合性検証不能、回帰2/3件でNG、使用性1）。次attemptでは(a) prompts テーブルのカラム名とクライアントクエリの不一致解消、(b) LocalBackend既定経路で投稿後にタイムラインが開かないregressionの原因切り分け、の両方が必要。詳細は .product/sprints/12-server-connection/eval-3.md"
+    },
     {
       "sprint": "12",
       "attempt": 4,
