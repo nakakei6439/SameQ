@@ -1,8 +1,15 @@
 {
   "currentSprint": "12",
   "attempt": 7,
-  "status": "blocked",
+  "status": "needs_fix",
   "history": [
+    {
+      "sprint": "12",
+      "attempt": 7,
+      "result": "user_action",
+      "note": "ユーザーが attempt7 の blocked 指摘に対応。(1) Supabase ダッシュボード → Authentication → Sign In / Providers で Allow anonymous sign-ins を ON（誤って Allow manual linking も一時ONにしてしまったが OFF に戻し済み）。(2) supabase db push で migration 20260819000004_server_connection.sql を適用。(3) supabase/seed.sql の投入を試みたところ、prompt_002（starts_at が26時間後の未来のお題）に紐づく投稿12件が『prompt is not active』トリガーで拒否されトランザクション全体がロールバックされる不具合を発見。prompt_002関連の12行を除外した一時ファイルで再投入し成功（prompts 1件・users 34件・posts 22件、すべて prompt_001 向け）。prompt_002自体は未投入のため、prompt_001の期限（2026-08-27 23:07 UTC）が近づいたら改めて投入が必要。status を blocked → needs_fix に戻して attempt8 の generator 再開を可能にする。",
+      "evalNote": null
+    },
     {
       "sprint": "12",
       "attempt": 7,
