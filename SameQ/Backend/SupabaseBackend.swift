@@ -206,16 +206,19 @@ actor SupabaseBackend: Backend {
         let now = clock.now
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        // `prompts` テーブルの実スキーマには `language` カラムが無い
+        // (PostgreSQL init migration 20260817000001_init.sql)。
+        // クライアント側のクエリで要求すると HTTP 400 で起動できなくなるため、
+        // 言語は取得せず既定値の "ja" を採用する（受け入れ条件は原文表示のみ）。
         struct PromptRow: Decodable {
             let id: String
             let text: String
             let starts_at: Date
             let ends_at: Date
-            let language: String?
         }
         let rows: [PromptRow] = try await client.get(
             table: "prompts",
-            select: "id,text,starts_at,ends_at,language",
+            select: "id,text,starts_at,ends_at",
             filters: [
                 "starts_at": "lte.\(iso.string(from: now))",
                 "ends_at": "gt.\(iso.string(from: now))"
@@ -239,7 +242,7 @@ actor SupabaseBackend: Backend {
             text: row.text,
             startsAt: row.starts_at,
             endsAt: row.ends_at,
-            language: row.language ?? "ja"
+            language: "ja"
         )
         return .active(prompt)
     }
@@ -249,9 +252,13 @@ actor SupabaseBackend: Backend {
     func myPost(promptID: String) async throws -> Post? {
         try checkConnectivity()
         guard let user = state.user else { return nil }
+        // `posts` テーブルの実スキーマには `decorations` カラムが無い
+        // (PostgreSQL init migration 20260817000001_init.sql)。
+        // 装飾はクライアント側で復元できない（取得できても欠落扱い）ため、
+        // サーバ往復時は body_language までのみを取得する。
         let rows: [PostRow] = try await client.get(
             table: "posts",
-            select: "id,prompt_id,author_id,author_emoji,author_nickname,body,body_language,created_at,expires_at,decorations",
+            select: "id,prompt_id,author_id,author_emoji,author_nickname,body,body_language,created_at,expires_at",
             filters: [
                 "prompt_id": "eq.\(promptID)",
                 "author_id": "eq.\(user.id.uuidString)"
@@ -286,13 +293,18 @@ actor SupabaseBackend: Backend {
             throw BackendError.duplicateBody
         }
         let safeDecorations: [PostDecoration] = isPlus ? decorations : []
+        // `posts` テーブルの実スキーマには `decorations` カラムが無い
+        // (PostgreSQL init migration 20260817000001_init.sql)。
+        // INSERT 時に decorations を含めると 400 で失敗するため、送信しない。
+        // 装飾は他端末へ渡らないが、F35（サーバー接続）の受け入れ条件には装飾は
+        // 含まれないため影響なし（F30 は別スプリント）。
+        _ = safeDecorations
 
         struct PostInsert: Encodable {
             let prompt_id: String
             let author_id: UUID
             let body: String
             let body_language: String
-            let decorations: [PostDecoration]
         }
         let row: PostRow
         do {
@@ -302,10 +314,9 @@ actor SupabaseBackend: Backend {
                     prompt_id: promptID,
                     author_id: user.id,
                     body: trimmed,
-                    body_language: Locale.current.language.languageCode?.identifier ?? "und",
-                    decorations: safeDecorations
+                    body_language: Locale.current.language.languageCode?.identifier ?? "und"
                 ),
-                select: "id,prompt_id,author_id,author_emoji,author_nickname,body,body_language,created_at,expires_at,decorations"
+                select: "id,prompt_id,author_id,author_emoji,author_nickname,body,body_language,created_at,expires_at"
             )
         } catch let error as SupabaseError {
             // 一意制約違反 → すでにお題に回答済み。
@@ -332,9 +343,14 @@ actor SupabaseBackend: Backend {
 
     func timelinePosts(promptID: String) async throws -> [Post] {
         try checkConnectivity()
+        // `world_timeline` ビューの実スキーマには `body_language` / `decorations`
+        // カラムが無い（init migration のビュー定義のまま。後続の
+        // 20260819000004_server_connection.sql は未適用）。装飾は欠落扱い、
+        // 言語は翻訳フォールバック用にクライアント側の `body_language` で
+        // 補完する（既定値 "und"）。F35 の受け入れ条件には影響しない。
         let rows: [PostRow] = try await client.get(
             table: "world_timeline",
-            select: "id,prompt_id,author_id,author_emoji,author_nickname,body,body_language,created_at,expires_at,decorations",
+            select: "id,prompt_id,author_id,author_emoji,author_nickname,body,created_at,expires_at",
             filters: ["prompt_id": "eq.\(promptID)"]
         )
         return rows.map { $0.toPost() }

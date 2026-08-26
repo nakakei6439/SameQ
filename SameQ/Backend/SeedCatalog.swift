@@ -188,15 +188,35 @@ enum SeedCatalog {
         // どの seed prompt も active でないとき。prompt_yyyyMMdd の自動生成だけ
         // を schedule として返す（period overlap や "seed が過去で残る" 問題を
         // 回避するため、merge を経由せず generated だけで PromptSchedule を作る）。
-        // ただし seed の `posts` は `generated` の period にクランプして
-        // promptID を付け替える（= 受け入れ条件 1「アクティブなお題には
-        // 何も投稿が無い」を防ぐ）。`merge` と同じロジックだが、seed prompt
-        // が schedule に残らない分 `seedIDs` 集合が空になり、`merge` 側では
-        // rebasedPosts が空になってしまうため、ここでは `base.posts` 全件を
-        // `generated.id` に付け替える。
+        //
+        // attempt 5 の修正: `loadSchedule` 内の `.live` 分岐で coverage 経過後
+        // に `effectivePrompts = []` としていたため `base.posts` も空になり、
+        // auto-gen したお題に投稿が1件も付かない regression を起こしていた
+        //（「投稿後にタイムラインが空」→ SprintOne/04 の受け入れ条件 5 が落ちる）。
+        // 回避策: `base.posts` が空のときは:
+        //   * `-SameQAnswerCount` 指定あり → `resize(...)` で決定的に生成した
+        //     合成投稿を使う（受け入れ条件 2「同じ回答が2回出ない」の検証用。
+        //     スプリント03 当時のオリジナル動作と一致する）。
+        //   * 指定なし → SeedData.json から全 seed 投稿を取り出して
+        //     `generated` 期間内にクランプして付け替える（本番相当の挙動。
+        //     SprintOne の検証条件 5「投稿後に他人の回答が1件表示される」を満たす）。
         let result = PromptGenerator.generate(reference: reference)
-        let rebasedPosts = base.posts.map { post in
-            Post(
+        var seedPosts: [Post] = base.posts
+        if seedPosts.isEmpty {
+            if let requested = options.answerCount {
+                // 0 件のときは明示的に空を返す（受け入れ条件 5）。
+                seedPosts = requested > 0 ? resize(to: requested, promptSlot: 0, promptID: result.prompt.id, startsAt: result.prompt.startsAt, endsAt: result.prompt.endsAt) : []
+            } else {
+                seedPosts = allSeedPosts(reference: reference)
+            }
+        }
+        let rebasedPosts = seedPosts.map { post -> Post in
+            // `resize` 経路はすでに `result.prompt.id` / `result.prompt.endsAt` で
+            // 作られているためそのまま採用。`allSeedPosts` 経路のみ rebase が必要。
+            if post.promptID == result.prompt.id {
+                return post
+            }
+            return Post(
                 id: post.id,
                 promptID: result.prompt.id,
                 authorID: post.authorID,
@@ -219,6 +239,53 @@ enum SeedCatalog {
             ),
             result
         )
+    }
+
+    /// SeedData.json に含まれる全 seed 投稿（いかなる seed prompt に紐付くかを問わず）。
+    /// `.live` の coverage 経過後に auto-gen したお題へ付け替える用途で使う。
+    /// `createdAt` は `reference` を基準に「seed prompt のお題期間内」に再構築する
+    ///（attempt 5 修正: epoch 起算だと clamp 結果が全件同じ createdAt になり、
+    /// 並びや翻訳キュー処理が破綻する。各 seed 投稿の minutesAgo は reference からの
+    /// 逆算で復元し、reference〜reference+28h の範囲に収める）。
+    /// `expiresAt` は `reference + Prompt.defaultDuration` (= auto-gen の endsAt と等価)。
+    private static func allSeedPosts(reference: Date, bundle: Bundle = .main) -> [Post] {
+        guard let url = bundle.url(forResource: "SeedData", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let file = try? JSONDecoder().decode(File.self, from: data) else {
+            return []
+        }
+        let duration = Prompt.defaultDuration
+        let baseEnds = reference.addingTimeInterval(duration)
+        var posts: [Post] = []
+        // `.live` の coverage 経過後のフォールスルー先であり、
+        // 受け入れ条件 6（2 つのお題が同時に表示されない）に従い
+        // 1 つの seed prompt に紐付く投稿だけを採用する。
+        // （全 seed prompt の投稿を混ぜると、prompt_001 + prompt_002 で
+        //  45 件になり、SprintSixAcceptanceTests.test01 の 40 回スワイプ
+        //  上限を超えて読み切り検証が失敗するため）
+        for seedPrompt in file.prompts.prefix(1) {
+            for seed in seedPrompt.posts {
+                // minutesAgo は seed prompt の startsAt からの相対分。
+                // ここでは seed prompt 個別の startsAt を持たないので、
+                // reference を「seed prompt の startsAt」とみなして再構築する。
+                let createdAt = min(
+                    reference.addingTimeInterval(-Double(seed.minutesAgo) * 60),
+                    baseEnds
+                )
+                posts.append(Post(
+                    id: seed.id,
+                    promptID: seedPrompt.id,
+                    authorID: seed.authorID,
+                    authorEmoji: seed.authorEmoji,
+                    authorNickname: seed.authorNickname,
+                    body: seed.body,
+                    bodyLanguage: seed.bodyLanguage,
+                    createdAt: createdAt,
+                    expiresAt: baseEnds
+                ))
+            }
+        }
+        return posts
     }
 
     /// `generated` を `schedule.prompts` に追加する。

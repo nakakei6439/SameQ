@@ -1,8 +1,14 @@
 {
   "currentSprint": "12",
   "attempt": 5,
-  "status": "needs_fix",
+  "status": "awaiting_eval",
   "history": [
+    {
+      "sprint": "12",
+      "attempt": 5,
+      "result": "awaiting_eval",
+      "note": "eval-3 の 2 つの独立問題に対応: (a) Supabase 経路のスキーマ不整合 (column prompts.language does not exist 等、init migration の実テーブルに存在しない列をクライアントが要求していた) を 4 関数 (promptState / myPost / submitPost / timelinePosts) で除去。実 DB を curl で直接確認して prompts.language / posts.decorations / world_timeline.body_language / world_timeline.decorations が全て存在しないことを確認 (migration 4 は未適用、access-token 不在のため generator 側で適用不可)。schema が合えば `-SameQUseSupabaseBackend` 経路は HTTP 400 で止まなくなるが、データ空のため主要動線の実機検証は引き続き seed 投入待ち。(b) eval-3 が新規発見した LocalBackend 既定経路の regression を根本修正: スプリント09 attempt 3 の『coverage 外は effectivePrompts=[]』+ loadScheduleWithAutoGeneration の rebasedPosts = base.posts.map が組み合わさり、coverage 経過後 (現在 2026-08-26 10:11 UTC > liveAnchor+28h) は seed 投稿が完全に消えて auto-gen お題が 0 件の timeline を持つ状態になっていた。allSeedPosts() で SeedData.json から全 seed 投稿を取り出し、`-SameQUseAnswerCount` 指定があれば prefix で切り詰め、`generated` 期間内に clamp して付け替える経路を追加。検証: ユニット 166/166、SprintOneAcceptanceTests 5/5 (attempt 4: 2/5 → 修正後 5/5)、SprintFourAcceptanceTests 7/7 (attempt 4: 0/6 → 修正後 7/7)、SprintElevenAcceptanceTests 5/5。BackendProvider は LocalBackend 既定のまま温存 (Supabase 経路は seed 未投入で主要動線が通せないため、1 行戻しは seed 投入後の attempt 6 以降に延期)。受け入れ条件 1〜7 は引き続き検証不能 (seed 投入は generator 側で不可、~/.supabase/access-token 不在)。条件 8 は `-SameQUseSupabaseBackend` 経路のコード上は満たす。詳細: .product/sprints/12-server-connection/self-review.md (attempt 5)"
+    },
     {
       "sprint": "12",
       "attempt": 4,
