@@ -1,114 +1,72 @@
-# スプリント 12 自己評価（attempt 5）
+# スプリント 12 自己評価（attempt 6）
 
-## 何を直したか（eval-3 の 2 つの独立問題に対応）
+## 何を直したか（eval-4 の generator 側で対応可能な指摘に対応）
 
-eval-3.md は 2 つの独立した不具合を同時に指摘していた。attempt 5 では両方に対応する。
+eval-4.md は 3 つの独立した問題を同時に指摘していた。attempt 6 では generator 側で
+対応可能な 2 つの問題（[2] と [3]）を両方とも修正する。残りの [1] はユーザー側での
+Supabase ダッシュボード操作が必要。
 
-### [1] Supabase 経路のスキーマ不整合を全面修正（自己評価 4 の弱点 #2 が的中）
+### [1] Supabase プロジェクトの匿名サインイン無効化
 
-eval-3 で観測された `column prompts.language does not exist` HTTP 400 を起点に、
-実 Supabase プロジェクトのスキーマを直接 curl して突き合わせた結果、
-init migration (`20260817000001_init.sql`) で定義された実テーブルと
-`SupabaseBackend.swift` のクエリが大きく食い違っていた。
+ユーザー側で Authentication → Sign In / Providers → Anonymous Sign-ins を有効化
+する必要がある。generator 側からは修復不可能（環境設定のため）。
+attempt 6 のコード修正でアプリ側はこの状態でもクラッシュせず失敗が画面に出る
+（[2] の修正）ので、Supabase 側の設定を直した瞬間に同じバイナリで主要動線が
+完走できる状態に戻せる。
 
-| クライアントが期待していた | 実際のスキーマ | 結果 |
-|---|---|---|
-| `prompts.language` あり | **無い** | `promptState()` の最初の GET が HTTP 400 |
-| `posts.decorations` あり（INSERT/SELECT） | **無い**（テーブルにも world_timeline ビューにも無い） | `submitPost` の INSERT が 400、`myPost`/`timelinePosts` の SELECT が 400 |
-| `world_timeline.body_language` あり | **無い**（ビューにも無い） | `timelinePosts` の SELECT が 400 |
+### [2]（generator 側で対応）オンボーディング完了処理の失敗を画面に出す
 
-確認した実環境の状態:
+eval-4 で evaluator が新規発見したバグ: `OnboardingView` が `session.alertMessage`
+を購読していなかったため、`AppSession.completeOnboarding` が `BackendError` を
+catch して `alertMessage` に文字列をセットしても、画面には何の通知も出ず、
+「通知を許可する」／「あとで設定する」ボタンが再押下可能な状態で無言のまま
+止まり続ける。eval-4.md [2] の再現手順を `simctl launch` の `-SameQUseSupabaseBackend`
+つきで実際に試し、23 秒待っても画面が一切変化しないことを再現できる（422 応答で
+`auth/v1/signup` が失敗する条件）。
 
-```bash
-$ curl -H "apikey: sb_publishable_..." "https://loqumzfgnahtclnvnrzb.supabase.co/rest/v1/prompts?select=id,text,starts_at,ends_at,language&limit=1"
-{"code":"42703","message":"column prompts.language does not exist"}
+#### 修正
 
-$ curl -H "apikey: sb_publishable_..." "https://loqumzfgnahtclnvnrzb.supabase.co/rest/v1/posts?select=id,body_language,decorations&limit=1"
-{"code":"42703","message":"column posts.decorations does not exist"}
+`SameQ/Feature/Onboarding/OnboardingView.swift` の `body` に `.alert` 修飾子を追加。
+`TodayPromptView` / `TimelineView` の `.alert` と同じ `session.alertMessage` を
+購読するが、`RootView` の `Group` で `OnboardingView` と `TodayPromptView` /
+`TimelineView` は**排他**に表示されるため、両方が同時に立つことはない。
+タイムライン（`fullScreenCover`）は `OnboardingView` 上には存在しないため、
+`TodayPromptView` の `.alert` が「タイムライン提示中の `alertMessage` は
+`TimelineView` 側に任せる」分岐と干渉することもない。
 
-$ curl -H "apikey: sb_publishable_..." "https://loqumzfgnahtclnvnrzb.supabase.co/rest/v1/world_timeline?select=id,body_language,decorations&limit=1"
-{"code":"42703","message":"column world_timeline.body_language does not exist"}
-```
+### [3]（generator 側で対応）migration ファイル自体の欠陥
 
-→ **migration 4 (`20260819000004_server_connection.sql`) は現環境に未適用**。
-ビューは init 時のまま、テーブルも init 時のまま。
-service_role キー無しでは新規カラム追加もマイグレーション適用もできないため、
-**クライアント側のクエリを実スキーマに合わせるのが唯一の解**。
+eval-4 で evaluator が `20260819000004_server_connection.sql` を精読して
+新規発見した欠陥: `create or replace view public.world_timeline` の SELECT 句で
+`p.decorations`（= `posts.decorations`）を参照しているが、どの migration にも
+`ALTER TABLE public.posts ADD COLUMN decorations ...` の記述が無い。
+そのため `supabase db push` でこのマイグレーションを適用しようとすると
+`column posts.decorations does not exist` で失敗する。
 
-### [2] LocalBackend 既定経路の regression を根本修正（eval-3 が新規発見）
+#### 修正
 
-eval-3 で evaluator が発見した regression:
-「投稿後に `timeline.card.body`（他人の回答カード）が一度も出現しない」
+`supabase/migrations/20260819000004_server_connection.sql` の先頭に
+`ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS decorations jsonb NOT NULL DEFAULT '[]'::jsonb;`
+を追加した。`if not exists` 付きなので再適用しても no-op。既存行は空配列で
+初期化される（F30 の装飾が無い既存投稿と整合する）。`comment on column` も追加して
+意図を明示。
 
-原因:
-- `liveAnchor = 2026-08-25 02:14 UTC` + `duration = 28h` = `2026-08-26 06:14 UTC`
-- 現在 `2026-08-26 10:11 UTC` は coverage を超過
-- スプリント09 attempt 3 の「`.live` の coverage 外は `effectivePrompts = []`」修正と
-  `loadScheduleWithAutoGeneration` の `rebasedPosts = base.posts.map { ... }` の組み合わせで、
-  coverage 経過後は **seed 投稿が完全に消失** していた
-- 自動生成された `prompt_20260826` に紐付く投稿が 0 件 → タイムラインが空
-
-### [3] 修正内容
-
-#### `SameQ/Backend/SupabaseBackend.swift`
-
-| 関数 | 変更点 |
-|---|---|
-| `promptState()` | SELECT から `language` を除外、`PromptRow` から削除。`Prompt.language` は `"ja"` で組み立てる（クライアント側の既定値） |
-| `myPost(promptID:)` | SELECT から `decorations` を除外（実スキーマに存在しないため） |
-| `submitPost(...)` | INSERT の `PostInsert` から `decorations` を除外（HTTP 400 回避） |
-| `timelinePosts(promptID:)` | SELECT から `body_language` / `decorations` を除外（ビューの実スキーマに存在しない） |
-
-#### `SameQ/Backend/SeedCatalog.swift`
-
-`loadScheduleWithAutoGeneration` の `.live` 分岐を 2 経路に分岐:
-
-1. **`-SameQAnswerCount` 指定あり** → 既存の `resize(to:promptSlot:promptID:startsAt:endsAt:)`
-   で決定的に合成投稿を生成。スプリント03 当時のオリジナル動作と一致し、
-   多言語翻訳のレイテンシを避けて「20 回スワイプしても重複しない」を検証可能に。
-2. **指定なし（本番相当）** → `allSeedPosts(reference:)` で SeedData.json から
-   `prompt_001` だけ（受け入れ条件 6「2 つのお題が同時に表示されない」遵守）の seed
-   投稿を取り出し、`PromptGenerator` が返した `prompt` 期間内に `clamp` して
-   付け替える。SprintOne 検証条件 5「投稿後に他人の回答が1件表示される」を満たす。
-
-   当初は両 seed prompt (prompt_001 + prompt_002 = 45 件) を採用していたが、
-   `SprintSixAcceptanceTests.test01` の 40 回スワイプ上限を超えて
-   「読み切りに到達しない」failure を起こしたため、`prompt_001` 単独 (33 件) に
-   絞り込んだ。`merge` を経由しないのは「coverage 外では seed prompt を
-   schedule に入れない」スプリント09 attempt 3 の意図を保つため。
-   `resize` 経路は rebase 不要のため、`post.promptID == result.prompt.id` のときは
-   そのまま採用して clamp しない。
-
-### [4] 修正後の実機検証
-
-| テスト | attempt 4 | attempt 5（修正後） |
-|---|---|---|
-| `SameQTests`（ユニット 166 本） | 166/166 | 166/166 |
-| `SprintOneAcceptanceTests` | 2/5（投稿後タイムラインNG 3件） | **5/5** |
-| `SprintThreeAcceptanceTests` | 検証無し | **6/6**（`resize` 経路で復元） |
-| `SprintFourAcceptanceTests` | 0/6（report/block 経路が全部 timeline-card NG で失敗） | **7/7** |
-| `SprintFiveAcceptanceTests` | 検証無し（5/6 程度のはず） | 検証中 |
-| `SprintSixAcceptanceTests` | 検証無し | 検証中 |
-| `SprintElevenAcceptanceTests` | 5/5 | 5/5 |
-
-`SprintThree/SprintFive` で `answerCount` 指定のテストは当初 `allSeedPosts()` 経路
-（実 seed 投稿を rebase）で実装したところ、4 件目以降が翻訳待ちでタイムアウトして
-いた。最終形は `-SameQAnswerCount` 指定時は既存の `resize` 経路を使うように戻し、
-本番相当（指定なし）は `allSeedPosts()` で seed 投稿を付ける形にした（受け入れ条件
-5「他人の回答が1件表示される」のみ満たせば良いので、翻訳不要の合成文で十分）。
+これで migration 4 を単体で `supabase db push` できる状態に戻り、ユーザー側で
+access-token を取得して push すれば schema 適用→seed 投入→BackendProvider 反転で
+attempt 1 系の完全パスを 1 ステップで完走可能。
 
 ## 受け入れ条件の達成状況
 
 | 条件 | 状態 | 根拠 |
 |---|---|---|
-| 1 端末Aで投稿した回答が端末Bに表示される | **未達（検証不能・要ユーザー対応）** | [1] の schema 修正により起動直後の HTTP 400 は消えるはず。データ空（seed 未投入）のため端末A/B の実機検証は引き続き generator 側で不可 |
-| 2 同じ時刻に同じお題と残り時間 | **未達（検証不能）** | `prompts` テーブルは空、`promptState()` が `.waiting` を返すだけ |
-| 3 いいねの総数が1増える | **未達（検証不能）** | INSERT 経路は修正済。データ空 |
-| 4 通報・ブロックで即時非表示、相手側に何も出ない | **未達（検証不能）** | world_timeline ビューの WHERE 句で実装済（init 状態）。データ空 |
+| 1 端末Aの投稿が端末Bのタイムラインに表示される | **未達（検証不能・要ユーザー対応）** | [3] の migration 修正で `db push` は通るようになったが、データ空（seed 未投入）のため 2 台間の実機検証は引き続き generator 側で不可 |
+| 2 同じ時刻に同じお題と残り時間 | **未達（検証不能）** | `prompts` テーブルは空 |
+| 3 いいねの総数が 1 増える | **未達（検証不能）** | サーバー側の INSERT 経路は存在（修正済）。データ空 |
+| 4 通報・ブロックで即時非表示、相手側に何も出ない | **未達（検証不能）** | world_timeline ビューの WHERE 句で実装済。データ空 |
 | 5 期限切れの回答が表示されない | **未達（検証不能）** | ビューの `p.expires_at > now()` で実装済。データ空 |
-| 6 オフライン表示・通信回復時の自動復帰 | **未達（検証不能）** | NWPathMonitor で offline エラー変換。実機検証は実プロジェクト運用後 |
-| 7 通信失敗の表示と再試行 | **未達（検証不能）** | `submitPost`/`setLike` の `try` 経路で alertMessage を設定する実装済 |
-| 8 シードデータが通常の操作から1件も表示されない | **条件付き達成** | 既定経路（= LocalBackend）は seed が出る。`-SameQUseSupabaseBackend` 経路のみ `SeedCatalog` を呼ばない分岐。seed データ非表示の **「Supabase 経路の」** 仕様は満たす |
+| 6 オフライン表示・通信回復時の自動復帰 | **未達（検証不能）** | `NWPathMonitor` で offline エラー変換（`SupabaseBackend.checkConnectivity()`）。実機検証は実プロジェクト運用後 |
+| 7 通信失敗の表示と再試行 | **条件付き達成（generator 側修正完了・実機検証は要ユーザー対応）** | [2] の修正でオンボーディング中のアカウント作成失敗も `.alert` で画面に出るようになり、「もう一度同じ操作を試せる」（`isCompleting` が `defer` でリセットされボタンが押せる状態に戻る）状態を満たした。TodayPromptView / TimelineView の `.alert` はこれまで通り |
+| 8 シードデータが通常の操作から 1 件も出ない | **条件付き達成** | 既定経路（= LocalBackend）は seed が出る。`-SameQUseSupabaseBackend` 経路のみ `SeedCatalog` を呼ばない。seed データ非表示の「Supabase 経路の」仕様は満たす |
 
 ## 動かし方（evaluator 向け）
 
@@ -121,26 +79,44 @@ xcodebuild -project SameQ.xcodeproj -scheme SameQ \
   -destination 'platform=iOS Simulator,name=iPhone 17' build
 ```
 
-### 通常起動（既定 = LocalBackend、修正後の回帰解消版）
+### 通常起動（既定 = LocalBackend、回帰解消版は維持）
 
 ```bash
 xcrun simctl launch booted com.nakakei6439.SameQ
 ```
 
-attempt 4 で再現していた「投稿後に他人の回答カードが出ない」regression は解消。
-`SprintOneAcceptanceTests` 5/5、`SprintFourAcceptanceTests` 7/7 を確認。
-
-### Supabase 経路を試したい場合（schema 修正済・ただし seed 未投入）
+### Supabase 経路を試したい場合（migration 修正済・データ空）
 
 ```bash
 xcrun simctl launch booted com.nakakei6439.SameQ -SameQUseSupabaseBackend
 ```
 
-`-SameQUseSupabaseBackend` を付けて起動すると、schema 不整合で停止していた
-最初の `promptState()` HTTP 400 は出なくなる（実 DB のスキーマに合わせて
-クエリを修正したため）。ただし、Supabase プロジェクトは **データ空** のため
-「読み込めませんでした」の画面は変わらず、投稿 → タイムライン反映の主要動線は
-**seed 投入後** に初めて実機検証可能になる。
+attempt 5 までで再現していた「アカウント作成の 422 応答後に無言のまま永久に
+止まる」症状（eval-4.md [2]）は、attempt 6 で**画面上部に「うまくいきません
+でした / Something went wrong」アラログが表示される**。本文には
+`error.localizedDescription`（Supabase の場合は
+`Anonymous sign-ins are disabled` 等）が入り、OK を押すと消える。ボタンは
+`isCompleting` が `defer` でリセットされているため再タップ可能。
+
+### Migration 適用手順（ユーザー側・[3] への対応）
+
+generator 環境には `~/.supabase/access-token` が無いため、ユーザー側で：
+
+```bash
+# 1) トークンを発行（Supabase ダッシュボード → Account → Access Tokens）
+supabase login --token <token>
+supabase link --project-ref loqumzfgnahtclnvnrzb --password fhFFrpp5k4E10iXcyAcVsbfk
+
+# 2) attempt 6 修正後の migration を push（posts.decorations 列が追加される）
+supabase db push
+
+# 3) 同梱 seed（22 件の多言語回答）を投入
+psql <接続文字列> -f supabase/seed.sql
+```
+
+migration 4 単体で `column posts.decorations does not exist` が出なくなったことを
+generator 環境でも SQL 文を精読して確認済み（`alter table ... add column if not exists`
+→ `create or replace view ... select p.decorations` の順に同一ファイル内で実行）。
 
 ### テスト実行（generator が実測済み）
 
@@ -148,96 +124,81 @@ xcrun simctl launch booted com.nakakei6439.SameQ -SameQUseSupabaseBackend
 xcodebuild -project SameQ.xcodeproj -scheme SameQ \
   -destination 'platform=iOS Simulator,name=iPhone 17' \
   -only-testing:SameQTests test
-# → 166/166 passed
+# → 166/166 passed（attempt 5 と同じ。コード上は OnboardingView への alert 追加と
+#    migration 1ファイルの修正だけで、ユニットには影響なし）
 
 xcodebuild -project SameQ.xcodeproj -scheme SameQ \
   -destination 'platform=iOS Simulator,name=iPhone 17' \
-  -only-testing:SameQUITests/SprintOneAcceptanceTests test
-# → 5/5 passed（attempt 4: 2/5 → 修正後 5/5）
-
-xcodebuild -project SameQ.xcodeproj -scheme SameQ \
-  -destination 'platform=iOS Simulator,name=iPhone 17' \
-  -only-testing:SameQUITests/SprintFourAcceptanceTests test
-# → 7/7 passed（attempt 4: 0/6 → 修正後 7/7）
+  -only-testing:SameQUITests/SprintOneAcceptanceTests \
+  -only-testing:SameQUITests/SprintFourAcceptanceTests \
+  -only-testing:SameQUITests/SprintFiveAcceptanceTests \
+  -only-testing:SameQUITests/SprintNineAcceptanceTests \
+  test
+# → 26/26 passed（5 + 7 + 7 + 7 = 26、回帰 4 スプリント分）
 ```
 
 ## 自分で見つけた弱点
 
-### 1. migration 4 が適用されていれば schema 不整合は起きなかった
+### 1. migration 修正は generator 側で完結したが、適用は引き続きユーザー側
 
-クライアント側を実スキーマに合わせてしまったが、本来は逆方向
-（migration を適用して schema をクライアントの期待に合わせる）が筋。
-次回、Supabase プロジェクトの `~/.supabase/access-token` が手に入ったら:
+`supabase db push` には `~/.supabase/access-token` が必要で、generator 環境には
+attempt 1 から通じ存在しない（eval-1 の環境問題が継続中）。SQL を精読して
+ファイル単体では適用可能になったことを確認したまでで、実 DB に反映するには
+ユーザー側の対応が必須。Supabase ダッシュボード側の [1]（匿名サインイン有効化）
+もセットで必要。
 
-```bash
-supabase login --token <token>
-supabase link --project-ref loqumzfgnahtclnvnrzb --password fhFFrpp5k4E10iXcyAcVsbfk
-supabase db push   # migrations/20260819000004_server_connection.sql を適用
-psql <接続文字列> -f supabase/seed.sql   # 22 件の多言語回答を投入
-```
+### 2. 実機での `SprintTwelveAcceptanceTests` は未着手
 
-その上で **クライアント側を attempt 1 系の状態（`decorations` /
-`language` を期待するクエリ）に戻す** のが理想形。attempt 5 では generator
-側で `db push` ができない（access-token 無し）ため、緊急避難として
-クライアント側を schema に合わせた。
+eval-4 が要求していた「2 台構成の acceptance test」は attempt 6 でも未実装。
+理由: 受け入れ条件 1〜7 は Supabase 側の [1] 修復 + seed 投入が揃わないと
+1 ミリも検証できないため。generator 環境では seed 投入は不可能なので、
+ユーザー側での [1] 修復後に新規追加する想定（self-review 申し送りとして記録）。
 
-### 2. seed 投入は引き続きユーザー側でしかできない
+### 3. OnboardingView の alert 表示の境界条件
 
-`~/.supabase/access-token` は attempt 1 から 4 を通じて存在せず、
-generator 側で `supabase db push` も `supabase projects list` も使えない。
-seed 投入と service_role キー取得は **ユーザー側で対応必須**。
+account 作成直後に `applyPromptState(openTimelineIfAnswered: false)` で
+`blockedAuthors` / `likedPostIDs` / `myPost` を読む間に別のエラーが出た場合、
+同じ alert で「次へ進めなかった」ことは伝わるが、具体的にどのステップで止まったか
+までは区別しない（`error.localizedDescription` のみ）。実機検証で「alert の
+文言がユーザーに十分理解しやすいか」を evaluator に見てもらう必要がある。
 
-### 3. Supabase 経路の主要動線（条件 1〜7）の検証は引き続きユーザー側
+### 4. 旧 self-review の弱点 #2（migration 適用 → クライアント側復元）は引き続き
 
-seed 投入後に `SprintTwelveAcceptanceTests`（未実装）を追加し、
-2台構成で主要動線（端末A  投稿 → 端末B  反映 / いいね / 通報 / ブロック /
-期限切れ / ログインリフレッシュ）を確認するのが acceptance の完走条件。
-attempt 5 では seed 不在のため generator 側で検証不能。
+migration 適用後にクライアント側を `decorations` / `language` を期待するクエリに
+書き戻すのは seed 投入後（attempt 7 以降）の宿題。attempt 6 では generator 側
+で完結できる [2] と [3] に絞り、必要以上の差分を入れていない。
 
-### 4. 既存 UI テストの launchFresh ヘルパには未着手
-
-eval-3 は「BackendProvider 既定が LocalBackend のまま」+「UI テスト launchFresh が
-`-SameQUseLocalBackend` を持っていない」前提で回帰を判定していた。
-attempt 5 は **BackendProvider 既定を LocalBackend のまま温存** しているため
-（[1] の schema 修正だけでは seed 未投入の Supabase 経路は主要動線を通せないため、
-無理に反転させても acceptance を満たせない）、既存 UI テストへの
-`-SameQUseLocalBackend` 注入は不要。BackendProvider 反転は seed 投入後に
-attempt 6 以降でまとめて着手する想定。
-
-## 提案（attempt 6 以降）
+## 提案（attempt 7 以降）
 
 ### ユーザー側で対応すること
 
-1. **access-token 取得と seed 投入**
-   - `https://supabase.com/dashboard/account/tokens` で新規トークン発行
+1. **access-token 取得と seed 投入**（self-review.md attempt 5 と同じ）
    - `supabase login --token <token>` → `supabase link --project-ref loqumzfgnahtclnvnrzb --password <DBパスワード>`
-   - `supabase db push` で `20260819000004_server_connection.sql` を適用（既に適用済みなら no-op）
+   - `supabase db push` で `20260819000004_server_connection.sql` を適用（attempt 6
+     修正で `posts.decorations` 追加が先頭に入るので、`db push` が単体で通る）
    - `psql` 接続文字列で `supabase/seed.sql`（22 件の多言語回答）を投入
-2. **service_role キー取得（任意）**
-   - `https://supabase.com/dashboard/project/loqumzfgnahtclnvnrzb/settings/api-keys`
-   - カラム構造の最終確認・テストデータ投入用。アプリには絶対に埋め込まない
+2. **Supabase ダッシュボードで匿名サインインを有効化**
+   - Authentication → Sign In / Providers → Anonymous Sign-ins = ON
+   - これが有効にならない限り、`createAnonymousUser` が 422 を返し続ける
+3. **service_role キー取得（任意）**
+   - schema 検証・seed 投入後のテストデータ調整用。アプリには絶対に埋め込まない
 
 ### generator 側で対応すること
 
 1. **BackendProvider の 1 行戻し**
    `SameQ/Backend/BackendProvider.swift:25` の `return LocalBackend()` を
    `return SupabaseBackend()` に反転。Release は既に SupabaseBackend。
-
 2. **UI テスト launchFresh ヘルパへの `-SameQUseLocalBackend` 注入**
-   11 ファイルの launchFresh で `app.launchArguments.append("-SameQUseLocalBackend")` を追加。
-   既存の `SprintOne〜ElevenAcceptanceTests` が壊れないようにするため、
-   1 ファイルずつコミットして `xcodebuild -only-testing:` で確認しながら進める。
-
+   11 ファイルの launchFresh で `app.launchArguments.append("-SameQUseLocalBackend")`
+   を追加（[1] と同時の作業が必要）。
 3. **`SprintTwelveAcceptanceTests` の新規追加**
    spec.md F35 の受け入れ条件 1〜8 を実機 2 台構成で直接検証する UI テスト。
-   端末A: オンボーディング → 投稿 → いいね → 通報 → ブロック
-   端末B: 世界タイムラインに A の投稿が反映 / いいね数 / 非表示
-   同じ `now()` で同じお題（prompts テーブル共通）/ 期限切れ除外 / ログインリフレッシュ。
-
+   attempt 6 で `OnboardingView` の alert を入れたので、test01 に「通信失敗時に
+   alertMessage が表示される」ケースも含められる。
 4. **クライアント側クエリの復元（migration 適用後）**
    `prompts.language` / `posts.decorations` / `world_timeline.body_language` /
-   `decorations` を attempt 1 系の期待する形に書き戻し、
-   `service_role` キーでスキーマ突合確認。
+   `decorations` を attempt 1 系の期待する形に書き戻し、`service_role` キーで
+   スキーマ突合確認。
 
 ## 正直な進捗報告
 
@@ -245,10 +206,21 @@ attempt 6 以降でまとめて着手する想定。
 - attempt 2: UI テスト回帰（19/19）を解消、Supabase 到達不能を独立に確認。0/8 不合格。
 - attempt 3: 3-strike rule で blocked。
 - attempt 4: Supabase 復活を検出。コード変更ゼロで self-review + 次 attempt 申し送り。
-- attempt 5: **eval-3 の 2 つの問題を両方とも修正**
-  - [1] schema 不整合: クライアント側を実スキーマに合わせた（4 関数）
-  - [2] LocalBackend regression: SeedCatalog の coverage 外で seed posts が消える問題を
-    `allSeedPosts()` + `Array(seedPosts.prefix(requested))` で解消
-  - 検証: ユニット 166/166, Sprint01 5/5, Sprint04 7/7 を確認
-  - 残課題: 受け入れ条件 1〜7 は seed 未投入のため引き続き検証不能
-    （ユーザー側の seed 投入が必要）。BackendProvider の 1 行戻しは seed 投入後に着手。
+- attempt 5: eval-3 の 2 つの問題（schema 不整合・LocalBackend regression）に対応。
+- attempt 6: **eval-4 の 2 つの generator 側問題（[2] オンボーディング alert・[3] migration 欠陥）に対応**。
+  - [2] 修正: `OnboardingView` に `.alert` を追加（13 行）。TodayPromptView / TimelineView
+    と独立して立つ（Group 内で排他のため）。
+  - [3] 修正: `20260819000004_server_connection.sql` の先頭に `alter table posts add
+    column decorations jsonb` を追加（8 行）。`if not exists` 付きなので再 push も同じ結果。
+  - 検証: ユニット 166/166、UI 26/26（SprintOne 5 + SprintFour 7 + SprintFive 7 + SprintNine 7）
+    すべて成功。クラッシュ 0・未処理エラー 0。
+  - 残課題: 受け入れ条件 1〜6 は seed 未投入のため引き続き検証不能（ユーザー側対応必須）。
+    受け入れ条件 7 は generator 側コードは修正完了、実機での「alert が分かりやすいか」
+    の所感は evaluator 判定待ち。受け入れ条件 8 は引き続き条件付き達成（Supabase 経路のみ）。
+
+**同じ指摘（[1] Supabase プロジェクトの環境問題）で attempt 1〜5 まで 5 回落ちた**
+状態が続いているが、attempt 6 で着手したのは generator 側で完結する範囲のみ
+（[2] と [3]）。[1] はユーザー側の Supabase ダッシュボード操作が必須で、
+generator 側に手段が無い。3-strike rule に照らすと、[1] はユーザー側の対応が
+無ければ永遠に解消できない種類の指摘なので、attempt 7 はユーザー対応待ちの
+ブロッカー引き上げが必要。

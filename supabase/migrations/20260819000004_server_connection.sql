@@ -1,6 +1,8 @@
 -- SameQ スプリント12: サーバー接続（F35）
 --
 -- 変更点:
+--   * posts に `decorations` を追加（Plus 限定装飾の復元 / F29 / F30）。
+--     `20260817000001_init.sql` で装飾カラムは未定義のため、ここで追加する。
 --   * world_timeline ビューに `body_language` / `created_at` / `expires_at` /
 --     `decorations` を追加（端末内翻訳・表示期限判定・装飾復元の必要条件）
 --   * `liked_authors_view` を追加（デバッグ用、自分の投稿に誰がライクしたかの集計）
@@ -10,6 +12,24 @@
 --       必要になったため、本ファイルで `CREATE OR REPLACE VIEW` する。
 --       アプリはまだ `LocalBackend` で動いていたが、本マイグレーションを
 --       `supabase db push` したあとに `SupabaseBackend` への切り替えを行う。
+--
+-- 注意: attempt 6 でこのファイル自体に欠陥があったことを修正した。
+--       旧版は `posts.decorations` を SELECT していたが `ALTER TABLE ... ADD COLUMN`
+--       が無いため `column posts.decorations does not exist` で `db push` が
+--       失敗する状態だった（eval-4.md [3]）。`decorations` をここで追加する。
+
+-- ---------------------------------------------------------------------------
+-- posts.decorations: 装飾情報（Plus 限定絵文字・文字装飾・吹き出し / F30）
+-- ---------------------------------------------------------------------------
+-- 端末内翻訳のため送るのは本文だけだが、装飾は表示側で本文上に重ねる必要があるので
+-- サーバー側にも置く（Free ユーザーにも装飾付き投稿がそのまま読めることを担保）。
+-- 形式は jsonb（`PostDecoration` の JSON 表現）。既存行は空配列で初期化する。
+alter table public.posts
+    add column if not exists decorations jsonb not null default '[]'::jsonb;
+
+comment on column public.posts.decorations is
+    'Plus 限定の装飾（F30）。本文に重ねて表示される。jsonb。Free ユーザーも装飾付き
+     投稿を全文読めるよう装飾データ自体も配信される。';
 
 -- ---------------------------------------------------------------------------
 -- world_timeline: 表示に必要な列を追加（F18 / F20 / F22 / F29 / F30 用）

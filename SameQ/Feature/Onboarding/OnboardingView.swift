@@ -32,6 +32,25 @@ struct OnboardingView: View {
             footer
         }
         .background { Theme.canvas }
+        // オンボーディング中のアカウント作成（F02）や初期ロードで起きたエラーを画面に出す
+        // （eval-4.md [2] の修正）。失敗しても `isCompleting` が `defer` でリセットされるため
+        // ボタンが押せる状態に戻るが、押すまで何が起きているか分からなかったので、
+        // 受け入れ条件7「失敗したことが画面上に表示され、同じ操作をもう一度試せる」を
+        // アカウント作成そのものに対しても成立させる。
+        // `OnboardingView` は `screen == .onboarding` の間だけ表示されるので、
+        // `TodayPromptView` / `TimelineView` の `.alert` とは同時に立ち上がらない
+        // （`RootView` の `Group` で排他に表示される）。
+        .alert(
+            "うまくいきませんでした / Something went wrong",
+            isPresented: Binding(
+                get: { session.alertMessage != nil },
+                set: { if !$0 { session.alertMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { session.alertMessage = nil }
+        } message: {
+            Text(session.alertMessage ?? "")
+        }
     }
 
     // MARK: ヘッダー

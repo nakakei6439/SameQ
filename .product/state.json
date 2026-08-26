@@ -1,8 +1,14 @@
 {
   "currentSprint": "12",
-  "attempt": 5,
-  "status": "needs_fix",
+  "attempt": 6,
+  "status": "awaiting_eval",
   "history": [
+    {
+      "sprint": "12",
+      "attempt": 6,
+      "result": "awaiting_eval",
+      "note": "eval-4 の 3 つの独立問題のうち generator 側で完結する 2 つ ([2] / [3]) に対応。[1] は Supabase プロジェクトの匿名サインイン無効化でダッシュボード操作が必要 ([2] の修正で画面表示はするようになったが、根本解決ではない)。[2] 修正: OnboardingView に session.alertMessage を購読する .alert 修飾子を追加 (13 行)。TodayPromptView / TimelineView の .alert と同じ alertMessage を見るが、RootView の Group で OnboardingView と排他表示されるので同時に立つことはない。タイムライン (fullScreenCover) は OnboardingView 上には存在しないため干渉も無し。eval-4 の再現 (auth/v1/signup 422 → 23秒無言) が画面上部 alertMessage alert で「Anonymous sign-ins are disabled」を表示するようになり、isCompleting が defer でリセットされてボタンが再押下可能になる (受け入れ条件 7 の精神をアカウント作成そのものに対しても成立させた)。[3] 修正: supabase/migrations/20260819000004_server_connection.sql の先頭に alter table public.posts add column if not exists decorations jsonb not null default '[]'::jsonb; を追加。既存 migration (init / prompt_lifecycle / report_block) のどれにも posts.decorations を追加する ALTER TABLE が無いため、これが無いと db push 時に column posts.decorations does not exist で失敗する欠陥だった。if not exists 付きなので再 push も安全。comment on column で意図も明示。これで migration 4 を単体で db push できる状態に戻った (Supabase ダッシュボード側の匿名サインイン有効化と組み合わせれば、ユーザー側で seed 投入 → 1〜12 全スプリント完走可能)。コード変更は OnboardingView 13 行 + migration 8 行 のみ、ユニット 166/166・UI 26/26 (SprintOne 5 + SprintFour 7 + SprintFive 7 + SprintNine 7) すべて成功。クラッシュ 0・未処理エラー 0。BackendProvider 既定の LocalBackend 温存は維持 ([1] 修復 + seed 投入後に attempt 7 以降で 1 行戻し)。受け入れ条件 1〜6 は seed 未投入のため引き続き検証不能 (ユーザー側対応必須)、受け入れ条件 7 は generator 側コードは修正完了 (実機 alert の分かりやすさは evaluator 判定待ち)、受け入れ条件 8 は引き続き条件付き達成 ([1] 修復後に Supabase 経路で動作)。詳細: .product/sprints/12-server-connection/self-review.md (attempt 6)"
+    },
     {
       "sprint": "12",
       "attempt": 5,
