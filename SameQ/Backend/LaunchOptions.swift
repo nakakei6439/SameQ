@@ -92,6 +92,10 @@ struct LaunchOptions: Sendable {
     /// 安全ログ（通報記録）の保持期間（F34）。0 なら `Backend.safetyLogRetentionSeconds`
     /// （30 日）を使う。検証用に `-SameQSafetyLogRetentionSeconds` で短縮できる。
     var safetyLogRetentionSeconds: TimeInterval = 0
+    /// `-SameQUseLocalBackend`（Debug 限定・スプリント12）。true の間は
+    /// `BackendProvider.make()` が `SupabaseBackend` ではなく `LocalBackend` を返す。
+    /// オフライン開発・UI テスト・既存テストの再現に使う。
+    var useLocalBackend: Bool = false
 
     /// このプロセスの設定。起動時に1度だけ解釈する。
     static let current = parse(ProcessInfo.processInfo.arguments)
@@ -146,6 +150,7 @@ struct LaunchOptions: Sendable {
         if let seconds = value(after: "-SameQSafetyLogRetentionSeconds").flatMap(Double.init) {
             options.safetyLogRetentionSeconds = seconds
         }
+        options.useLocalBackend = arguments.contains("-SameQUseLocalBackend")
         #endif
         return options
     }

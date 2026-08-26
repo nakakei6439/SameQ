@@ -2,13 +2,17 @@ import Foundation
 
 /// アプリが使う `Backend` を1か所で決める。
 ///
-/// 本来の構成は Supabase（Auth 匿名認証 / PostgreSQL / RLS）だが、
-/// クラウドプロジェクトが未作成で URL と anon key を持っていないため、
-/// スプリント01では `LocalBackend` を使う。
-/// 認証情報が用意でき次第、ここで `SupabaseBackend` を返すように差し替える。
-/// テーブル定義と RLS ポリシーは `supabase/migrations/0001_init.sql` に先行実装済み。
+/// スプリント12以降は `SupabaseBackend` を既定で使う（実機・検証用）。
+/// 端末内完結の `LocalBackend` はテスト・オフライン開発用に残し、
+/// Debug 限定の起動引数 `-SameQUseLocalBackend` で切り替えられる。
+/// テーブル定義と RLS ポリシーは `supabase/migrations/` に置いてある。
 enum BackendProvider {
     static func make() -> Backend {
-        LocalBackend()
+        #if DEBUG
+        if LaunchOptions.current.useLocalBackend {
+            return LocalBackend()
+        }
+        #endif
+        return SupabaseBackend()
     }
 }

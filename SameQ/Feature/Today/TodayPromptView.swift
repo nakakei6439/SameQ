@@ -244,6 +244,14 @@ struct TodayPromptView: View {
                     .foregroundStyle(Theme.ink)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("today.myAnswer")
+                // 受信いいね数（F35・受け入れ条件3）。0 のときは刺激が強いので出さない。
+                if session.receivedLikeCount > 0 {
+                    Text(receivedLikesLabel(count: session.receivedLikeCount))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Theme.like)
+                        .padding(.top, 4)
+                        .accessibilityIdentifier("today.receivedLikes")
+                }
             }
             .padding(22)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -259,6 +267,12 @@ struct TodayPromptView: View {
             .disabled(session.isPreparingTimeline)
             .accessibilityIdentifier("today.openTimeline")
         }
+    }
+
+    /// 受信いいね数の表示文字列（受け入れ条件3）。
+    /// 「3 件のいいね」「1 件のいいね」のように、日本語の助数詞付きで出す。
+    private func receivedLikesLabel(count: Int) -> String {
+        "\(count) 件のいいね"
     }
 
     /// 無料ユーザー向け Plus の案内（F28）。強制ではなく「あってもいいかも」程度の小さなカード。

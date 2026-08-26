@@ -1,8 +1,20 @@
 {
-  "currentSprint": "11",
+  "currentSprint": "12",
   "attempt": 1,
-  "status": "passed",
+  "status": "awaiting_eval",
   "history": [
+    {
+      "sprint": "12",
+      "attempt": 1,
+      "result": "awaiting_eval",
+      "note": "F35 サーバー接続実装。spec.md の方針『外部パッケージ依存はゼロ』を守り Supabase Swift SDK を使わず URLSession で PostgREST + GoTrue Auth を直接叩く薄いラッパー SupabaseClient を実装（GET/POST/PATCH/DELETE + 匿名サインアップ + リフレッシュ）。TokenBox（NSLock）で access_token を thread-safe に保持、SupabaseBackend は actor。NWPathMonitor でオンライン状態を監視し offline エラーに変換。起動時：Supabase 匿名サインアップ → users 行作成 → 自分のお題を posts に挿入 → world_timeline ビューから他人の回答を読む経路を実装。受け入れ条件8本のうち7本は2台実機/Supabase接続必須のため generator 環境では検証不可（実装完了・ビルド SUCCEEDED のみ確認）。条件8（SeedData.json の擬似回答が表示されない）は BackendProvider.make() の既定を SupabaseBackend に変更済み、-SameQUseLocalBackend を付けたときだけ LocalBackend（=SeedCatalog）に戻る切り戻し経路で達成。PersistedState に supabaseAuth: SupabaseAuthState? を追加し schemaVersion 6→7 にバンプ（decodeIfPresent でフォールバック）。migrations/20260819000004_server_connection.sql で world_timeline ビューに body_language/created_at/expires_at/decorations を追加。ユニット 166/166（既存 158 + 新規 SupabaseClientTests 5 + PersistedStateMigrationTests 3）シミュレータ単独実行で成功。詳細: .product/sprints/12-server-connection/self-review.md"
+    },
+    {
+      "sprint": "12",
+      "attempt": 1,
+      "result": "in_progress",
+      "note": "planner が spec.md にスプリント12（サーバー接続・1つの世界を共有する）とスプリント13（サーバー側で担保する制限・停止・保持）を追記。機能一覧に F35 / F36、置いた前提に 13〜16、対象外に「アカウントの引き継ぎ」「データ移行」を追加。スプリント11までは LocalBackend（端末内完結）で合格しており、Supabase への接続は一度も行われていない状態からの着手。"
+    },
     {
       "sprint": "11",
       "attempt": 1,
@@ -175,7 +187,7 @@
       "sprint": "06",
       "attempt": 5,
       "result": "awaiting_eval",
-      "note": "eval-4.mdの指摘[1]（受け入れ条件4の未実装）に対応。AppSession.openTimeline()が世界タイムライン（fullScreenCover）を開く前に、.supported（モデル未ダウンロード）の言語をTranslator.prepareIfNeeded(sourceLanguageCode:)で能動的にダウンロードする設計に変更（prepareTimelineLanguagesIfNeeded、予算90秒）。開く前＝まだ非モーダルなお題画面にいるため、OSの「翻訳／必要なダウンロード」確認シートが出ても閉じて困るfullScreenCoverが無い（attempt3の致命的症状の再発防止）。ダウンロード中は「世界の回答を読む」ボタンを「準備中…」にする（isPreparingTimeline）。ダウンロードが90秒の予算内に間に合わなかった言語は従来どおり一時的な失敗として読み飛ばし既読にしない（次回再挑戦できる）。Apple Developer Forumsを調査しprepareTranslation()もモデル未取得ならシートを出しうることを確認（シートを完全に無くす方法は無いというattempt4の判断は正しかった）。実機検証中にSessionRequestQueueの致命的な欠陥を発見・修正: runWithJobTimeoutがwithTaskGroup（構造化並行性。キャンセル済みでも子タスクの完了を必ず待つ）を使っており、cancel()に応答しないprepareTranslation()ではjobTimeoutSecondsが名目だけになっていた（attempt3から存在した潜在バグ、session.translate(_:)では実害が無く今回まで未発見）。bodyを非構造化Taskとして起動しタイムアウト用Taskと競走させる設計に変更し呼び出し元を確実に解放できるようにした。ユニット72本＋UIテスト35本（新規: SessionRequestQueueTests 1本・TranslatorAvailabilityTests 3本・TranslatorFakeModeTests 2本・AppSessionTranslationTests 3本・SprintSixAcceptanceTests test04 1本）、シミュレータのフルテストスイート107/107全件成功（他プロセス非併走の単独実行）。実機（iPhone 17 Pro Max）ではXCUITestのautomation modeが2回とも `Timed out while enabling automation mode.` で有効化できず（eval-3.md・eval-4.mdと同じ既知の問題）、指でのタップ操作の自動確認はできなかった。代わりにホストアプリのプロセス内で本物のTranslationHostViewを実ウインドウに載せAppSessionでタイムラインを読み切る手法（一時テスト、確認後削除）で2回検証。SessionRequestQueue修正前は15分・10分待っても応答が無く、修正後は2回とも63〜75秒でopenTimeline()が完了し10秒程度で28件を固着0で読み切った。この実機で.supportedだったpl/th/idのうち、idは2回ともダウンロードに成功し実際に読めるようになった（受け入れ条件4が機能した実例）。pl/thは2回とも90秒の予算内で完了せず未読のまま残った（既読にしていないので次回再挑戦できる設計どおり）。OSの確認シートが実際に画面に出たか、シートが残ったままfullScreenCoverを開こうとした場合の挙動は自動化ツールでは画面を見る手段が無く未確認（devicectlは実機のスクリーンショット取得に非対応）。この最後の1点は人による実機操作でしか確認できない。詳細は .product/sprints/06-translation/self-review.md の attempt 5"
+      "note": "eval-4.mdの指摘[1]（受け入れ条件4の未実装）に対応。AppSession.openTimeline()が世界タイムライン（fullScreenCover）を開く前に、.supported（モデル未ダウンロード）の言語をTranslator.prepareIfNeeded(sourceLanguageCode:)で能動的にダウンロードする設計に変更（prepareTimelineLanguagesIfNeeded、予算90秒）。開く前＝まだ非モーダルなお題画面にいるため、OSの「翻訳／必要なダウンロード」確認シートが出ても閉じて困るfullScreenCoverが無い（attempt3の致命的症状の再発防止）。ダウンロード中は「世界の回答を読む」ボタンを「準備中…」にする（isPreparingTimeline）。ダウンロードが90秒の予算内に間に合わなかった言語は従来どおり一時的な失敗として読み飛ばし既読にしない（次回再挑戦できる）。Apple Developer Forumsを調査しprepareTranslation()もモデル未取得ならシートを出しうることを確認（Sheetを完全に無くす方法は無いというattempt4の判断は正しかった）。実機検証中にSessionRequestQueueの致命的な欠陥を発見・修正: runWithJobTimeoutがwithTaskGroup（構造化並行性。キャンセル済みでも子タスクの完了を必ず待つ）を使っており、cancel()に応答しないprepareTranslation()ではjobTimeoutSecondsが名目だけになっていた（attempt3から存在した潜在バグ、session.translate(_:)では実害が無く今回まで未発見）。bodyを非構造化Taskとして起動しタイムアウト用Taskと競走させる設計に変更し呼び出し元を確実に解放できるようにした。ユニット72本＋UIテスト35本（新規: SessionRequestQueueTests 1本・TranslatorAvailabilityTests 3本・TranslatorFakeModeTests 2本・AppSessionTranslationTests 3本・SprintSixAcceptanceTests test04 1本）、シミュレータのフルテストスイート107/107全件成功（他プロセス非併走の単独実行）。実機（iPhone 17 Pro Max）ではXCUITestのautomation modeが2回とも `Timed out while enabling automation mode.` で有効化できず（eval-3.md・eval-4.mdと同じ既知の問題）、指でのタップ操作の自動確認はできなかった。代わりにホストアプリのプロセス内で本物のTranslationHostViewを実ウインドウに載せAppSessionでタイムラインを読み切る手法（一時テスト、確認後削除）で2回検証。SessionRequestQueue修正前は15分・10分待っても応答が無く、修正後は2回とも63〜75秒でopenTimeline()が完了し10秒程度で28件を固着0で読み切った。この実機で.supportedだったpl/th/idのうち、idは2回ともダウンロードに成功し実際に読めるようになった（受け入れ条件4が機能した実例）。pl/thは2回とも90秒の予算内で完了せず未読のまま残った（既読にしていないので次回再挑戦できる設計どおり）。OSの確認シートが実際に画面に出たか、シートが残ったままfullScreenCoverを開こうとした場合の挙動は自動化ツールでは画面を見る手段が無く未確認（devicectlは実機のスクリーンショット取得に非対応）。この最後の1点は人による実機操作でしか確認できない。詳細は .product/sprints/06-translation/self-review.md の attempt 5"
     },
     {
       "sprint": "06",
@@ -235,7 +247,7 @@
       "sprint": "08",
       "attempt": 2,
       "result": "passed",
-      "note": "evaluatorが新規シミュレータ2台（自動テスト用Eval08、実通知タップ手動検証用Eval08-Manual）で検証。合格。eval-1.mdの不合格理由（通知タップの実経路が常に.todayを固定で呼び.timelineケースが到達不能）の解消を、generatorの自己申告テスト（-SameQSimulateNotificationTapのコールドスタート）だけでなく、それとは独立にeval-1.mdの元の再現手順（バックグラウンド維持＋本物のxcrun simctl pushでの通知配信＋通知バナーへの実タップ）で直接確認した。未回答アカウントは今日のお題画面、回答済みアカウントはタイムラインが、実際の通知タップで直接開くことをスクリーンショットで確認（自己申告テストのケース2はapp.terminate()後の再launchでstart()自体が回答済みなら自動でタイムラインを開く既存動作と混同しうる構造だったため、あえて独立検証した）。条件1,2,3,5,6はSprintEightAcceptanceTests（6/6）とNotificationSchedulingTests（10/10）を自分で再実行し確認。回帰はSprintOne/Three/SevenAcceptanceTests 18/18＋ユニット全件113/113。クラッシュ0、アプリ由来の未処理エラー0（simulatorノイズのみ）、データ整合性OK（schemaVersion 5）、使用性4（条件4の修正で前回指摘の二度タップの摩擦が解消）。詳細は .product/sprints/08-random-notifications/eval-2.md"
+      "note": "evaluatorが新規シミュレータ2台（自動テスト用Eval08、実通知タップ手動検証用Eval08-Manual）で検証。合格。eval-1.mdの不合格理由（通知タップの実経路が常に.todayを固定で呼び.timelineケースが到達不能）の解消を、generatorの自己申告テスト（-SameQSimulateNotificationTapのコールドスタート）だけでなく、それとは独立にeval-1.mdの元の再現手順（バックグラウンド維持＋本物のxcrun simctl pushでの通知配信＋通知バナーへの実タップ）で直接確認した。未回答アカウントは今日のお題画面、回答済みアカウントはタイムラインが実際の通知タップで直接開くことをスクリーンショットで確認（自己申告テストのケース2はapp.terminate()後の再launchでstart()自体が回答済みなら自動でタイムラインを開く既存動作と混同しうる構造だったため、あえて独立検証した）。条件1,2,3,5,6はSprintEightAcceptanceTests（6/6）とNotificationSchedulingTests（10/10）を自分で再実行し確認。回帰はSprintOne/Three/SevenAcceptanceTests 18/18＋ユニット全件113/113。クラッシュ0、アプリ由来の未処理エラー0（simulatorノイズのみ）、データ整合性OK（schemaVersion 5）、使用性4（条件4の修正で前回指摘の二度タップの摩擦が解消）。詳細は .product/sprints/08-random-notifications/eval-2.md"
     },
     {
       "sprint": "09",

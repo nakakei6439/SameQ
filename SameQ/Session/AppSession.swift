@@ -101,6 +101,11 @@ final class AppSession {
     private(set) var notificationAuthorizationStatus: NotificationAuthorizationStatus?
     /// 次回の通知が予約されている時刻（Debug オーバーレイ用）。未予約は nil。
     private(set) var nextScheduledNotificationAt: Date?
+
+    /// 自分の回答への受信いいね数（F35・受け入れ条件3）。
+    /// 0 のときは表示しない（無いいねは刺激が強いため）。
+    /// Supabase から取得し、1秒ごとの `refresh()` で更新する。
+    private(set) var receivedLikeCount: Int = 0
     /// 通知タップ（F25）で「今日は入力したい」「世界タイムラインを見たい」
     /// 「お題待ち画面を開きたい」のどれを開くべきかを `RootView` へ伝える。
     /// `start()` 完了後に消費される（nil に戻すと RootView も追従する）。
@@ -366,6 +371,8 @@ final class AppSession {
         case .waiting, .today:
             break
         }
+        // 受信いいね数を定期更新（F35・受け入れ条件3）。
+        await refreshReceivedLikeCount()
         do {
             let latest = try await backend.promptState()
             guard latest != promptState else { return }
@@ -377,6 +384,24 @@ final class AppSession {
             await scheduleDailyReminderIfPossible()
         } catch {
             alertMessage = error.localizedDescription
+        }
+    }
+
+    /// 自分の回答（今日のお題）に付いているいいねの件数を更新する（F35・受け入れ条件3）。
+    /// Supabase が `Backend.receivedLikeCount(forPostID:)` を持っているときだけ呼ばれる
+    /// （ローカルバックエンドでは 0 を返す既定実装）。
+    /// 失敗してもアラートを出さず、`receivedLikeCount` を 0 に戻すだけ
+    ///（バックエンドがまだ古い・権限が無い等の状況でも画面を止めないため）。
+    private func refreshReceivedLikeCount() async {
+        guard let myPost else {
+            receivedLikeCount = 0
+            return
+        }
+        do {
+            let count = try await backend.receivedLikeCount(forPostID: myPost.id)
+            receivedLikeCount = count
+        } catch {
+            receivedLikeCount = 0
         }
     }
 

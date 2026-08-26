@@ -39,6 +39,11 @@ struct PersistedState: Codable, Sendable {
     /// 永続化する（個別候補のログはメモリ内にとどめて画面表示もしない）。
     var discardedCandidatesCount: Int
 
+    /// Supabase の認証情報（アクセストークン・更新トークン・ユーザーID）。
+    /// スプリント12で追加。`nil` のときは未認証、または `LocalBackend` を使っている。
+    /// 既存ファイルにはこのキーが無いので、`decodeIfPresent` でフォールバックする。
+    var supabaseAuth: SupabaseAuthState?
+
     /// 2 で `viewedPostIDs`、3 で `reports` / `blockedAuthors`、4 で `lastPostBody`、
     /// 5 で `lastPrepareAttemptAt` を追加した。
     /// `discardedCandidatesCount` は 6 で追加したが、スキーマバージョンは据え置き
@@ -46,7 +51,8 @@ struct PersistedState: Codable, Sendable {
     /// 6 で `Report.postExpiresAt` を追加したが、`Report.init(from:)` が
     /// `createdAt + 28h` でフォールバックするので、ユーザーデータの消失は無い
     /// （F34 安全ログの 30 日保持用）。
-    static let currentSchemaVersion = 6
+    /// 7 で `supabaseAuth` を追加（スプリント12・F35）。
+    static let currentSchemaVersion = 7
 
     static let empty = PersistedState(
         schemaVersion: currentSchemaVersion,
@@ -58,7 +64,8 @@ struct PersistedState: Codable, Sendable {
         blockedAuthors: [],
         lastPostBody: nil,
         lastPrepareAttemptAt: [:],
-        discardedCandidatesCount: 0
+        discardedCandidatesCount: 0,
+        supabaseAuth: nil
     )
 
     init(
@@ -71,7 +78,8 @@ struct PersistedState: Codable, Sendable {
         blockedAuthors: [BlockedAuthor] = [],
         lastPostBody: String? = nil,
         lastPrepareAttemptAt: [String: Date] = [:],
-        discardedCandidatesCount: Int = 0
+        discardedCandidatesCount: Int = 0,
+        supabaseAuth: SupabaseAuthState? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.user = user
@@ -83,9 +91,10 @@ struct PersistedState: Codable, Sendable {
         self.lastPostBody = lastPostBody
         self.lastPrepareAttemptAt = lastPrepareAttemptAt
         self.discardedCandidatesCount = discardedCandidatesCount
+        self.supabaseAuth = supabaseAuth
     }
 
-    /// 旧バージョン（schemaVersion 1〜4）の保存ファイルにはキーが無いので、
+    /// 旧バージョン（schemaVersion 1〜6）の保存ファイルにはキーが無いので、
     /// 欠けている項目は空として読む。アカウントを消さずに移行するため。
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -99,6 +108,7 @@ struct PersistedState: Codable, Sendable {
         lastPostBody = try container.decodeIfPresent(String.self, forKey: .lastPostBody)
         lastPrepareAttemptAt = try container.decodeIfPresent([String: Date].self, forKey: .lastPrepareAttemptAt) ?? [:]
         discardedCandidatesCount = try container.decodeIfPresent(Int.self, forKey: .discardedCandidatesCount) ?? 0
+        supabaseAuth = try container.decodeIfPresent(SupabaseAuthState.self, forKey: .supabaseAuth)
     }
 }
 
@@ -157,4 +167,15 @@ struct LocalStore: Sendable {
         decoder.dateDecodingStrategy = .iso8601
         return decoder
     }()
+}
+
+/// 永続化する Supabase 認証情報（スプリント12）。
+/// `PersistedState.supabaseAuth` に格納する。`LocalStore.swift` に置くのは、
+/// `PersistedState` の Codable として同じファイルで扱えるようにするため
+/// （`Backend` プロトコル本体には依存させたくない）。
+struct SupabaseAuthState: Codable, Sendable, Equatable {
+    let accessToken: String
+    let refreshToken: String?
+    let userID: UUID
+    let createdAt: Date
 }
