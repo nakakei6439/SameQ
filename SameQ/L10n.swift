@@ -432,6 +432,13 @@ enum L10n {
 
         static let priceTitle: String = useEnglish ? "PRICE" : "料金"
         static let priceMonthlySuffix: String = useEnglish ? "/ month" : "/ 月額"
+        /// 価格セクションの補足文言。`PlusProduct.periodDescription` ではなく
+        /// 端末言語に合わせて L10n から引く（スプリント15 attempt 2 / eval-1.md [1]）。
+        /// - ja: 「月額 / いつでも解約できます」
+        /// - en（および ja 以外の端末言語）: 「Monthly / Cancel anytime」
+        static let priceMonthlyNote: String = useEnglish
+            ? "Monthly / Cancel anytime"
+            : "月額 / いつでも解約できます"
 
         static let purchaseActive: String = useEnglish ? "Plus is active" : "Plus に登録済み"
         static let purchaseInactive: String = useEnglish ? "Subscribe to Plus" : "Plus に登録する"

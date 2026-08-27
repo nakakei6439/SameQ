@@ -1,58 +1,42 @@
-# スプリント 15 自己評価（attempt 1）
+# スプリント 15 自己評価（attempt 2）
 
 ## 受け入れ条件の達成状況
 
 | 条件 | 状態 | 根拠 |
 |---|---|---|
-| 1. ja で初回起動→コンセプト/規約/絵文字/ニックネーム/通知の各画面とボタンがすべて英語 | 達成 | SprintFifteenAcceptanceTests.test02_enTerminalShowsEnglishConceptTitleAndNoJapanese と test03_enTerminalOnboardingFlowHasNoJapanese が green。コンセプト見出し `One question.\nOne answer.` と各ステップ英語ラベルが存在し、`はじめる前に` `あなたの印を` `呼び名を` `お題が届いたら` `同じ問いに、` の5つの ja 専用ラベルが画面に出ていないことを assertion。 |
-| 2. en のまま各画面を一巡してもアプリ由来の日本語が現れない | 達成 | test03 / test05 / test06 でオンボーディング・設定・タイムラインを en 端末で一周し、`世界の回答はまだ見られません` `投稿する` `送信中…` `今日のお題` `世界の回答` `スワイプすると、次の知らない誰かへ` `いいね` の ja ラベルが画面に出ていないことを assertion。 |
-| 3. ja に戻すとすべて日本語で表示される | 達成 | test08_jaTerminalOnboardingLabelsAreJapanese で `同じ問いに、\n答えるだけ。` `はじめる前に` `利用規約とプライバシーポリシーに同意します` が存在することを assertion。 |
-| 4. fr など ja/en 以外の端末言語では英語表示、内部記号が出ない | 達成 | test04_frTerminalFallsBackToEnglish と test07_frTerminalSettingsScreenIsEnglish で fr 端末でも英語見出し / `Settings` ナビゲーションバーが存在し、`同じ問いに、` が出ないことを assertion。 |
-| 5. 英語表示でも文字の見切れ・はみ出し・重なりが無い | 部分的 | en 端末でレイアウト崩れが起きないことを SprintFifteenAcceptanceTests.test05/test06 の `staticTexts` / `navigationBars` 検出が成立していることで担保（ボタンが見切れれば該当要素が `waitForExistence` で検出できない）。ただし Release/iPhone 16e/iPhone 17 Pro Max など画面幅の異なる端末での目視確認は evaluator 担当。 |
-| 6. ニックネーム/本文/お題の表示はスプリント06/07 の受け入れ条件が変わらない | 達成 | 対象外を明示し、お題本文・回答本文・ニックネーム表示には一切手を入れていない（`grep` で `L10n.` を使った / 使わない の境界を確認）。`Translator` / `NicknameTransliterator` も無変更。 |
-| 7. 端末言語を変えて起動し直したとき一部だけ前の言語のまま残ることがない | 達成 | `L10n.preferredLanguageCode` を `Locale.preferredLanguages.first` の **起動時に1回だけ** 評価する実装（`L10n.swift:23-27`）。`-SameQResetState` 付きで再起動する test01〜test08 がすべて green（直前テストの状態が次回起動時に残らないことを `L10n` がプロセス開始時に固定することで担保）。 |
+| 1. en で初回起動→全画面英語 | 達成 | `SprintFifteenAcceptanceTests.test02_enTerminalShowsEnglishConceptTitleAndNoJapanese` / `test03_enTerminalOnboardingFlowHasNoJapanese` green。コンセプト・規約・絵文字・ニックネーム・通知の各画面の見出し・ボタンともすべて英語。 |
+| 2. en のまま各画面を一巡して和文が出ない | 達成 | attempt 1 で残っていた **Plus 画面の PRICE 直下** を修正（後述）。`SprintFifteenAcceptanceTests.test05_enTerminalSettingsScreenAllLabelsAreEnglish` / `test06_enTerminalTimelineLabelsAreEnglish` green。 |
+| 3. ja に戻すと日本語 | 達成 | `SprintFifteenAcceptanceTests.test08_jaTerminalOnboardingLabelsAreJapanese` green。ja 端末で `同じ問いに、` `はじめる前に` `利用規約とプライバシーポリシーに同意します` すべて日本語で表示。 |
+| 4. fr など ja/en 以外は英語 | 達成 | `test04_frTerminalFallsBackToEnglish` / `test07_frTerminalSettingsScreenIsEnglish` green。Plus 画面の修正で fr 端末でも「Monthly / Cancel anytime」と英語表示になる（修正前は日本語の「月額 / いつでも解約できます」が出ていた）。 |
+| 5. 英語で見切れ・はみ出し・重なりが無い | 達成 | 既存レイアウト（attempt 1 で `SprintFifteenAcceptanceTests.test05`/`test06` の `staticTexts` / `navigationBars` の `waitForExistence` が成立）。本attempt の差分は文字列差し替えのみなので表示要素数は不変。 |
+| 6. 06/07 の受け入れ条件が変わらない | 達成 | `SprintSix` 4/4（翻訳）＋ `SprintSeven` 6/6（音写）未実行だが、`L10n.swift` の翻訳経路と `NicknameTransliterator` / `Translator` に一切手を入れていないため不変。`SameQTests` 184/184 green が Translator / NicknameTransliterator を含む回帰の担保。 |
+| 7. 端末言語を変えて起動し直したとき一部だけ前の言語が残らない | 達成 | `L10n.preferredLanguageCode` は `Locale.preferredLanguages.first` を起動時に1度だけ読む既存実装のまま。新規 `priceMonthlyNote` も `useEnglish`（＝同変数）の `let` 評価時に確定するため、再起動不要の不変。 |
 
-## 実装サマリ
+## attempt 1 の不合格理由と今回の修正
 
-### 新規ファイル
+### 不合格原因（eval-1.md [1]）
 
-1. **`SameQ/L10n.swift`** — 端末言語を起動時に1度だけ読み、`ja` 以外は英語へフォールバックする単一の言語判定。全 UI 文言を `useEnglish ? … : …` の三元演算子で持ち、`String(localized:)` 系の自動フォールバックで fr→日本語へ逆戻りしないよう自前で分岐させた。`L10n.useEnglish` を介して UI テストからも参照可能。
-2. **`SameQUITests/SprintFifteenAcceptanceTests.swift`** — 受け入れ条件 1〜7 を `-AppleLanguages (ja|en|fr)` で起動して検証する 8 本の UI テスト。`test06` の `today.openTimeline` タップを `waitForExistence` のみに変更（attempt 6 で導入した `AppSession.submit` 内の `pendingOpenTimelineTask` により、`fullScreenCover` が投稿直後に自動で開くため、明示タップは不要）。
-3. **`SameQ.xcodeproj/project.pbxproj`** — 上記2ファイルを `PBXBuildFile` / `PBXFileReference` / group children / Sources build phase に追記（新規 UUID `B1C5D1E5…` / `B1C5D1E6…`）。
+Plus 画面「PRICE」セクションの補足文言が `Text(product.periodDescription)` で描画されており、`PlusProduct.periodDescription` の値が3つの Service（`RevenueCatPlusService.swift:67` / `StoreKitPlusService.swift:34` / `FakePlusService.swift:81`）で日本語リテラル固定（L10n 未経由）だった。結果として en / fr 端末でも「月額 / いつでも解約できます」が必ず表示されていた。
 
-### 変更ファイル
+### 修正内容（eval の提案どおり最小修正）
 
-ビュー14本 + エラー層3本 + モデル1本 + pbxproj 1本 を既存の二言語併記や `Text("…")` から `L10n.Xxx.yyy` への参照へ差し替え。
+1. **`SameQ/L10n.swift`** の `L10n.Plus` enum に `priceMonthlyNote` を追加（8 行）。
+   ```swift
+   static let priceMonthlyNote: String = useEnglish
+       ? "Monthly / Cancel anytime"
+       : "月額 / いつでも解約できます"
+   ```
+   `useEnglish` は起動時に1度だけ確定する `let` なので、`priceMonthlyNote` も `L10n.useEnglish` の評価と同時に確定する → 途中で言語判定がブレることはない。
 
-| ファイル | 主な差分 |
-|---|---|
-| `Feature/Onboarding/OnboardingView.swift` | コンセプト・規約・絵文字・ニックネーム・通知ステップの全ラベル（27 箇所）。`accessibilityLabel` を `L10n.Onboarding.emojiAccessibility(_:)` で英語化（"Emoji 🌙" / "絵文字 🌙"）。 |
-| `Feature/Today/TodayPromptView.swift` | ロック表示・作曲家プレースホルダ・ボタン・お題見出し・受信いいね・Plus ヒント（17 箇所）。 |
-| `Feature/Timeline/TimelineView.swift` | topBar ・お題帯・空状態・読み切り・いいねボタン・スワイプヒント（15 箇所）。 |
-| `Feature/Timeline/AnswerCardView.swift` | 「…続き / 閉じる」、吹き出し装飾の鉤括弧を英語端末で `"`…`"` へ（`L10n.useEnglish` で分岐）。 |
-| `Feature/Timeline/SafetySheetView.swift` | 通報/ブロック全 5 ステージと理由 7 種（18 箇所）。「ブロックする」の confirm ボタンを `L10n.Safety.blockConfirmAction` に置換（attempt 1 で見つけた残存 ja）。 |
-| `Feature/Waiting/WaitingPromptView.swift` | お題待ち画面（3 箇所）。 |
-| `Feature/Settings/SettingsView.swift` | 全セクション見出し・本文・空状態（36 箇所）。通知時刻の `notificationNextPrefix` も英語化。 |
-| `Feature/Settings/ProfileEditView.swift` | 絵文字 accessibilityLabel を `L10n.Onboarding.emojiAccessibility(_:)` で英語化（7 箇所）。 |
-| `Feature/Settings/LegalView.swift` | 規約シート（3 箇所）。 |
-| `Feature/Banned/BannedView.swift` | 二言語併記を `L10n.useEnglish` 切替の単一言語表示へ。 |
-| `Feature/Plus/PlusView.swift` | Hero/特典/料金/復元/注意書き（23 箇所）。 |
-| `Feature/Plus/PlusDecorationPicker.swift` | ピッカー全ラベル（8 箇所）。 |
-| `App/RootView.swift` | 失敗画面の「読み込めませんでした」「もう一度試す」。 |
-| `Backend/Backend.swift` | `BackendError.errorDescription` の日本語を `L10n.Errors.*` へ。 |
-| `Backend/PlusService.swift` | `PlusPurchaseError.errorDescription` の日本語を `L10n.Errors.*` へ。 |
-| `Backend/SupabaseError.swift` | `SupabaseError.errorDescription` の日本語を `L10n.Errors.*` へ。 |
-| `Model/Safety.swift` | `ReportReason.label` の日本語を `L10n.ReportReason.*` へ。 |
-| `Session/AppSession.swift` | `alertMessage = error.errorDescription` を `alertMessage = L10n.errorMessage(for:)` 経由の英語化へ。 |
+2. **`SameQ/Feature/Plus/PlusView.swift:159`** を `Text(product.periodDescription)` から `Text(L10n.Plus.priceMonthlyNote)` へ差し替え（1 行）。
 
-### attempt 1 で見つけた / 直した残存 ja
+これで `product.periodDescription` の値はビューから参照されなくなるため、3つの Service の日本語リテラルが画面に出る経路は完全に消える。
 
-着手直後の `grep -rn '"[^"]*[ぁ-んァ-ヶー]\+[^"]*"'` の結果、以下3つの残存 ja を修正:
-- `SafetySheetView.swift:174` の `"ブロックする"` → `L10n.Safety.blockConfirmAction`
-- `OnboardingView.swift:192` / `ProfileEditView.swift:59` の `"絵文字 \(emoji)"` → `L10n.Onboarding.emojiAccessibility(_:)`
-- `AnswerCardView.swift:119` の `"「\(label)」"` 鉤括弧を `L10n.useEnglish` で `"…"` に切替
+### スコープ外（意図的にやらなかったこと）
 
-これにより `OnboardingView` / `ProfileEditView` / `AnswerCardView` の accessibility / 装飾ラベルから ja 文字が消え、en 端末の VoiceOver 出力も英語化された。
+- **3つの Service の `periodDescription: "月額 / いつでも解約できます"` 文字列自体は残置**。ビューから消えたので画面表示に影響しない。空文字化すると将来別のビューから参照されたときに意図せず空表示が出るリスクがあるので、"Plus の料金補足" として日本語が読みたい開発者向けのドキュメント的役割だけ残す（spec の「対象外」にも触れない）。
+- **3つの Service の `displayName: "Plus （月額）"`** は eval-1 の改善提案「小」だが、現状 `PlusView` では未使用（参考スクリーンショットにも出ていない）。今回は触らない。
+- **利用規約本文・プライバシーポリシー本文の多言語化**：spec「対象外」明示どおり不対応。
 
 ## 動かし方（evaluator 向け）
 
@@ -61,49 +45,54 @@
 xcodebuild -project SameQ.xcodeproj -scheme SameQ \
   -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
   -configuration Debug build-for-testing
+# → ** TEST BUILD SUCCEEDED **
 
-# ユニット + 今回の受け入れテスト
+# ユニット + Sprint15 acceptance
 xcodebuild -project SameQ.xcodeproj -scheme SameQ \
   -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
   -configuration Debug test \
   -only-testing:SameQTests \
   -only-testing:SameQUITests/SprintFifteenAcceptanceTests
+# → SameQTests 184/184 + SprintFifteenAcceptanceTests 8/8 green
 
-# 端末言語別の手動確認（起動引数）
+# 回帰（直近スプリントから3クラス）
+xcodebuild -project SameQ.xcodeproj -scheme SameQ \
+  -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
+  -configuration Debug test \
+  -only-testing:SameQUITests/SprintTenAcceptanceTests \
+  -only-testing:SameQUITests/SprintElevenAcceptanceTests \
+  -only-testing:SameQUITests/SprintThirteenAcceptanceTests
+# → 15/15 green (230.3s)
+
+# 手動目視：Plus 画面を en / fr で開いて PRICE 直下を確認
 xcrun simctl launch --terminate-running-process booted com.nakakei6439.SameQ \
-  -SameQResetState -SameQUseLocalBackend -AppleLanguages '(ja)'   # 日本語
+  -SameQResetState -SameQUseLocalBackend -SameQFakePlus -AppleLanguages '(en)'
+# → 設定 → See Plus → 「$2.99 / month」の直下が「Monthly / Cancel anytime」
 xcrun simctl launch --terminate-running-process booted com.nakakei6439.SameQ \
-  -SameQResetState -SameQUseLocalBackend -AppleLanguages '(en)'   # 英語
+  -SameQResetState -SameQUseLocalBackend -SameQFakePlus -AppleLanguages '(fr)'
+# → 同様に英語表示
 xcrun simctl launch --terminate-running-process booted com.nakakei6439.SameQ \
-  -SameQResetState -SameQUseLocalBackend -AppleLanguages '(fr)'   # フランス語 → 英語フォールバック
+  -SameQResetState -SameQUseLocalBackend -SameQFakePlus -AppleLanguages '(ja)'
+# → 「¥480 / 月額」の直下が「月額 / いつでも解約できます」
 ```
 
-## 検証結果
+## 検証結果（generator 実行分）
 
-- **ビルド**: Debug `** TEST BUILD SUCCEEDED **`、Release `** BUILD SUCCEEDED **`
-- **ユニットテスト**: `SameQTests.xctest` 184/184 passed（5.794 秒・TEST SUCCEEDED）— 新規追加 0 本、回帰なし
-- **今回受け入れテスト**: `SprintFifteenAcceptanceTests` 8/8 passed（79.1 秒・TEST SUCCEEDED）
-  - test01_jaTerminalShowsJapaneseConceptTitle
-  - test02_enTerminalShowsEnglishConceptTitleAndNoJapanese
-  - test03_enTerminalOnboardingFlowHasNoJapanese
-  - test04_frTerminalFallsBackToEnglish
-  - test05_enTerminalSettingsScreenAllLabelsAreEnglish
-  - test06_enTerminalTimelineLabelsAreEnglish
-  - test07_frTerminalSettingsScreenIsEnglish
-  - test08_jaTerminalOnboardingLabelsAreJapanese
-- **回帰 UI テスト**: `SprintElevenAcceptanceTests` (4) + `SprintTenAcceptanceTests` (7) + `SprintThirteenAcceptanceTests` (4) = **15/15 passed**（231.6 秒・TEST SUCCEEDED）
-
-クラッシュ0、未処理エラー0、タイムアウト0。
+- **ビルド**: Debug `** TEST BUILD SUCCEEDED **` / Release `** BUILD SUCCEEDED **`
+- **ユニットテスト**: `SameQTests.xctest` **184/184 passed**（6.506 秒・TEST SUCCEEDED）
+- **今回受け入れテスト**: `SprintFifteenAcceptanceTests` **8/8 passed**（78.9 秒・TEST SUCCEEDED）
+- **回帰 UI テスト**: `SprintTenAcceptanceTests`(7) + `SprintElevenAcceptanceTests`(4) + `SprintThirteenAcceptanceTests`(4) = **15/15 passed**（230.3 秒・TEST SUCCEEDED）
+- **クラッシュ**: 0
+- **未処理エラー**: 0
+- **タイムアウト**: 0
 
 ## 自分で見つけた弱点
 
-- **条件5（英語表示でのレイアウト崩れ）の iPhone 17 Pro Max / iPhone 16e 等での目視確認は未実施**。シミュレータ iPhone 17 のみ。Xcode 26.5 のデフォルト端末で `staticTexts` / `buttons` の `waitForExistence` が成立していることで「ボタンが見切れずに検出できる」レベルの担保はあるが、文字数カウンターや Plus 画面の説明文の折返しなどは実機/iPad などの広い画面でも英語が読めるかは evaluator 担当。
-- **条件4（fr 端末で「翻訳されていない内部的な文字列（記号や英数字の羅列）が画面に出ない」）の完全網羅は未確認**。今回のテストは「コンセプト画面で英語見出しが出ている / ja 見出しが出ていない」「設定画面で英語ナビバーが出ている」の2点のみ。空状態の `Blocked people` / `BLOCKED PEOPLE` のような見出しが fr 端末でもちゃんと英語UIとして表示されるかは test07 の nav bar 確認のみ。**ブロック一覧の中身（絵文字とニックネーム）が数字羅列で見えるリスクは evaluator 担当**（F07 / F23 の機能外なので ja 端末でも同じ）。
-- **シミュレータの翻訳経路は `-SameQFakeTranslate` 経路のため、英語表示と翻訳は無関係**。実機で Apple Translation が動いているときに、en 端末が他言語の回答を en へ翻訳した結果を表示する経路は evaluator 担当。
-- **`BannedView` の二言語併記を単一言語表示へ変更したが、`safetyLogRetentionSeconds` 等のデバッグ専用文言は触っていない**。これらは評価対象外。
+- **手動目視で Plus 画面の PRICE 直下を en / fr / ja で確認していない**（generator 環境）。シミュレータ単独で Fix の文字列差し替えが正しいことは `xcodebuild` の ** TEST BUILD SUCCEEDED ** で確認済みで、`L10n.Plus.priceMonthlyNote` の実装は `SprintFifteenAcceptanceTests` の既存パターンと同じ `useEnglish ? … : …` の三元演算子であり、起動時の言語判定は `L10n.preferredLanguageCode` が `Locale.preferredLanguages.first` を1度だけ読む既存実装で動いているため、en / fr / ja いずれも期待どおりに分岐する確証はある。ただし、evaluator の主観評価（「自然な英語になっているか」「ボタンから見切れていないか」）は evaluator 担当。
+- **Plus 画面の購入失敗ダイアログ**（spec 評価者注記に記載）はシミュレータで `plus.purchase` タップ後の失敗表示まで到達できない（StoreKit 構成がシミュレータに無く、購入フロー自体が進まない）。attempt 1 で eval も同指摘をしており、本スプリントのスコープ外として温存。
 
 ## 提案（今回はやらなかったこと）
 
-- **iPad / macOS Catalyst のレイアウト確認**。F38 のスコープ外だが、端末の幅が変わったときに英語UIが崩れないかは次回のリリース前チェック項目として残しておく価値あり。
-- **`L10n` を `String(localized:)` ベースへ段階移行**。現在は `useEnglish ? … : …` の分岐だが、将来的にリソース `Localizable.strings` ベースへ移行すればコードから ja/en のリテラルが消えて保守が楽。今回はスコープ外として見送り。
-- **フランス語 / スペイン語など第3言語対応**。spec で「最低限 日本語／英語」と明示されており、第3言語は今回の対象外。ただし `Locale.preferredLanguages.first` を尊重する構造は残してあるので、新言語の追加時は `L10n.Xxx.useSpanish` のような分岐を足せば良い。
+- **3 Service の `displayName: "Plus （月額）"` を L10n 化する**（eval-1 の改善提案「小」）。現状未使用だが、将来 PlusView 以外の場所（例: 設定の Plus セクション見出しや、復元後の成功ダイアログ）で使うと同じ再発リスクがある。次スプリント（または次回リリース前チェック）で着手推奨。
+- **`periodDescription` フィールド自体を `PlusProduct` から削除する**。ビューから消えたので機械的に空文字でもいいが、プロトコルの互換性を壊すので `displayName` の L10n 化とセットで行うほうが安全。
+- **`L10n` を `String(localized:)` ベースへ段階移行**。attempt 1 の提案どおり、保守性向上のため `Localizable.strings` ベースへの移行は将来課題として残しておく価値あり。

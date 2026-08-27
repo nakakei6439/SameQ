@@ -156,7 +156,7 @@ struct PlusView: View {
                             .foregroundStyle(Theme.inkSecondary)
                         Spacer()
                     }
-                    Text(product.periodDescription)
+                    Text(L10n.Plus.priceMonthlyNote)
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.inkTertiary)
                         .frame(maxWidth: .infinity, alignment: .leading)

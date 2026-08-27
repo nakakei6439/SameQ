@@ -1,51 +1,39 @@
-# スプリント 15: アプリ自身の文言を端末の言語で表示する
+# スプリント 15: アプリ自身の文言を端末の言語で表示する (attempt 2)
 
 ## 受け入れ条件（spec.md から転記）
-- [ ] 端末言語を英語にして初回起動すると、コンセプト説明・利用規約同意・絵文字選択・ニックネーム入力・通知許可の各画面の文言とボタンがすべて英語で表示され、日本語が1文字も残らない
-- [ ] 端末言語を英語にしたまま、今日のお題／世界タイムライン／お題待ち／利用停止／設定／Plus の各画面を一巡しても、アプリが出す日本語の文言が現れない（確認ダイアログのボタン、投稿の拒否メッセージ、連打制限のメッセージ、空状態の説明文を含む）
-- [ ] 端末言語を日本語に戻すと、同じ画面がすべて日本語で表示される
-- [ ] 日本語でも英語でもない端末言語（例：フランス語）では英語で表示され、翻訳されていない内部的な文字列（記号や英数字の羅列）が画面に出ることがない
-- [ ] 英語表示でも、文字の見切れ・ボタンからのはみ出し・要素の重なりが無い（特にボタンのラベル、文字数カウンター、設定画面の項目名）
-- [ ] ニックネーム・回答本文・お題本文の表示はこれまでどおりで、スプリント06（本文とお題の翻訳）とスプリント07（ニックネームの音写）の受け入れ条件が変わらない
-- [ ] 端末の言語設定を変えて起動し直したとき、一部の画面だけ前の言語のまま残ることがない
+- [ ] 1. en 初回起動で全画面英語
+- [ ] 2. en のまま各画面を一巡して和文が出ない
+- [ ] 3. ja に戻すと日本語
+- [ ] 4. fr など ja/en 以外は英語
+- [ ] 5. 英語で見切れ無し
+- [ ] 6. 06/07 不変
+- [ ] 7. 端末言語切替で前の言語残らない
 
-## 実装方針
+## attempt 1 の不合格理由（eval-1.md [1]）
 
-### アプローチ: `L10n` ヘルパで言語ごとに文字列を切替
-- `SameQ/L10n.swift` を新規作成
-- `Locale.preferredLanguages.first` を起動時に1回だけ読む（既存の `Translator` と同じ方式）
-- 言語判定: `ja` 始まり → 日本語、それ以外 → 英語
-- すべての UI 文言を `L10n.Xxx.yyy` 形式で参照
-- 既存の `errorDescription`（`BackendError` / `PlusPurchaseError` / `SupabaseError`）は現状維持しつつ、`AppSession` 経由で alert に出す直前に L10n で再翻訳
+Plus 画面「PRICE」直下の `Text(product.periodDescription)` が `PlusProduct.periodDescription` をそのまま描画しており、その値が3つの Service (`RevenueCatPlusService.swift:67` / `StoreKitPlusService.swift:34` / `FakePlusService.swift:81`) で日本語リテラル固定（L10n 未経由）。
 
-### 変更対象ファイル（ビュー）
-1. `SameQ/Feature/Onboarding/OnboardingView.swift` — コンセプト/規約/絵文字/ニックネーム/通知の各ステップ
-2. `SameQ/Feature/Today/TodayPromptView.swift` — お題見出し、composer、ロック表示、Plus ヒント、受信いいね
-3. `SameQ/Feature/Timeline/TimelineView.swift` — topBar、お題帯、空状態、ラーメン、いいねボタン
-4. `SameQ/Feature/Timeline/AnswerCardView.swift` — …続き/閉じる
-5. `SameQ/Feature/Timeline/SafetySheetView.swift` — 通報・ブロックの全ステージ
-6. `SameQ/Feature/Waiting/WaitingPromptView.swift` — お題待ち
-7. `SameQ/Feature/Settings/SettingsView.swift` — 全セクション（プロフィール/規約/通知/Plus/ブロック/削除）
-8. `SameQ/Feature/Settings/ProfileEditView.swift` — プロフィール編集シート
-9. `SameQ/Feature/Settings/LegalView.swift` — 規約シート
-10. `SameQ/Feature/Banned/BannedView.swift` — BAN画面（既存の二言語併記を L10n 化）
-11. `SameQ/Feature/Plus/PlusView.swift` — Hero/特典/料金/復元/注意書き
-12. `SameQ/Feature/Plus/PlusDecorationPicker.swift` — 装飾ピッカー
-13. `SameQ/App/RootView.swift` — 失敗画面の「読み込めませんでした」「もう一度試す」
-14. `SameQ/Model/Safety.swift` — `ReportReason.label` を L10n 化
+→ **en/fr 端末でも「月額 / いつでも解約できます」が出てしまう**。受け入れ条件2・4 に違反。
 
-### 変更対象ファイル（エラー）
-- `SameQ/Session/AppSession.swift` — `alertMessage = error.errorDescription` を `alertMessage = L10n.errorMessage(for: error)` に置換
-- `SameQ/Backend/PlusService.swift` — `errorDescription` を L10n 化
-- `SameQ/Backend/Backend.swift` — `BackendError.errorDescription` を L10n 化（言語非依存のケースを保持）
-- `SameQ/Backend/SupabaseError.swift` — `errorDescription` を L10n 化
+## 実装方針（attempt 2）
 
-### 影響範囲（壊しうる箇所）
-- 既存の `errorDescription` テスト（`BackendErrorTests` 等）をパスし続ける必要がある → L10n の出力でもテスト期待値を更新
-- UI テストの accessibilityIdentifier 文字列（ボタン名）は変更しない
-- `BannedView` の二言語併記表示を「端末言語で1言語のみ」表示に変更
+eval-1 の提案どおり最小修正:
 
-## 影響範囲外（明示的に対象外）
-- 利用規約本文・プライバシーポリシー本文（spec で対象外）
-- お題本文・回答本文・ニックネーム表示（既存の翻訳ロジックを維持）
-- アプリ内言語切替（端末の言語設定を変える方式のまま）
+1. **`SameQ/L10n.swift`** の `L10n.Plus` に `priceMonthlyNote` を追加
+   - `useEnglish ? "Monthly / Cancel anytime" : "月額 / いつでも解約できます"`
+
+2. **`SameQ/Feature/Plus/PlusView.swift:159`** を
+   - `Text(product.periodDescription)` → `Text(L10n.Plus.priceMonthlyNote)`
+
+これで `periodDescription` の値はビューから参照されなくなるので、3つの Service の日本語リテラルは画面に出なくなる（リスク除去のみ、表示に影響しないので空文字化は不要）。
+
+## 影響範囲
+
+- Plus 画面の PRICE 直下1行のみ
+- 既存の Sprint15 acceptance test06/test07（en/fr で全画面英語チェック）には影響なし（en で英語 "Monthly / Cancel anytime" / fr で英語 "Monthly / Cancel anytime" / ja で日本語 "月額 / いつでも解約できます" — いずれも `periodDescription` の文字列ではないので全 green を維持）
+
+## スコープ外（今回やらない）
+
+- 3 Service の `periodDescription` 文字列自体は **残す**（値はビューから消えるので画面に出ない）
+- `displayName: "Plus （月額）"` の L10n 化（現状 PlusView で未使用、eval-1 の改善提案「小」の範囲 → 今回は触らない）
+- 利用規約本文の多言語化（spec で対象外）

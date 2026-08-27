@@ -1,8 +1,15 @@
 {
   "currentSprint": "15",
-  "attempt": 1,
-  "status": "needs_fix",
+  "attempt": 2,
+  "status": "awaiting_eval",
   "history": [
+    {
+      "sprint": "15",
+      "attempt": 2,
+      "result": "awaiting_eval",
+      "note": "eval-1.md [1] に対応。L10n.Plus.priceMonthlyNote を追加（useEnglish ? \"Monthly / Cancel anytime\" : \"月額 / いつでも解約できます\"）し、PlusView.swift:159 の Text(product.periodDescription) を Text(L10n.Plus.priceMonthlyNote) に差し替え。product.periodDescription はビューから消えるので3 Service の日本語リテラルが画面に出る経路は完全に消滅。ユニット 184/184 (6.506秒)、SprintFifteenAcceptanceTests 8/8 (78.9秒)、回帰 SprintTen+Eleven+Thirteen = 15/15 (230.3秒) すべて TEST SUCCEEDED。クラッシュ0・未処理エラー0・タイムアウト0。受け入れ条件1〜7 すべて達成見込み（Plus 画面の PRICE 直下が en/fr で英語、ja で日本語）。詳細は .product/sprints/15-app-ui-localization/self-review.md",
+      "evalNote": null
+    },
     {
       "sprint": "15",
       "attempt": 1,
