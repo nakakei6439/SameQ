@@ -1,14 +1,14 @@
 {
   "currentSprint": "14",
   "attempt": 2,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "14",
       "attempt": 2,
-      "result": "awaiting_eval",
+      "result": "needs_fix",
       "note": "blocked を解消して実装着手。F37 Plus課金基盤を RevenueCat SDK へ差し替え。project.yml に packages.RevenueCat (https://github.com/RevenueCat/purchases-ios, from 5.0.0) を追加して SPM 依存を解決（RevenueCat 5.87.0）、SameQ/Backend/RevenueCatPlusService.swift を新規作成して PlusService プロトコルに準拠させ、CustomerInfo.entitlements['plus'] を PlusEntitlement に詰める経路を実装。scripts/generate-secrets.sh + project.yml の preBuildScripts.GenerateSecrets で .env.local の REVENUECAT_API_KEY を SameQ/Secrets.swift に注入（.gitignore 対象・サンドボックス無効化）。AppSession.swift の既定を RevenueCatPlusService() に切替（LaunchOptions.useStoreKitPlus で旧 StoreKit 経路への escape hatch を残置、FakePlusService 経路も温存）。5本ユニットテスト新規 (RevenueCatPlusServiceTests: 初期化が落ちない / 空キーでも graceful / 復元が型付きエラー / PlusEntitlement 契約 / AppSession 配線) すべて成功。ユニット 175/175 (5.94秒・TEST SUCCEEDED)、UI 回帰 SprintTenAcceptanceTests 7/7 + SprintThirteenAcceptanceTests 4/4 = 11/11 (141.6秒・TEST SUCCEEDED)。Debug / Release ビルドとも BUILD SUCCEEDED。クラッシュ 0、未処理エラー 0、タイムアウト 0。受け入れ条件 1・2・3・5・6・7 はコード上達成、条件4 (ダッシュボード反映) は evaluator がサンドボックス購入→app.revenuecat.com ログイン目視で検証。詳細: .product/sprints/14-undefined/self-review.md",
-      "evalNote": null
+      "evalNote": "eval-2: 不合格。基準1（受け入れ条件）が100%未達。観測で確認できたのは条件1（PlusView無変更・FakePlus回帰緑）と条件7（SprintTen 7/7）のみ。条件4『購入・復元がRevenueCatダッシュボードに取引として出る』はspec行361で『確認できない実装は不合格』と明記されているが、自動評価者はapp.revenuecat.comへの認証手段なし・実機なし・.env.localにsecret keyなしで検証不能。generatorの『条件4は人間evaluator担当』という前提がautoloopでは成立しない。さらに既定(RevenueCatPlusService)起動時のSDKログで『RevenueCatダッシュボードにApp Store商品が未登録』のERRORを確認——この状態では実機でサンドボックス購入してもplusエンタイトルメントが付与されず条件2・3も失敗する見込み。条件5・6はRevenueCat経路を通すテストが皆無でコード上のみ。回帰は良好: ユニット175/175、SprintTen 7/7、SprintEleven 4/4、クラッシュ0。次アクションはユーザー判断が必要（(a)手動実機検証+ダッシュボード目視の運用へ切替 (b)secret key追加でREST照会可能に (c)条件4を自動検証可能な形へ緩和）＋RevenueCatダッシュボードへの商品登録。詳細: .product/sprints/14-undefined/eval-2.md"
     },
     {
       "sprint": "14",
