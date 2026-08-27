@@ -216,7 +216,7 @@ final class SprintFiveAcceptanceTests: XCTestCase {
 
     func test06_bannedAccountSeesOnlyBannedScreen() {
         let app = XCUIApplication()
-        app.launchArguments = ["-SameQBanned", "-SameQResetState"]
+        app.launchArguments = ["-SameQBanned", "-SameQResetState", "-SameQUseLocalBackend"]
         app.launch()
 
         XCTAssertTrue(app.otherElements["banned.root"].waitForExistence(timeout: 8), "BAN画面が出ない")
@@ -275,11 +275,12 @@ final class SprintFiveAcceptanceTests: XCTestCase {
     private func launch(arguments: [String], reset: Bool) -> XCUIApplication {
         let app = XCUIApplication()
         var launchArguments = arguments
+        launchArguments.append("-SameQUseLocalBackend")
         if reset { launchArguments.append("-SameQResetState") }
         app.launchArguments = launchArguments
         app.launch()
         // 2回目以降の起動でリセットが効かないよう、引数からリセットだけ外しておく
-        app.launchArguments = arguments
+        app.launchArguments = arguments + ["-SameQUseLocalBackend"]
         return app
     }
 

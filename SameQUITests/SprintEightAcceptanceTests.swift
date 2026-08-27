@@ -190,7 +190,7 @@ final class SprintEightAcceptanceTests: XCTestCase {
         resetState: Bool = true
     ) -> XCUIApplication {
         let app = XCUIApplication()
-        var arguments: [String] = []
+        var arguments: [String] = ["-SameQUseLocalBackend"]
         if resetState {
             arguments.append("-SameQResetState")
         }

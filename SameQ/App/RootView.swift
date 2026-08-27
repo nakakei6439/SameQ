@@ -160,18 +160,22 @@ struct RootView: View {
                 Text("読み込めませんでした")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Theme.ink)
+                    .accessibilityIdentifier("failure.title")
                 Text(message)
                     .font(.system(size: 14))
                     .foregroundStyle(Theme.inkSecondary)
                     .multilineTextAlignment(.center)
+                    .accessibilityIdentifier("failure.message")
                 Button("もう一度試す") {
                     Task { await session.start() }
                 }
                 .buttonStyle(PrimaryButtonStyle())
+                .accessibilityIdentifier("failure.retry")
                 .padding(.top, 8)
             }
             .padding(32)
         }
+        .accessibilityIdentifier("failure.root")
     }
 
     /// 通知タップが届いたとき、実際の遷移先を `session` の状態から決めて

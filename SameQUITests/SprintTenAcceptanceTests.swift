@@ -204,6 +204,7 @@ final class SprintTenAcceptanceTests: XCTestCase {
         relaunched.launchArguments = [
             "-SameQScenario", "live",
             "-SameQFakePlus",
+            "-SameQUseLocalBackend",
         ]
         relaunched.launch()
 
@@ -267,6 +268,7 @@ final class SprintTenAcceptanceTests: XCTestCase {
             "-SameQResetState",
             "-SameQScenario", "live",
             "-SameQFakePlus",
+            "-SameQUseLocalBackend",
         ]
         if !free {
             arguments.append("-SameQPlusActive")

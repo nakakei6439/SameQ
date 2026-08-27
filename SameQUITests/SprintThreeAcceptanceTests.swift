@@ -199,11 +199,12 @@ final class SprintThreeAcceptanceTests: XCTestCase {
     private func launch(arguments: [String], reset: Bool) -> XCUIApplication {
         let app = XCUIApplication()
         var launchArguments = arguments
+        launchArguments.append("-SameQUseLocalBackend")
         if reset { launchArguments.append("-SameQResetState") }
         app.launchArguments = launchArguments
         app.launch()
         // 2回目以降の起動でリセットが効かないよう、引数からリセットだけ外しておく
-        app.launchArguments = arguments
+        app.launchArguments = arguments + ["-SameQUseLocalBackend"]
         return app
     }
 

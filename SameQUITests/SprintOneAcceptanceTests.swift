@@ -126,7 +126,7 @@ final class SprintOneAcceptanceTests: XCTestCase {
 
         // 既読だけを消して起動し直し、いいねした回答をもう一度出せる状態にする
         app.terminate()
-        app.launchArguments = ["-SameQResetViewed"]
+        app.launchArguments = ["-SameQResetViewed", "-SameQUseLocalBackend"]
         app.launch()
         XCTAssertTrue(app.staticTexts["timeline.card.body"].waitForExistence(timeout: 12))
 
@@ -154,7 +154,7 @@ final class SprintOneAcceptanceTests: XCTestCase {
 
         // 未回答のまま再起動 → 初回設定は出ず、今日のお題画面が開く
         app.terminate()
-        app.launchArguments = []
+        app.launchArguments = ["-SameQUseLocalBackend"]
         app.launch()
         XCTAssertTrue(app.staticTexts["today.promptText"].waitForExistence(timeout: 8))
         XCTAssertFalse(app.buttons["onboarding.next"].exists, "初回設定が再表示されてはいけない")
@@ -181,7 +181,7 @@ final class SprintOneAcceptanceTests: XCTestCase {
 
         // ニックネーム入力の途中で終了する
         app.terminate()
-        app.launchArguments = []
+        app.launchArguments = ["-SameQUseLocalBackend"]
         app.launch()
 
         XCTAssertTrue(app.staticTexts["同じ問いに、\n答えるだけ。"].waitForExistence(timeout: 8), "初回設定の最初からやり直しになる")
@@ -192,7 +192,7 @@ final class SprintOneAcceptanceTests: XCTestCase {
 
     private func launchFresh() -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-SameQResetState"]
+        app.launchArguments = ["-SameQResetState", "-SameQUseLocalBackend"]
         app.launch()
         return app
     }

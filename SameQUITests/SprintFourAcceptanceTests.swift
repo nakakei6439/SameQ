@@ -46,7 +46,7 @@ final class SprintFourAcceptanceTests: XCTestCase {
 
         // 再起動しても通報した回答は戻らない
         app.terminate()
-        app.launchArguments = ["-SameQAnswerCount", "10", "-SameQResetViewed"]
+        app.launchArguments = ["-SameQAnswerCount", "10", "-SameQResetViewed", "-SameQUseLocalBackend"]
         app.launch()
         for _ in 1...9 {
             guard card.waitForExistence(timeout: 8) else { break }
@@ -225,11 +225,12 @@ final class SprintFourAcceptanceTests: XCTestCase {
     private func launch(arguments: [String], reset: Bool) -> XCUIApplication {
         let app = XCUIApplication()
         var launchArguments = arguments
+        launchArguments.append("-SameQUseLocalBackend")
         if reset { launchArguments.append("-SameQResetState") }
         app.launchArguments = launchArguments
         app.launch()
         // 2回目以降の起動でリセットが効かないよう、引数からリセットだけ外しておく
-        app.launchArguments = arguments
+        app.launchArguments = arguments + ["-SameQUseLocalBackend"]
         return app
     }
 

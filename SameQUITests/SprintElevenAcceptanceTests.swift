@@ -192,12 +192,14 @@ final class SprintElevenAcceptanceTests: XCTestCase {
             "-SameQResetState",
             "-SameQScenario", "live",
             "-SameQFakePlus",
+            "-SameQUseLocalBackend",
         ]
         app.launch()
         // 2回目以降の起動でリセットが効かないよう、リセットだけ外しておく。
         app.launchArguments = [
             "-SameQScenario", "live",
             "-SameQFakePlus",
+            "-SameQUseLocalBackend",
         ]
         return app
     }

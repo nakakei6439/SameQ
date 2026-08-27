@@ -142,6 +142,7 @@ final class SprintNineAcceptanceTests: XCTestCase {
             "-SameQResetState",
             "-SameQScenario", scenario,
             "-SameQTimeOffsetMinutes", String(timeOffsetMinutes),
+            "-SameQUseLocalBackend",
         ]
         if seedOnly { arguments.append("-SameQSeedOnly") }
         if debugOverlay { arguments.append("-SameQDebugOverlay") }

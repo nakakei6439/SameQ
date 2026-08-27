@@ -92,12 +92,13 @@ struct LaunchOptions: Sendable {
     /// 安全ログ（通報記録）の保持期間（F34）。0 なら `Backend.safetyLogRetentionSeconds`
     /// （30 日）を使う。検証用に `-SameQSafetyLogRetentionSeconds` で短縮できる。
     var safetyLogRetentionSeconds: TimeInterval = 0
-    /// `-SameQUseSupabaseBackend`（Debug 限定・スプリント12）。true の間は
-    /// `BackendProvider.make()` が `LocalBackend` ではなく `SupabaseBackend` を返す。
-    /// 既定（false）は `LocalBackend` で、Supabase プロジェクトが到達不能な環境や
-    /// UI テスト・スモーク確認に使う。実機・本番で Supabase プロジェクトが
-    /// 稼働したら `BackendProvider.make()` 側の既定を戻すだけで切替可能。
-    var useSupabaseBackend: Bool = false
+    /// `-SameQUseLocalBackend`（Debug 限定・スプリント12 attempt 8）。
+    /// true の間は `BackendProvider.make()` が `SupabaseBackend` ではなく
+    /// `LocalBackend` を返す。UI テスト・スモーク確認は既定でこちらを付けて
+    /// 起動し、本番相当の Supabase 経路を検証したいときは `-SameQUseLocalBackend`
+    /// を付けない（= `useLocalBackend == false` で `SupabaseBackend`）。
+    /// Release ビルドではこの値に関わらず常に `SupabaseBackend()` を返す。
+    var useLocalBackend: Bool = false
 
     /// このプロセスの設定。起動時に1度だけ解釈する。
     static let current = parse(ProcessInfo.processInfo.arguments)
@@ -152,7 +153,7 @@ struct LaunchOptions: Sendable {
         if let seconds = value(after: "-SameQSafetyLogRetentionSeconds").flatMap(Double.init) {
             options.safetyLogRetentionSeconds = seconds
         }
-        options.useSupabaseBackend = arguments.contains("-SameQUseSupabaseBackend")
+        options.useLocalBackend = arguments.contains("-SameQUseLocalBackend")
         #endif
         return options
     }

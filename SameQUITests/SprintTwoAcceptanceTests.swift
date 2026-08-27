@@ -115,7 +115,8 @@ final class SprintTwoAcceptanceTests: XCTestCase {
         let app = XCUIApplication()
         var arguments = ["-SameQScenario", scenario,
                          "-SameQExpirySeconds", String(expirySeconds),
-                         "-SameQGapSeconds", String(gapSeconds)]
+                         "-SameQGapSeconds", String(gapSeconds),
+                         "-SameQUseLocalBackend"]
         if reset { arguments.append("-SameQResetState") }
         app.launchArguments = arguments
         app.launch()

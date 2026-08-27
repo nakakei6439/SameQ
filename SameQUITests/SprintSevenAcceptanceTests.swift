@@ -247,6 +247,7 @@ final class SprintSevenAcceptanceTests: XCTestCase {
             launchArguments.append("(\(code))")
         }
         launchArguments.append(contentsOf: arguments)
+        launchArguments.append("-SameQUseLocalBackend")
         if reset { launchArguments.append("-SameQResetState") }
         app.launchArguments = launchArguments
         app.launch()

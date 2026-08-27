@@ -1,8 +1,15 @@
 {
   "currentSprint": "12",
-  "attempt": 7,
+  "attempt": 8,
   "status": "needs_fix",
   "history": [
+    {
+      "sprint": "12",
+      "attempt": 8,
+      "result": "user_action",
+      "note": "attempt8のgenerator（06:09開始）が autoloop.sh の3時間タイムアウトにより09:09にSIGTERMで強制終了された（exit=143）。実ファイル編集は約69分で完了していたが、残りはフルUI回帰テスト（-only-testing:SameQUITests）の完走待ちで消費され、完走前にkillされた。autoloop.shのexit 3分岐がcommit_if_changedを呼ばないため、コード変更（BackendProvider.make()のDebug既定をSupabaseBackendへ1行戻し・LaunchOptionsの-SameQUseLocalBackend反転・11個のUIテストファイルへの起動引数注入・新規SprintTwelveAcceptanceTests.swift追加）が未コミットのまま作業ツリーに残存していた。加えて、別セッション（App Store公開準備でのスクリーンショット撮影作業）が同じ作業ディレクトリ・同じシミュレータUDIDを同時に使っており、そちらが追加した未追跡のScreenshotSheetTests.swiftとproject.pbxprojへの参照4箇所が混入していた（sprint12と無関係）。コーディネーターが復旧: (1) ScreenshotSheetTests.swiftとpbxprojの関連4行を除去し~/Desktop/へ退避、(2) SprintTwelveAcceptanceTests.swiftの追加は保持したままbuild-for-testingでビルド成功を確認、(3) 正当なattempt8の変更一式をコミットして保全、(4) self-review.mdの「UI回帰: 実行中（バックグラウンド）」という途中で切れた記述を「UI回帰: 未完了（タイムアウトのため中断）」と正直に書き換え、(5) attempt番号を実態（8）に合わせて更新。UI回帰が未完走のためstatusはawaiting_evalにはせずneeds_fixのまま維持し、次のgenerator attempt（9）に絞り込み回帰テストでの再検証を委ねる。generator.mdに『UI回帰テストは全件でなく絞り込んで実行する』旨の恒久対応を追記予定（同じタイムアウトの再発防止）。",
+      "evalNote": null
+    },
     {
       "sprint": "12",
       "attempt": 7,
