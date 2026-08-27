@@ -390,8 +390,14 @@ final class AppSession {
     /// 自分の回答（今日のお題）に付いているいいねの件数を更新する（F35・受け入れ条件3）。
     /// Supabase が `Backend.receivedLikeCount(forPostID:)` を持っているときだけ呼ばれる
     /// （ローカルバックエンドでは 0 を返す既定実装）。
-    /// 失敗してもアラートを出さず、`receivedLikeCount` を 0 に戻すだけ
-    ///（バックエンドがまだ古い・権限が無い等の状況でも画面を止めないため）。
+    ///
+    /// 失敗時の挙動（attempt 12: eval-8.md の改善提案3）:
+    ///   * `SupabaseError.notFound`（関数未適用 PGRST202 / 404）のときだけ `alertMessage`
+    ///     を立て、それ以外は静かに `receivedLikeCount = 0` に戻す（バックエンドが
+    ///     まだ古い・権限が無い等の状況でも画面を止めないため）。
+    ///   * 「無言で 0 のまま」を放置すると condition 7（通信失敗時に画面表示）の
+    ///     趣旨に反するため、関数未適用だけはユーザー（とデバッグログ）に
+    ///     知らせる。
     private func refreshReceivedLikeCount() async {
         guard let myPost else {
             receivedLikeCount = 0
@@ -400,6 +406,14 @@ final class AppSession {
         do {
             let count = try await backend.receivedLikeCount(forPostID: myPost.id)
             receivedLikeCount = count
+        } catch let error as SupabaseError {
+            receivedLikeCount = 0
+            if case .notFound = error {
+                alertMessage = "サーバー機能の一部が未適用です。アプリを再起動しても直らない場合はサポートまでお知らせください。"
+                #if DEBUG
+                print("[SameQ] refreshReceivedLikeCount: RPC notFound - migration 20260820000005_received_like_count.sql is not applied on remote.")
+                #endif
+            }
         } catch {
             receivedLikeCount = 0
         }
