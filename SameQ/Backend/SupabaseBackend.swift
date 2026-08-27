@@ -213,9 +213,25 @@ actor SupabaseBackend: Backend {
         // auth.users と public.users を削除する。on delete cascade で
         // posts / likes / blocks / reports / viewed_posts も連動削除され、
         // 他端末のタイムラインからもこの人の回答が消える (受け入れ条件7)。
-        // サーバ側が落ちているときなどはローカルだけクリアして復帰できるように、
-        // RPC 失敗時はローカル状態をクリアするだけで受け皿を保つ。
-        try? await client.rpcVoid(function: "delete_my_account")
+        //
+        // attempt 3 (eval-2.md 改善提案2):
+        //   attempt 1/2 では `try? await …` で RPC 例外を握り潰し、サーバ側
+        //   削除が失敗してもローカル状態だけ消して UI 上は「成功したように
+        //   見える」状態になっていた。これだと評価者が post-delete に
+        //   `auth.users` へレコードが残存していることを確認しても、アプリ側
+        //   には何の通知も出ない。
+        //
+        //   修正方針:
+        //     1) RPC が失敗したら例外を上位 (AppSession.deleteAccount) へ
+        //        そのまま伝播する。AppSession は `alertMessage` を立てるので
+        //        ユーザーに「サーバ側の削除に失敗した」が届く。
+        //     2) RPC が成功したときだけローカル状態をクリアして永続化する。
+        //     3) ローカル保存が失敗した場合も例外を伝播する (保存しない
+        //        まま「成功」と偽ることは同じ穴になる)。
+        //   これにより「無言で成功したように見えることがない」原則
+        //   (スプリント12 条件7) を保ちつつ、サーバ反映の失敗をユーザーに
+        //   確実に知らせる。
+        try await client.rpcVoid(function: "delete_my_account")
         var next = state
         next.user = nil
         next.myPosts = []
@@ -784,14 +800,23 @@ actor SupabaseBackend: Backend {
     /// サーバ側 RPC `current_server_time()` を呼ぶ。
     /// 端末時計をずらした検証で「サーバ側の now() は同一」を示すための基準値
     /// (受け入れ条件5)。返り値の Date は端末の時計とは無関係に真のサーバ時刻。
+    /// attempt 3 (eval-2.md 改善提案4):
+    ///   通信失敗時は `clock.now` へフォールバックする。`Debug` オーバーレイで
+    ///   `serverNow` がオフライン時に nil になり UI が止まることを防ぐ。
     func currentServerTime() async throws -> Date {
-        try checkConnectivity()
-        let serverNow: Date = try await client.rpc(
-            function: "current_server_time",
-            arguments: Empty(),
-            as: Date.self
-        )
-        return serverNow
+        do {
+            try checkConnectivity()
+            let serverNow: Date = try await client.rpc(
+                function: "current_server_time",
+                arguments: Empty(),
+                as: Date.self
+            )
+            return serverNow
+        } catch {
+            // Offline / Network / NotFound すべてを clock.now フォールバック
+            // として扱う。`Debug` オーバーレイはオフライン時も UI を表示し続ける。
+            return clock.now
+        }
     }
 
     // MARK: 安全ログの自動削除（F34/F36・受け入れ条件6）

@@ -540,4 +540,12 @@ actor LocalBackend: Backend {
         let after = state.reports.count
         return max(before - after, 0)
     }
+
+    // MARK: サーバ時計（F36・受け入れ条件5・Backend プロトコル）
+
+    /// LocalBackend は外部時計と無関係に `clock.now` を返す。サーバ時計とは
+    /// 「端末の時計」と同じものを指す（端末内完結のため）。
+    func currentServerTime() async throws -> Date {
+        return clock.now
+    }
 }

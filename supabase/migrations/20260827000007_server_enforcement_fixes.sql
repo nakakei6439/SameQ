@@ -127,34 +127,56 @@ create policy users_update_own on public.users
     with check (id = auth.uid() and status = 'active');
 
 -- ---------------------------------------------------------------------------
--- 4) pg_cron による safety logs 自動削除スケジュール (eval-1.md [4])
+-- 4) pg_cron による safety logs 自動削除スケジュール (eval-1.md [4]・eval-2.md [1])
 -- ---------------------------------------------------------------------------
 -- pg_cron 拡張が有効なら、毎日 03:00 UTC に `purge_expired_safety_logs(30日)` を
 -- 実行するジョブを登録する。拡張が無効の環境（既定の Supabase プロジェクト
 -- ではダッシュボードから Extensions → pg_cron を ON にする必要あり）では
--- このブロックは無視され、コメントで残した SQL を 1 回手動で流す必要がある。
-do $$
+-- このブロックは無視される。
+--
+-- attempt 2 で運用上問題だった2点を修正 (eval-2.md [1]):
+--   (a) `comment on extension pg_cron is …` が do ブロックの外にあったため、
+--       pg_cron 拡張が**無い**環境で SQLSTATE 42704 "extension does not exist"
+--       でファイル全体がロールバックされていた。`comment on extension` 自体を
+--       do ブロックの内側で `execute format(...)` を使い、拡張が無いときは
+--       例外を握って no-op にする。
+--   (b) `perform cron.unschedule('purge-safety-logs-daily')` がジョブ未登録
+--       時に例外を投げていた。`cron.job` テーブルの存在確認に切り替えて、
+--       初回実行 (ジョブ未登録) と再実行 (登録済み) の両方で失敗しないようにする。
+do $outer$
 begin
     if exists (select 1 from pg_extension where extname = 'pg_cron') then
-        -- 同じ名前の既存スケジュールを消してから再作成（冪等）。
-        perform cron.unschedule('purge-safety-logs-daily');
+        -- 同じ名前の既存スケジュールを消してから再作成（冪等・初回は no-op）。
+        if exists (
+            select 1 from cron.job where jobname = 'purge-safety-logs-daily'
+        ) then
+            perform cron.unschedule('purge-safety-logs-daily');
+        end if;
         perform cron.schedule(
             'purge-safety-logs-daily',
             '0 3 * * *',
             $sql$select public.purge_expired_safety_logs(30 * 24 * 60 * 60);$sql$
         );
+        -- 拡張自身へのコメント。do ブロックの中で dynamic SQL 経由で当てるので、
+        -- 拡張が無くてもここで SQLSTATE 42704 にならない。
+        begin
+            execute format(
+                'comment on extension pg_cron is %L',
+                'sprint13 fix: 毎日 03:00 UTC に期限切れ safety logs を自動削除するスケジュール purge-safety-logs-daily を登録する'
+            );
+        exception when others then
+            -- 拡張はあるが comment 権限が無い等の稀ケース。fatal ではないため握る。
+            null;
+        end;
     end if;
 end;
-$$;
-
-comment on extension pg_cron is
-    'sprint13 fix: pg_cron が有効なら、毎日 03:00 UTC に期限切れ safety logs を
-     自動削除するスケジュール `purge-safety-logs-daily` を登録する。';
+$outer$;
 
 -- pg_cron が**無い**環境で手動スケジュールしたい場合の SQL (コメント):
+--   -- 1) Supabase ダッシュボードの Database → Extensions で pg_cron を ON
+--   -- 2) そのあとで次を 1 回だけ流す:
 --   select cron.schedule(
 --       'purge-safety-logs-daily',
 --       '0 3 * * *',
 --       $$select public.purge_expired_safety_logs(30 * 24 * 60 * 60);$$
 --   );
--- 拡張を有効化する場所は Supabase ダッシュボードの Database → Extensions。

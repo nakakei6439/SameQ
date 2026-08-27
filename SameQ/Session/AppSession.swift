@@ -87,6 +87,13 @@ final class AppSession {
     var isSettingsPresented = false
     /// アプリが認識している「今」。1秒ごとの `refresh()` で更新する。
     private(set) var now: Date
+    /// サーバ時計と `clock.now` の差（秒）。`start()` で1回だけ取得し、
+    /// `Debug` オーバーレイの「ends in Xs」「next in Xs」表示に使う
+    /// (受け入れ条件5、`eval-2.md` 改善提案4)。
+    /// 端末時計を N 時間ずらしても、`serverNow = clock.now + serverNowOffset`
+    /// は真のサーバ時刻に揃うため、残り秒数は変わらない。
+    /// 取得できなかったとき（オフライン・RPC 404）は 0 のまま。
+    private(set) var serverNowOffset: TimeInterval = 0
     /// Debug オーバーレイ用。いまのお題で表示しうる回答の総数と、既読の件数。
     private(set) var timelineCandidateCount = 0
     private(set) var timelineViewedCount = 0
@@ -225,6 +232,17 @@ final class AppSession {
         if let purged = try? await backend.purgeExpiredSafetyLogs(), purged > 0 {
             #if DEBUG
             print("[SameQ] start: purged \(purged) expired safety logs at launch")
+            #endif
+        }
+        // サーバ時計を 1 度だけ取得し、`serverNowOffset` を確定させる
+        // (受け入れ条件5・eval-2.md 改善提案4)。これで `Debug` オーバーレイの
+        // 「ends in Xs」「next in Xs」が端末時計ずれに引きずられなくなる。
+        // 通信失敗時は 0 のままにし、その間 overlay は `clock.now` 基準で
+        // 動く（UI を完全停止させない）。
+        if let serverNow = try? await backend.currentServerTime() {
+            serverNowOffset = serverNow.timeIntervalSince(clock.now)
+            #if DEBUG
+            print("[SameQ] start: serverNowOffset \(serverNowOffset)s")
             #endif
         }
         // Plus のエンタイトルメントを起動直後に読む（F28）。サンドボックス購入は
@@ -859,13 +877,18 @@ final class AppSession {
     var debugStatusLine: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss"
-        var parts = ["now \(formatter.string(from: now))", "scenario \(LaunchOptions.current.scenario.rawValue)"]
+        // サーバ時計基準の「now」を計算する。`serverNowOffset` は `start()` で
+        // 1 度だけ取得し、`currentServerTime()` が失敗したときは 0 のまま
+        // (= `clock.now`) になる。これにより、端末時計をずらしても
+        // 「ends in Xs」「next in Xs」がサーバ時計基準で安定する (受け入れ条件5)。
+        let serverAdjustedNow = now.addingTimeInterval(serverNowOffset)
+        var parts = ["now \(formatter.string(from: now))", "srv \(formatter.string(from: serverAdjustedNow))", "scenario \(LaunchOptions.current.scenario.rawValue)"]
         switch promptState {
         case .active(let prompt):
-            parts.append("\(prompt.id) ends in \(Int(prompt.endsAt.timeIntervalSince(now)))s")
+            parts.append("\(prompt.id) ends in \(Int(prompt.endsAt.timeIntervalSince(serverAdjustedNow)))s")
         case .waiting(let nextStartsAt):
             if let nextStartsAt {
-                parts.append("waiting / next in \(Int(nextStartsAt.timeIntervalSince(now)))s")
+                parts.append("waiting / next in \(Int(nextStartsAt.timeIntervalSince(serverAdjustedNow)))s")
             } else {
                 parts.append("waiting / no next prompt")
             }

@@ -177,6 +177,17 @@ protocol Backend: Sendable, TranslationAttemptPersisting {
     /// - `SupabaseBackend`: サーバ RPC `app_purge_expired_safety_logs()` を呼ぶ。
     ///   pg_cron が有効なら別途サーバ側のスケジュールで毎日走る。
     func purgeExpiredSafetyLogs() async throws -> Int
+
+    // MARK: サーバ時計（F36・受け入れ条件5）
+
+    /// サーバ側の「現在の時刻」を返す。`Debug` オーバーレイでお題の残り時間を
+    /// 端末時計ではなくサーバ時計基準で表示するために使う (受け入れ条件5)。
+    /// 端末時計を N 時間ずらしても `currentPromptEndsAt - serverNow` は常に
+    /// 同一の秒数になる。
+    /// - `LocalBackend`: `clock.now` をそのまま返す (端末外のものさしと差がない)。
+    /// - `SupabaseBackend`: サーバ RPC `current_server_time()` を呼ぶ。
+    /// 通信失敗時は実装側で `clock.now` へフォールバックして UI を止めない。
+    func currentServerTime() async throws -> Date
 }
 
 extension Backend {
