@@ -1,0 +1,18 @@
+/Users/nakagawakeita/Products/iOSApp/SameQ/SameQUITests/SprintTwelveEvalE2ETests.swift:86: error: -[SameQUITests.SprintTwelveEvalE2ETests test_condition1_and_3_realDeviceB] : XCTAssertTrue failed - 条件3違反: 『もう1台』が端末Aの回答にいいねしたのに、端末Aの today.receivedLikes が表示されない（受信いいね 0 のまま）
+	 Executed 1 test, with 1 failure (0 unexpected) in 34.543 (34.545) seconds
+	 Executed 1 test, with 1 failure (0 unexpected) in 34.543 (34.546) seconds
+	 Executed 1 test, with 1 failure (0 unexpected) in 34.543 (34.547) seconds
+--- supabase db push output ---
+Connecting to remote database... / Remote database is up to date.
+--- direct RPC curl on production (as post author) ---
+POST /rest/v1/rpc/received_like_count -> 404 {"code":"PGRST202","message":"Could not find the function public.received_like_count(target_post) in the schema cache"}
+--- migration list --linked ---
+
+  
+   Local          | Remote         | Time (UTC)          
+  ----------------|----------------|---------------------
+   20260817000001 | 20260817000001 | 2026-08-17 00:00:01 
+   20260817000002 | 20260817000002 | 2026-08-17 00:00:02 
+   20260818000003 | 20260818000003 | 2026-08-18 00:00:03 
+   20260819000004 | 20260819000004 | 2026-08-19 00:00:04 
+

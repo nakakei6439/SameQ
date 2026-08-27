@@ -1,7 +1,7 @@
 {
   "currentSprint": "12",
   "attempt": 11,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "12",
@@ -380,6 +380,12 @@
       "result": "awaiting_eval",
       "note": "eval-7.md [1][3] に対応。[1a] receivedLikeCount(forPostID:) を Backend プロトコルの要求メソッドに昇格 (LocalBackend / SupabaseBackend 双方に実装を置いた、extension Backend の default は削除)。[1b] supabase/migrations/20260819000004_server_connection.sql に security definer 関数 received_like_count(target_post uuid) と liked_authors_view を追加 (likes_select_own RLS では他人のいいねが読めない問題)。SupabaseClient.rpc<T:Decodable>(function:arguments:as:) を新設して POST /rest/v1/rpc/<function> をサポート。SupabaseBackend.receivedLikeCount は rpc(function: \"received_like_count\") で呼ぶよう変更。[3] LaunchOptions.forceOffline と起動引数 -SameQForceOffline を新設し、SupabaseBackend に forceOffline stored property を追加して checkConnectivity() が NWPathMonitor の結果に関わらず .offline を投げるようにした (条件6・7 の再現用足場)。Debug/Release とも BUILD SUCCEEDED。ユニット 166/166 (5.922 秒・TEST SUCCEEDED)、SprintTwelve UI 3/3 (43.4 秒・test01 14.5s + test02 16.1s + test03 12.8s)、回帰 SprintEleven 4/4 + SprintTen 7/7 + SprintNine 7/7 = 18/18 (329.9 秒・TEST SUCCEEDED)。クラッシュ0・未処理エラー0・タイムアウト0。受け実条件 1・2・4・8 は前回 eval-7 で実 e2e / curl 確認済み。条件 3 (いいね) は今回コード修正完了だが実機 2 台 e2e が evaluator 担当 (migration 4 の apply と prompt_001 投稿データの投入はユーザー側継続課題)。条件 6・7 は -SameQForceOffline フラグで evaluator が再現可能。詳細: .product/sprints/12-server-connection/self-review.md (attempt 11)",
       "evalNote": null
+    },
+    {
+      "sprint": "12",
+      "attempt": 11,
+      "result": "needs_fix",
+      "note": "evaluator が iPhone 17 シミュレータ + 本番 Supabase(loqumzfgnahtclnvnrzb) で実 e2e 検証。不合格。受け入れ条件 5/8（条件1・2・4・6・8 達成、条件3 が実 e2e で不合格、条件5・7 は部分確認）。決定的ブロッカーは eval-7 と同じ条件3（受信いいね総数+1）の未達で、attempt 11 の修正が本番へ適用不能な構造だと新規に判明: received_like_count 関数と liked_authors_view を『既に本番適用済み』の migration 20260819000004 の末尾に追記したため、supabase db push は『Remote database is up to date』で何も流さない（evaluator 環境で supabase CLI ログイン済み・migration list 4/4 一致・db push/--dry-run とも no-op を確認）。本番で POST /rest/v1/rpc/received_like_count は 404 PGRST202（関数が存在しない）。SupabaseBackend.receivedLikeCount は RPC 404 で throw → AppSession.refreshReceivedLikeCount の catch で receivedLikeCount=0 に無言フォールスルー。リポジトリ既存の SprintTwelveEvalE2ETests（eval-7 追加分、attempt 11 のテスト対象から漏れている）を再実行し test_condition1_and_3_realDeviceB が『条件3違反: 受信いいね 0 のまま』で FAIL（条件1 assert は同実行内でパス）。直し方: 関数を新規 migration ファイル（例 20260820000005_*.sql）へ切り出す or 本番へ直接 SQL 適用してから再評価。前進: 条件6 は -SameQForceOffline で『通信できません。ネットワーク接続を確認してください。』+『もう一度試す』表示を確認（白紙/無限ローディング/クラッシュ無し）。OnboardingView に alertMessage 購読の .alert が入り eval-5 の無言停止は解消。回帰 SprintNine 7/7・SprintTen 7/7・SprintEleven 4/4・SprintTwelve 3/3・ユニット 166/166 すべて evaluator が再実行し成功。クラッシュ0・データ整合性OK（投稿/いいね/通報/ブロックは本番DBに永続、状態ゼロの別クライアントから再取得一致）・使用性3。一時 UI テストは削除し git status クリーン確認済み。詳細は .product/sprints/12-server-connection/eval-8.md"
     }
   ]
 }
