@@ -1,7 +1,7 @@
 {
-  "currentSprint": "14",
-  "attempt": 5,
-  "status": "blocked",
+  "currentSprint": "15",
+  "attempt": 1,
+  "status": "in_progress",
   "history": [
     {
       "sprint": "14",
@@ -510,6 +510,12 @@
       "attempt": 4,
       "result": "passed",
       "note": "evaluator: 本番 Supabase(loqumzfgnahtclnvnrzb) に migration 9/10 を db push --linked --password で適用し、匿名2アカウントの実E2E + DB直結(SUPABASE_DB_PASSWORD)で検証。eval-2〜4 の唯一の決定的ブロッカー条件6 が解消: app_purge_expired_safety_logs() の本番定義が削除ロジック直書きの language plpgsql SECURITY DEFINER になり、認証ユーザートークン(アプリ起動時経路)で HTTP 200(attempt3 まで 403/42501)。reports に created_at=now()-31日 と now() の2行を用意し、呼び出し後 31日前行のみ削除・当日行は残存を DB直読で2時点観測。purge_expired_safety_logs(60) は認証/anon から 403 のまま(F34 の穴は塞がったまま)。条件1(consume_rate_limit 0/0/0/60/60/60・rate_limit_events 3行永続・再呼び出しでロック継続)、条件3(B を banned にすると A の world_timeline から B の投稿が消え、active 復帰で再出現)、条件4(viewed_posts 201 + my_viewed_posts RPC + DB行)、条件7(A delete_my_account 204 → B の world_timeline から A の投稿消滅・再読込でも0・users/posts が cascade 削除)も本番E2Eで観測。条件2 はサーバ側(自己PATCH banned 403 RLS・banned の自己 active 復帰0行・banned の投稿 403)を観測、端末の .banned 画面遷移のみ未観測。条件5 は current_server_time() 稼働と promptState()/serverNowOffset 配線をコードで確認、端末時計ずらしのUI観測は未達。回帰: ユニット170/170・SprintThirteen 4/4・SprintTwelve 3/3・SprintEleven 4/4・SprintFive 7/7・SprintThree 7/7 すべて TEST SUCCEEDED。クラッシュ0・未処理例外0。使用性4(BAN用アプリ内画面の追加なし=差分は Backend/Session のみ)。評価データは全削除しベースライン(users119/posts71/reports0/rate_limit_events0)へ復帰。migration 9/10 は本番恒久適用。ユーザーへ: 条件2(端末の .banned 画面)・条件5(端末時計ずらし)・条件1(アプリ削除&再インストール越し)の 2台実機 UI E2E は F35 出荷前に別途通すことを推奨(sprint12 eval-10 と同じ運用)。詳細: .product/sprints/13-server-enforcement/eval-5.md"
+    },
+    {
+      "sprint": "14",
+      "attempt": 5,
+      "result": "user_action",
+      "note": "ユーザー判断: スプリント14(RevenueCatダッシュボードでの実績確認が必須条件のため3-strikeでblocked)は一旦保留し、依存関係のないスプリント15〜17を先に進める。ユーザーが仕事から帰宅後にスプリント14の再開方法(実機Sandbox購入によるダッシュボード確認/secret key追加による部分自動化/spec条件の緩和のいずれか)を判断する。currentSprintを15、attemptを1、statusをin_progressに変更してスキップ。詳細は .product/sprints/14-undefined/self-review.md (attempt5) 参照。"
     }
   ]
 }
