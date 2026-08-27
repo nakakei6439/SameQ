@@ -449,6 +449,15 @@ actor LocalBackend: Backend {
         state.discardedCandidatesCount
     }
 
+    // MARK: サーバー側ステータス（F36）
+
+    /// `LocalBackend` はサーバを持たないため常に `"active"` を返す。
+    /// BAN の模擬は引き続き `-SameQBanned` 起動引数（`LaunchOptions.isBanned`）が
+    /// `AppSession.start()` の冒頭で `.banned` 画面固定にする経路で行う。
+    func currentServerSideStatus() async throws -> String {
+        "active"
+    }
+
     // MARK: 翻訳モデルのダウンロード試行の永続化（受け入れ条件4・attempt 7）
 
     /// `Translator` のクールダウン判定用。アクター内なので他の書き込みと競合しない。

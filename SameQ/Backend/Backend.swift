@@ -157,6 +157,15 @@ protocol Backend: Sendable, TranslationAttemptPersisting {
     ///（受け入れ条件 4「破棄された記録が残る」）。`PersistedState` に永続化されている。
     /// ユーザー向け UI には出さず、Debug オーバーレイ用。
     func discardedCandidatesCount() async throws -> Int
+
+    // MARK: サーバー側の認証状態（F36・受け入れ条件2）
+
+    /// 自分のアカウントのサーバ側ステータス。`"active"` / `"banned"` / `"missing"` の3値。
+    /// `LocalBackend` は常に `active` を返し（端末内でBANを模擬する経路は
+    /// `-SameQBanned` 起動引数のままで、サーバ側ステータスを別途参照する
+    /// 必要は無い）、`SupabaseBackend` はサーバ RPC を呼ぶ。
+    /// 通信失敗時はサーバ側を `"active"` とみなす (fail-open)。
+    func currentServerSideStatus() async throws -> String
 }
 
 extension Backend {

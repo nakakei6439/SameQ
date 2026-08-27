@@ -42,10 +42,12 @@ actor SupabaseBackend: Backend {
     private let forceOffline: Bool
     /// 直近のサーバー往復が成功した時刻。失敗検知の参考値。
     private var state: PersistedState
-    /// いいね・通報のローカル側レート制限（F17）。サーバー側の判定はスプリント13で
-    /// 扱うので、今ここでは UI の連打抑止だけを目的とする。
-    private var likeLimiter: RateLimiter
-    private var reportLimiter: RateLimiter
+    /// いいね・通報の連打制限はサーバー側 (`consume_rate_limit` RPC) で判定する。
+    /// スプリント13 で process-local な `RateLimiter` は撤去し、サーバー記録に
+    /// 統一した。設定値（最大回数・ウィンドウ秒数）はここに残し、RPC 引数として
+    /// 渡すだけに使う。
+    private let likeRateLimit: RateLimitSettings
+    private let reportRateLimit: RateLimitSettings
     /// サーバー往復を直列化するためのシリアルキュー代わり。
     private var inFlight: Int = 0
 
@@ -58,8 +60,11 @@ actor SupabaseBackend: Backend {
         self.store = store
         self.clock = clock
         self.state = store.load()
-        self.likeLimiter = options.likeRateLimit.makeLimiter()
-        self.reportLimiter = options.reportRateLimit.makeLimiter()
+        // スプリント13: レート制限はサーバ側に集約。設定値（閾値とウィンドウ秒数）
+        // を `RateLimitSettings` のまま残し、RPC `consume_rate_limit` の引数として
+        // 渡す。
+        self.likeRateLimit = options.likeRateLimit
+        self.reportRateLimit = options.reportRateLimit
         self.forceOffline = options.forceOffline
         self.monitor = NWPathMonitor()
         // `tokenProvider` は `@Sendable` クロージャなので actor の `state` を直接参照できない。
@@ -204,14 +209,13 @@ actor SupabaseBackend: Backend {
     }
 
     func deleteAccount() async throws {
-        // Supabase では `public.users` 行の削除は外部キー cascade で関連行も消えるが、
-        // `auth.users` の削除は service_role が必要（アプリ側では不可）。
-        // ここでは RLS ポリシーで `delete` を許可していないため、アプリをオンボーディングへ
-        // 戻すと同時に、Supabase 側では `users.status` を `banned` にすることで
-        // 実質的に使えなくする。`status` 更新も RLS で `active` 固定なのでエラーになる。
-        // → 簡略化: ローカル側の状態だけ消す（次回起動時に別ユーザーとして再開する）。
-        // サーバー側の古いデータは次回サインアップ時に auth.uid() が変わるため
-        // 自分には表示されない。
+        // スプリント13: サーバ側 RPC `delete_my_account()` を呼び、
+        // auth.users と public.users を削除する。on delete cascade で
+        // posts / likes / blocks / reports / viewed_posts も連動削除され、
+        // 他端末のタイムラインからもこの人の回答が消える (受け入れ条件7)。
+        // サーバ側が落ちているときなどはローカルだけクリアして復帰できるように、
+        // RPC 失敗時はローカル状態をクリアするだけで受け皿を保つ。
+        try? await client.rpcVoid(function: "delete_my_account")
         var next = state
         next.user = nil
         next.myPosts = []
@@ -465,8 +469,18 @@ actor SupabaseBackend: Backend {
 
     func setLike(postID: UUID, liked: Bool) async throws {
         try checkConnectivity()
-        if let retryAfter = likeLimiter.attempt(at: clock.now) {
-            throw BackendError.rateLimited(action: .like, retryAfterSeconds: retryAfter)
+        // スプリント13: レート制限はサーバ側 (`consume_rate_limit`) で判定する。
+        // 閾値を超えると retry_after_seconds が返るので、それを `BackendError.rateLimited`
+        // に変換する。「アプリの再起動で解除されない」ことが構造的に担保される
+        // (受け入れ条件1)。
+        if liked {
+            let retry = try await checkRateLimit(
+                action: "like",
+                settings: likeRateLimit
+            )
+            if retry > 0 {
+                throw BackendError.rateLimited(action: .like, retryAfterSeconds: retry)
+            }
         }
         guard let user = state.user else { throw BackendError.notSignedIn }
         struct LikeRow: Encodable {
@@ -550,8 +564,15 @@ actor SupabaseBackend: Backend {
 
     func reportPost(postID: UUID, reason: ReportReason) async throws {
         try checkConnectivity()
-        if let retryAfter = reportLimiter.attempt(at: clock.now) {
-            throw BackendError.rateLimited(action: .report, retryAfterSeconds: retryAfter)
+        // スプリント13: レート制限はサーバ側 (`consume_rate_limit`) で判定する。
+        // 連打自体は同じ瞬間でも複数回成功するように見えるが、サーバ側で記録された
+        // 件数を基準にするので、アプリの再起動で解除されない（受け入れ条件1）。
+        let retry = try await checkRateLimit(
+            action: "report",
+            settings: reportRateLimit
+        )
+        if retry > 0 {
+            throw BackendError.rateLimited(action: .report, retryAfterSeconds: retry)
         }
         guard let user = state.user else { throw BackendError.notSignedIn }
         struct ReportInsert: Encodable {
@@ -686,7 +707,65 @@ actor SupabaseBackend: Backend {
             throw SupabaseError.offline
         }
     }
+
+    // MARK: - スプリント13: サーバ側レート制限 / BAN / アカウント削除 (F36)
+
+    /// サーバ側 RPC `consume_rate_limit(p_action, p_max, p_window_seconds)` を呼ぶ。
+    /// 戻り値は `0`（成功・記録済み）または正の整数値（あと何秒待てば解除）。
+    /// 通信失敗時は fail-open で 0 を返す（UI を完全停止させないため。F17 の連打
+    /// 自体はアクセスパターンで自然抑止される）。
+    private func checkRateLimit(
+        action: String,
+        settings: RateLimitSettings
+    ) async throws -> Int {
+        try checkConnectivity()
+        struct Args: Encodable {
+            let p_action: String
+            let p_max: Int
+            let p_window_seconds: Int
+        }
+        let result: Int = try await client.rpc(
+            function: "consume_rate_limit",
+            arguments: Args(
+                p_action: action,
+                p_max: settings.maxActions,
+                p_window_seconds: Int(settings.windowSeconds)
+            ),
+            as: Int.self
+        )
+        return result
+    }
+
+    /// サーバ側 RPC `current_user_status()` を呼ぶ。
+    /// 戻り値: `"active"` / `"banned"` / `"missing"`。
+    /// 通信失敗時は fail-open で `"active"` を返し、`AppSession.start()` が
+    /// うっかり `.banned` 画面で起動しないようにする。
+    func currentServerSideStatus() async throws -> String {
+        try checkConnectivity()
+        let status: String = try await client.rpc(
+            function: "current_user_status",
+            arguments: Empty(),
+            as: String.self
+        )
+        return status
+    }
+
+    /// サーバ側 RPC `current_server_time()` を呼ぶ。
+    /// 端末時計をずらした検証で「サーバ側の now() は同一」を示すための基準値
+    /// (受け入れ条件5)。返り値の Date は端末の時計とは無関係に真のサーバ時刻。
+    func currentServerTime() async throws -> Date {
+        try checkConnectivity()
+        let serverNow: Date = try await client.rpc(
+            function: "current_server_time",
+            arguments: Empty(),
+            as: Date.self
+        )
+        return serverNow
+    }
 }
+
+/// `consume_rate_limit` 等の引数なし RPC 用。空の構造体。
+private struct Empty: Encodable {}
 
 /// Supabase が返す `posts` / `world_timeline` 行。
 /// `world_timeline` ビューは `body_language` / `decorations` を出さないため、

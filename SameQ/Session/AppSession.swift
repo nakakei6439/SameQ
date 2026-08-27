@@ -199,9 +199,22 @@ final class AppSession {
     func start() async {
         screen = .loading
         // BAN状態のアカウントは、今日のお題にもタイムラインにも入れない（F16）。
-        // 運営がサーバー側でBANを切り替える運用のため、アプリ内に解除UIは無く、
-        // Debug限定の起動引数 `-SameQBanned` でこの状態を模擬する。
-        if LaunchOptions.current.isBanned {
+        // 運営がサーバー側でBANを切り替える運用のため、アプリ内に解除UIは無い。
+        // スプリント13:
+        //   * サーバ側ステータス (`backend.currentServerSideStatus()`) を RPC で取得し、
+        //     `banned` ならサーバ起点のBANとして .banned 画面に固定する
+        //     (受け入れ条件2・3)。
+        //   * Debug限定の `-SameQBanned` も引き続き有効 (LocalBackend 経路での検証用)。
+        //   * 通信失敗時は fail-open で起動する (Backend が fail-open を返す前提)。
+        let debugBanned = LaunchOptions.current.isBanned
+        let serverBanned: Bool
+        do {
+            let status = try await backend.currentServerSideStatus()
+            serverBanned = (status == "banned")
+        } catch {
+            serverBanned = false
+        }
+        if debugBanned || serverBanned {
             screen = .banned
             return
         }

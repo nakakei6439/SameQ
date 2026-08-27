@@ -232,6 +232,19 @@ struct SupabaseClient: Sendable {
         return array
     }
 
+    /// 引数なし RPC 用 (`delete_my_account()` 等)。空の JSON `{}` を送る。
+    func rpcVoid(
+        function: String
+    ) async throws {
+        let url = restBaseURL.appendingPathComponent("rpc/\(function)")
+        var request = makeRestRequest(url: url, method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // PostgREST は引数なしでも `{}` を受け入れる。空の body だと 400 になる。
+        request.httpBody = Data("{}".utf8)
+        let (data, response) = try await performRequest(request)
+        try validate(response: response, data: data)
+    }
+
     // MARK: - Auth
 
     /// 匿名サインアップ。`POST /auth/v1/signup`。
