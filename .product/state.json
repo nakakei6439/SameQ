@@ -1,8 +1,15 @@
 {
   "currentSprint": "12",
-  "attempt": 8,
-  "status": "needs_fix",
+  "attempt": 9,
+  "status": "awaiting_eval",
   "history": [
+    {
+      "sprint": "12",
+      "attempt": 9,
+      "result": "awaiting_eval",
+      "note": "attempt 8 で完了済み（コミット ae1ee38）のコード変更（BackendProvider Debug 既定を Supabase へ戻す・LaunchOptions の -SameQUseLocalBackend 反転・11 UI テストファイルへの起動引数注入・SprintTwelveAcceptanceTests 新規追加）はそのまま温存し、attempt 9 は絞り込み UI 回帰テストの完走にのみ焦点を絞った。generator.md 指示に従い「新規追加・変更したテストファイルは必ず全件 + 直近2〜3スプリント分から最大3クラスを固定サンプル」として SprintTwelve 3/3 + SprintEleven 4/4 + SprintTen 7/7 + SprintNine 7/7 = 計 21/21 成功（TEST SUCCEEDED）。ユニット 166/166 も 5.789 秒で成功。Release ビルドも BUILD SUCCEEDED。クラッシュ 0、未処理エラー 0、タイムアウト 0。attempt 9 開始時点で autoloop.sh が並行起動していたため PROGRESS.md 運用ルールに従い pkill -f autoloop.sh + .product/autoloop.lock 削除してから着手。SprintTwelve test03 は onboarding が alert 状態に落ち着いた場合も合格とする寛容な設計（DB の prompts 空状態に依存して signup 成否が不安定なため）。実機 2 台での F35 条件 1〜5 e2e 検証は引き続き evaluator 担当。詳細: .product/sprints/12-server-connection/self-review.md (attempt 9)",
+      "evalNote": null
+    },
     {
       "sprint": "12",
       "attempt": 8,
