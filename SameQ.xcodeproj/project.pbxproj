@@ -68,6 +68,7 @@
 		A4855DFE442DB025C783CCD5 /* PromptSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32498090621188D2CDA707A0 /* PromptSchedule.swift */; };
 		A6A4DA26DB7851E55C5FD4AB /* Prompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 639A491A13FF8587497E61F6 /* Prompt.swift */; };
 		A6B58F3FA70121AD723DDD2F /* SprintOneAcceptanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA55CF8ED18E633B1BA7641D /* SprintOneAcceptanceTests.swift */; };
+		B03F12382BCDE671FC311393 /* PlusServiceStub.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DAC59109DF28A97DAFFB930 /* PlusServiceStub.swift */; };
 		B49E16927005481148A7A268 /* AppSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FC6B634A94D9465889CF78A /* AppSession.swift */; };
 		B70AE6966EC93EBAFFCA9E90 /* ServerEnforcementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81353112C05E6C702EA287A9 /* ServerEnforcementTests.swift */; };
 		B955882AD90B530A1F4884BC /* NotificationSchedulingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 987ADC1BB3568BCE7E13BFF2 /* NotificationSchedulingTests.swift */; };
@@ -134,6 +135,7 @@
 		3645C8780FA0C4B10EE97874 /* PlusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlusView.swift; sourceTree = "<group>"; };
 		3CA8021DB506252DEFE89769 /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineView.swift; sourceTree = "<group>"; };
 		3D7B89F21052B27C69BDEDD0 /* PersistedStateMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistedStateMigrationTests.swift; sourceTree = "<group>"; };
+		3DAC59109DF28A97DAFFB930 /* PlusServiceStub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlusServiceStub.swift; sourceTree = "<group>"; };
 		3F6AF357DF3C7CDA1253ECCA /* ReportBlockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportBlockTests.swift; sourceTree = "<group>"; };
 		47CB3567D6C9642C24FCD82B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		49EFBF8C810B96F9ABB80FE0 /* SafetyLogRetentionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafetyLogRetentionTests.swift; sourceTree = "<group>"; };
@@ -352,6 +354,7 @@
 				06E8F590B650D45203AF74CF /* NicknameTransliteratorTests.swift */,
 				987ADC1BB3568BCE7E13BFF2 /* NotificationSchedulingTests.swift */,
 				3D7B89F21052B27C69BDEDD0 /* PersistedStateMigrationTests.swift */,
+				3DAC59109DF28A97DAFFB930 /* PlusServiceStub.swift */,
 				EC7BA0D518C31E9B387F1F27 /* PlusServiceTests.swift */,
 				10D321C889FD0F796FD6CA86 /* ProfileAndAccountTests.swift */,
 				ADEB3D54643B325E956EF333 /* PromptGenerationTests.swift */,
@@ -612,6 +615,7 @@
 				508BC812A435BA6A1FB749D4 /* NicknameTransliteratorTests.swift in Sources */,
 				B955882AD90B530A1F4884BC /* NotificationSchedulingTests.swift in Sources */,
 				4C03BD6C9ED14B2EA686CF9B /* PersistedStateMigrationTests.swift in Sources */,
+				B03F12382BCDE671FC311393 /* PlusServiceStub.swift in Sources */,
 				0A537CC3F21F60A6C60C9A9F /* PlusServiceTests.swift in Sources */,
 				00B3FB699ADE8EAEC803A4A0 /* ProfileAndAccountTests.swift in Sources */,
 				8B130B002A814C4654D91115 /* PromptGenerationTests.swift in Sources */,

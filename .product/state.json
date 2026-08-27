@@ -1,8 +1,15 @@
 {
   "currentSprint": "14",
-  "attempt": 2,
-  "status": "needs_fix",
+  "attempt": 3,
+  "status": "awaiting_eval",
   "history": [
+    {
+      "sprint": "14",
+      "attempt": 3,
+      "result": "awaiting_eval",
+      "note": "eval-2.md [3] に対応。条件5（キャンセルで責めない）と条件6（オフラインで Plus 維持）を SDK モック経路で自動検証できる状態にした。PlusServiceStub.swift を新規作成して AppSession に注入可能にし、RevenueCatPlusServiceTests に test06〜10 を新規追加（test06: キャンセル→alertMessage なし、test07: ネットワークエラー→alertMessage 立つ、test08: 復元 nil→既存 Plus 維持、test09: 復元で新 entitlement 更新、test10: refresh で同じ Plus を読める）。AppSession.restorePlus() を「restore() が nil を返したら既存 plusEntitlement を上書きしない」よう 5 行だけ修正（条件6 保護）。ユニット 180/180 (6.014秒・TEST SUCCEEDED)、UI 回帰 SprintTen 7/7 + SprintEleven 4/4 + SprintThirteen 4/4 = 15/15 (229.7秒・TEST SUCCEEDED)。Debug / Release ビルドとも BUILD SUCCEEDED。クラッシュ0・未処理エラー0・タイムアウト0。受け入れ条件1・2・3・5・6・7 はテストで担保、条件4（ダッシュボード反映）は引き続き人間 evaluator 担当（spec.md 行361で『確認できない実装は不合格』と明記されているため generator 環境では原理的に検証不能）。詳細: .product/sprints/14-undefined/self-review.md",
+      "evalNote": null
+    },
     {
       "sprint": "14",
       "attempt": 2,

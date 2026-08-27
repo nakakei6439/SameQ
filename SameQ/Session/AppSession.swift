@@ -334,12 +334,22 @@ final class AppSession {
     }
 
     /// 購入復元を実行する（F31）。Sandbox 購入の検証用でもある。
+    ///
+    /// **attempt 3（eval-2.md [3] への対応・条件6 保護）**: `restore()` が
+    /// `nil` を返したときは既存の `plusEntitlement` を上書きしない。オフラインで
+    /// 偶発的に `nil` が返った場合でも、すでに Plus だったユーザーが無料状態に
+    /// 転落しないための保護（受け入れ条件6「通信できない状態で起動しても、すでに
+    /// Plus のユーザーが無料状態に転落せず」）。逆に、エンタイトルメント情報が
+    /// 得られた（`non-nil` だった）場合は最新の値で置き換える（購読期間更新を反映）。
     @discardableResult
     func restorePlus() async -> Bool {
         guard let plusService else { return false }
         do {
             let entitlement = try await plusService.restore()
-            plusEntitlement = entitlement
+            if let entitlement {
+                plusEntitlement = entitlement
+            }
+            // `nil` のときは plusEntitlement を更新しない（既存の Plus 状態を温存）。
             return entitlement != nil
         } catch let error as PlusPurchaseError {
             alertMessage = error.errorDescription
