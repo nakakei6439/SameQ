@@ -108,6 +108,31 @@ print(next_sprint)
 "
 }
 
+skip_blocked_sprint() {
+  # blocked（3-strike）になったスプリントを history に記録した上で次のスプリントへ進める。
+  # ユーザー方針（2026-08-28）: 人間の判断待ちで完全に止まるより、進められる分は進める。
+  local current="$1" attempt_num="$2"
+  python3 -c "
+import json
+with open('$STATE_FILE') as f:
+    d = json.load(f)
+current = int(d['currentSprint'])
+next_sprint = f'{current + 1:02d}'
+d['history'].append({
+    'sprint': d['currentSprint'],
+    'attempt': int(d['attempt']),
+    'result': 'skipped_blocked',
+    'note': 'autoloop: blocked（3-strike）のため自動スキップ。ユーザー方針により人間判断待ちで止めず次のスプリントへ進めた。このスプリントは後で人間が個別に再開する必要がある。詳細は .product/sprints/ 配下の self-review.md を参照。'
+})
+d['currentSprint'] = next_sprint
+d['attempt'] = 1
+d['status'] = 'in_progress'
+with open('$STATE_FILE', 'w') as f:
+    json.dump(d, f, ensure_ascii=False, indent=2)
+print(next_sprint)
+"
+}
+
 if [ ! -f "$STATE_FILE" ]; then
   log "エラー: $STATE_FILE が見つかりません。停止します。"
   exit 1
@@ -127,9 +152,15 @@ while [ "$iteration" -lt "$MAX_ITERATIONS" ]; do
 
   case "$status" in
     blocked)
-      log "generator が blocked 状態です（同じ指摘で複数回失敗）。人間の判断が必要なため停止します。"
-      commit_if_changed "autoloop: SAFETY-NET commit before exit 2 (blocked, sprint=${current_sprint}, attempt=${attempt})"
-      exit 2
+      if [ "$current_sprint" = "$LAST_SPRINT" ]; then
+        log "generator が blocked 状態です（同じ指摘で複数回失敗）。スプリント $LAST_SPRINT は最終スプリントのため、これ以上進められません。人間の判断が必要なため停止します。"
+        commit_if_changed "autoloop: SAFETY-NET commit before exit 2 (blocked, sprint=${current_sprint}, attempt=${attempt})"
+        exit 2
+      fi
+      log "generator が blocked 状態です（同じ指摘で複数回失敗、人間の判断が必要）。ユーザー方針により停止せず、次のスプリントへ自動スキップします。"
+      next=$(skip_blocked_sprint "$current_sprint" "$attempt")
+      log "スプリント $current_sprint は blocked のままスキップ。次のスプリント $next へ進みます。"
+      commit_if_changed "autoloop: skip blocked sprint $current_sprint, advance to $next"
       ;;
 
     passed)
