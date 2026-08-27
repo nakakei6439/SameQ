@@ -1,7 +1,7 @@
 {
   "currentSprint": "13",
   "attempt": 4,
-  "status": "awaiting_eval",
+  "status": "passed",
   "history": [
     {
       "sprint": "12",
@@ -441,6 +441,12 @@
       "result": "awaiting_eval",
       "note": "eval-4.md [1] に対応。修正案・選択肢A に従い、app_purge_expired_safety_logs() を削除ロジック直書きの独立 SECURITY DEFINER 関数として再定義。attempt 3 で導入した purge_expired_safety_logs(int) 冒頭の auth.uid() != null → 42501 ガードが、ラッパ経由でも SECURITY DEFINER 内では auth.uid() が呼び出し元 JWT の sub を返すため必ず発火していた問題を解消。新規 migration 9 (20260827000009_app_purge_inline.sql) で: (a) app_purge_expired_safety_logs() を language plpgsql で作り直し、auth.uid() ガードも p_retention_seconds ガードも持たず、purge_expired_safety_logs(int) も呼ばない 30 日固定版に再定義、(b) grant execute on function app_purge_expired_safety_logs() to authenticated, anon を明示再付与、(c) purge_expired_safety_logs(int) は service_role 専用ガード付きで温存、コメントで service_role 経由の短保持観測手順 (curl + service_role キー) を明文化。eval-4.md 改善提案3 を反映し pg_cron スケジュールを別ファイル migration 10 (20260827000010_pg_cron_schedule.sql) に分離。アプリ側コード変更ゼロ (Backend プロトコルも SupabaseBackend 実装も無編集)。テスト結果: ユニット 170/170 (5.818秒・TEST SUCCEEDED、無変更)、UI SprintThirteen 4/4 + SprintTwelve 3/3 + SprintEleven 4/4 = 11/11 (144.9秒・TEST SUCCEEDED、無変更)。クラッシュ0・未処理エラー0・タイムアウト0。Release ビルド未確認 (Debug test BUILD SUCCEEDED)。実機 2 台での e2e (条件1・2・5・7) は引き続き evaluator 担当 (migration 9, 10 の supabase db push は generator で不可)。条件6 の 2 時点観測には service_role キー (Settings → API から取得) が必要で、self-review.md の『評価者への申し送り 3』に取得 URL と curl 手順を明記。詳細: .product/sprints/13-server-enforcement/self-review.md (attempt 4)",
       "evalNote": null
+    },
+    {
+      "sprint": "13",
+      "attempt": 4,
+      "result": "passed",
+      "note": "evaluator: 本番 Supabase(loqumzfgnahtclnvnrzb) に migration 9/10 を db push --linked --password で適用し、匿名2アカウントの実E2E + DB直結(SUPABASE_DB_PASSWORD)で検証。eval-2〜4 の唯一の決定的ブロッカー条件6 が解消: app_purge_expired_safety_logs() の本番定義が削除ロジック直書きの language plpgsql SECURITY DEFINER になり、認証ユーザートークン(アプリ起動時経路)で HTTP 200(attempt3 まで 403/42501)。reports に created_at=now()-31日 と now() の2行を用意し、呼び出し後 31日前行のみ削除・当日行は残存を DB直読で2時点観測。purge_expired_safety_logs(60) は認証/anon から 403 のまま(F34 の穴は塞がったまま)。条件1(consume_rate_limit 0/0/0/60/60/60・rate_limit_events 3行永続・再呼び出しでロック継続)、条件3(B を banned にすると A の world_timeline から B の投稿が消え、active 復帰で再出現)、条件4(viewed_posts 201 + my_viewed_posts RPC + DB行)、条件7(A delete_my_account 204 → B の world_timeline から A の投稿消滅・再読込でも0・users/posts が cascade 削除)も本番E2Eで観測。条件2 はサーバ側(自己PATCH banned 403 RLS・banned の自己 active 復帰0行・banned の投稿 403)を観測、端末の .banned 画面遷移のみ未観測。条件5 は current_server_time() 稼働と promptState()/serverNowOffset 配線をコードで確認、端末時計ずらしのUI観測は未達。回帰: ユニット170/170・SprintThirteen 4/4・SprintTwelve 3/3・SprintEleven 4/4・SprintFive 7/7・SprintThree 7/7 すべて TEST SUCCEEDED。クラッシュ0・未処理例外0。使用性4(BAN用アプリ内画面の追加なし=差分は Backend/Session のみ)。評価データは全削除しベースライン(users119/posts71/reports0/rate_limit_events0)へ復帰。migration 9/10 は本番恒久適用。ユーザーへ: 条件2(端末の .banned 画面)・条件5(端末時計ずらし)・条件1(アプリ削除&再インストール越し)の 2台実機 UI E2E は F35 出荷前に別途通すことを推奨(sprint12 eval-10 と同じ運用)。詳細: .product/sprints/13-server-enforcement/eval-5.md"
     }
   ]
 }
