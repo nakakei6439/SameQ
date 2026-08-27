@@ -8,10 +8,13 @@
 # 停止: pkill -f autoloop.sh
 #
 # 安全装置:
-#   - 各 claude 呼び出しに timeout 7200s（2時間）
+#   - 各 claude 呼び出しに timeout 14400s（4時間）。タイムアウトによるkillと
+#     本物のクラッシュは sentinel ファイル（.timeout_fired）で区別してログに記録する。
 #   - 反復回数の上限 MAX_ITERATIONS
 #   - status が期待通り遷移しなかったら異常終了
 #   - blocked / 全スプリント完了で正常終了
+#   - どの異常終了パスでも、抜ける前に必ず commit_if_changed を呼び、未コミットの
+#     作業がluckに依存して残る状態を作らない（2026-08-27 sprint12 タイムアウト事故の教訓）
 
 set -uo pipefail
 
@@ -21,7 +24,8 @@ LOGDIR="$REPO_DIR/.product/autoloop-logs"
 LOCK_FILE="$REPO_DIR/.product/autoloop.lock"
 MAX_ITERATIONS="${MAX_ITERATIONS:-60}"
 LAST_SPRINT="11"
-TIMEOUT_SECONDS=10800
+TIMEOUT_SECONDS=14400
+TIMEOUT_SENTINEL="$LOGDIR/.timeout_fired"
 
 mkdir -p "$LOGDIR"
 cd "$REPO_DIR" || { echo "リポジトリに移動できません: $REPO_DIR"; exit 1; }
@@ -56,12 +60,16 @@ print(d.get('$1', ''))
 with_timeout() {
   # macOS 標準には GNU の timeout コマンドが無いため、bash だけで実装する。
   # $1: タイムアウト秒数。残りの引数がコマンド。
+  # タイムアウトで実際にkillした場合は $TIMEOUT_SENTINEL を作成し、
+  # 呼び出し側が「クラッシュ」ではなく「タイムアウト」だと判別できるようにする。
   local secs="$1"; shift
+  rm -f "$TIMEOUT_SENTINEL"
   "$@" &
   local pid=$!
   (
     sleep "$secs"
     if kill -0 "$pid" 2>/dev/null; then
+      touch "$TIMEOUT_SENTINEL"
       kill -TERM "$pid" 2>/dev/null
       sleep 5
       kill -KILL "$pid" 2>/dev/null
@@ -120,6 +128,7 @@ while [ "$iteration" -lt "$MAX_ITERATIONS" ]; do
   case "$status" in
     blocked)
       log "generator が blocked 状態です（同じ指摘で複数回失敗）。人間の判断が必要なため停止します。"
+      commit_if_changed "autoloop: SAFETY-NET commit before exit 2 (blocked, sprint=${current_sprint}, attempt=${attempt})"
       exit 2
       ;;
 
@@ -135,7 +144,7 @@ while [ "$iteration" -lt "$MAX_ITERATIONS" ]; do
 
     in_progress | needs_fix)
       log "generator を起動します（sprint=${current_sprint}）..."
-      with_timeout "$TIMEOUT_SECONDS" env -u ANTHROPIC_API_KEY -u CLAUDE_CODE_AUTH_TOKEN \
+      with_timeout "$TIMEOUT_SECONDS" stdbuf -oL -eL env -u ANTHROPIC_API_KEY -u CLAUDE_CODE_AUTH_TOKEN \
         ANTHROPIC_BASE_URL='https://api.minimax.io/anthropic' \
         ANTHROPIC_AUTH_TOKEN="$MINIMAX_API_KEY" \
         ANTHROPIC_MODEL="MiniMax-M3 [im]" \
@@ -147,11 +156,17 @@ while [ "$iteration" -lt "$MAX_ITERATIONS" ]; do
 
       new_status=$(read_state status)
       if [ "$gen_exit" -ne 0 ]; then
-        log "generator の実行がエラー終了しました（exit=${gen_exit}）。停止します。ログを確認してください。"
+        if [ -f "$TIMEOUT_SENTINEL" ]; then
+          log "generator の実行がタイムアウト（${TIMEOUT_SECONDS}秒）でSIGTERMされました（exit=${gen_exit}）。クラッシュではなくタイムアウトです。停止します。"
+        else
+          log "generator の実行がエラー終了しました（exit=${gen_exit}）。停止します。ログを確認してください。"
+        fi
+        commit_if_changed "autoloop: SAFETY-NET commit before exit 3 (gen_exit=${gen_exit}, sprint=${current_sprint}, attempt=${attempt})"
         exit 3
       fi
       if [ "$new_status" != "awaiting_eval" ]; then
         log "generator 実行後も status が awaiting_eval になりませんでした（現在: ${new_status}）。想定外のため停止します。"
+        commit_if_changed "autoloop: SAFETY-NET commit before exit 4 (sprint=${current_sprint}, attempt=${attempt})"
         exit 4
       fi
       log "generator 完了。status=$new_status"
@@ -160,7 +175,7 @@ while [ "$iteration" -lt "$MAX_ITERATIONS" ]; do
 
     awaiting_eval)
       log "evaluator を起動します（sprint=${current_sprint}）..."
-      with_timeout "$TIMEOUT_SECONDS" claude --agent evaluator -p \
+      with_timeout "$TIMEOUT_SECONDS" stdbuf -oL -eL claude --agent evaluator -p \
         "PROGRESS.md と .product/state.json を読んで、現在のスプリントを実際に動かして評価してください。重要: これは非対話・一回きりの実行です。バックグラウンドでテストを実行して「後で報告します」という形で終わらせることはできません（このプロセスはこのターンが終われば消え、フォローアップは一切発生しません）。フルテストスイートやビルドがどれだけ時間がかかっても、必ず全て完了させてから、このターン内で合否判定・eval-N.mdの作成・state.jsonのstatus更新まで完結させてください。" \
         --permission-mode bypassPermissions \
         --output-format text >> "$LOGDIR/evaluator_$(date +%Y%m%d_%H%M%S).log" 2>&1
@@ -168,11 +183,17 @@ while [ "$iteration" -lt "$MAX_ITERATIONS" ]; do
 
       new_status=$(read_state status)
       if [ "$eval_exit" -ne 0 ]; then
-        log "evaluator の実行がエラー終了しました（exit=${eval_exit}）。停止します。ログを確認してください。"
+        if [ -f "$TIMEOUT_SENTINEL" ]; then
+          log "evaluator の実行がタイムアウト（${TIMEOUT_SECONDS}秒）でSIGTERMされました（exit=${eval_exit}）。クラッシュではなくタイムアウトです。停止します。"
+        else
+          log "evaluator の実行がエラー終了しました（exit=${eval_exit}）。停止します。ログを確認してください。"
+        fi
+        commit_if_changed "autoloop: SAFETY-NET commit before exit 5 (eval_exit=${eval_exit}, sprint=${current_sprint}, attempt=${attempt})"
         exit 5
       fi
       if [ "$new_status" != "passed" ] && [ "$new_status" != "needs_fix" ] && [ "$new_status" != "blocked" ]; then
         log "evaluator 実行後も status が passed/needs_fix/blocked になりませんでした（現在: ${new_status}）。想定外のため停止します。"
+        commit_if_changed "autoloop: SAFETY-NET commit before exit 6 (sprint=${current_sprint}, attempt=${attempt})"
         exit 6
       fi
       log "evaluator 完了。status=$new_status"

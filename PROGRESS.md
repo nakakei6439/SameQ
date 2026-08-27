@@ -48,6 +48,14 @@ pkill -f autoloop.sh
 詳細は `scripts/autoloop.sh` 内のコメントを参照。**初回は少数回だけ様子見で走らせ、`state.json` の
 遷移とログが期待通りか確認してから本格的な夜間実行に委ねること。**
 
+**⚠️ autoloop.sh 実行中は、このディレクトリで別セッション（スクリーンショット撮影・手動デバッグ等）を
+同時に開かないこと。** 理由: (1) 未コミットの変更が混ざり generator/evaluator の diff が汚染される、
+(2) 同じシミュレータに対して同時に `xcodebuild test` を実行すると両方が不安定化・遅延する
+（2026-08-27 の sprint12 タイムアウトインシデントで実際に発生し、作業ツリーへの他セッション由来
+ファイルの混入も確認された）。手動作業をしたい場合は `git worktree add ../SameQ-adhoc <branch>` で
+別ディレクトリに作業ツリーを作ってそちらで行い、シミュレータも autoloop 既定（"iPhone 17"）とは
+別の名前・destinationを使うこと。
+
 **2026-08-24時点の申し送り**: スプリント06 attempt 7 完了・evaluator 引き渡し待ち（詳細下記・[`self-review.md`](.product/sprints/06-translation/self-review.md) の「attempt 7」）。eval-6.mdの指摘[1]（`lastPrepareAttemptAt` がプロセス内メモリのみでアプリ再起動をまたがない）に対応し、`PersistedState`（`state.json`、schemaVersion 4→5）へ永続化した。ユニット77件・シミュレータUI35件・実機のSprintSixAcceptanceTests 4件すべて成功。実機で一時テストを使いeval-6.mdの再現手順そのものを確認し、修正前67.41秒→修正後2.83秒への改善を直接確認済み（詳細は下記「スプリント06 attempt 7」節）。
 - スプリント06は既に6回不合格になっている（attempt 1〜6、詳細は下の該当節）。同じ轍を踏まないよう、各attemptの不合格理由には必ず目を通すこと
 - 実機で`SprintSixAcceptanceTests.test04`が32件中30件しか既読にならず一度失敗したが、attempt 7の変更を`git stash`で完全に除去したbaseline（`92bc0f2`）でも同じく30/32で失敗することを確認済み。**attempt 7の変更とは無関係の既存の脆さ**なので今回は手を加えていない（次スプリントの材料として持ち越し）

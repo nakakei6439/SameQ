@@ -102,28 +102,25 @@ xcodebuild test -project SameQ.xcodeproj -scheme SameQ \
 
 ## 自分で見つけた弱点
 
-### 1. Supabase DB に現状データが無い（重要・ユーザー側追加対応が必要）
+### 1. （訂正・2026-08-27コーディネーター確認）データ消失ではなく generator の誤診断だった
 
-attempt 7 の note には「prompt_001向け 22件 posts / 34件 users が投入された」と
-書かれていたが、2026-08-27 06:09 JST 時点で `curl` 実測すると:
+上記「Supabase DB に現状データが無い」は誤り。原因は `prompts` テーブルの実際の RLS ポリシー
+（`supabase/migrations/20260817000002_prompt_lifecycle.sql:32-34`）が
 
+```sql
+create policy prompts_select_active on public.prompts
+    for select to authenticated
+    using (starts_at <= now() and ends_at > now());
 ```
-prompts: 0 件（`prompts` テーブルは RLS で全員が読めるため、0件が真値）
-posts:   0 件（RLS で自分の uid のみ見えるが、新規アカウントの uid では見えない）
-users:   0 件（同様）
-```
 
-`prompts` は RLS が `using (true)` のため「prompts が 0 件 = データ無し」が確定。
-前回投入した 22 件の posts / 34 件の users が現在は 0 件になっている。
+であり、`to authenticated`（認証済みユーザーのみ）限定で `using (true)`（誰でも読める）
+ではなかったこと。generator が未認証の匿名keyでcurlした結果の「0件」を「データ消失」と
+誤って結論づけていた。
 
-**考えられる原因**:
-- (a) ユーザー側で投入後に `prompt_002` のクールダウン待ちのためロールバックされた
-- (b) 別のトランザクションで削除された
-- (c) そもそも投入が成功していなかった
-
-ユーザー側で再投入の確認が必要。generator 側からは `psql` コマンドも無いため
-DB 直接アクセスは不可。dashboard の SQL editor で `select count(*) from prompts`
-等の確認を推奨。
+コーディネーターが (1) `supabase db query --linked` でRLSをバイパスして直接確認
+（prompts:1件・posts:22件・users:34件、すべて健在）、(2) 実際に匿名サインインして
+認証済みJWTでREST APIを叩き `prompt_001` が正しく返ることを確認、の2通りで
+データが一切失われていないことを検証済み。**再投入は不要。**
 
 ### 2. 実機 2 台での F35 条件 1〜5 は未検証
 
