@@ -166,6 +166,17 @@ protocol Backend: Sendable, TranslationAttemptPersisting {
     /// 必要は無い）、`SupabaseBackend` はサーバ RPC を呼ぶ。
     /// 通信失敗時はサーバ側を `"active"` とみなす (fail-open)。
     func currentServerSideStatus() async throws -> String
+
+    // MARK: 安全ログの自動削除（F34/F36・受け入れ条件6）
+
+    /// 期限切れの safety logs（通報記録）を削除する。アプリ起動時に1度だけ
+    /// 呼ぶ（`AppSession.start()`）。pg_cron が無い環境でも「アプリ起動時に
+    /// 自分宛の清掃が走る」状態を作るための保険。返り値は削除件数
+    ///（デバッグログ・テスト用）。
+    /// - `LocalBackend`: 端末内の `state.reports` を保持期間で剪定する。
+    /// - `SupabaseBackend`: サーバ RPC `app_purge_expired_safety_logs()` を呼ぶ。
+    ///   pg_cron が有効なら別途サーバ側のスケジュールで毎日走る。
+    func purgeExpiredSafetyLogs() async throws -> Int
 }
 
 extension Backend {

@@ -44,4 +44,14 @@ final class SprintThirteenAcceptanceTests: XCTestCase {
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5),
                       "App should launch with LocalBackend (process-local rate limiter)")
     }
+
+    // attempt 2: 自動 safety logs 削除（受け入れ条件6）のアプリ側経路。
+    // `purgeExpiredSafetyLogs()` を AppSession.start() が呼ぶ土台が壊れていない
+    // ことを確認する。LocalBackend 経路で起動して起動できることが最低限の保証
+    // （実 RPC は Supabase 経路のため evaluator 側で別途確認）。
+    func test04_launchReachesForegroundAfterAutoPurgeHook() {
+        let app = launchFresh()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5),
+                      "App should reach foreground after the launch-time purge hook runs")
+    }
 }

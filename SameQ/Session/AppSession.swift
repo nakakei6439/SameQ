@@ -218,6 +218,15 @@ final class AppSession {
             screen = .banned
             return
         }
+        // スプリント13 attempt 2 (eval-1.md [4] の修正):
+        //   期限切れ safety logs の自動削除をアプリ起動時にも走らせる。
+        //   pg_cron が無くてもこの経路で自動削除が「実際に動く」ことを示す。
+        //   失敗しても UI を止めない（fail-open・削除できなくても次回起動時に再試行）。
+        if let purged = try? await backend.purgeExpiredSafetyLogs(), purged > 0 {
+            #if DEBUG
+            print("[SameQ] start: purged \(purged) expired safety logs at launch")
+            #endif
+        }
         // Plus のエンタイトルメントを起動直後に読む（F28）。サンドボックス購入は
         // OS 側で永続化されているので、アプリを削除して再インストールしても
         // `currentEntitlement()` 経由で復元される。「購入を復元」ボタンの

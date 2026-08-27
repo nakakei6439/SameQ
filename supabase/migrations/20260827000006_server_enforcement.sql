@@ -86,12 +86,19 @@ security definer
 set search_path = public
 as $$
 declare
-    current_user uuid := auth.uid();
+    -- 予約語 `current_user` (PostgreSQL の組み込み・型 `name`) を避け、
+    -- `v_uid` という名前でローカル変数を宣言する。これがないと `where user_id =
+    -- current_user` / `insert ... values (current_user, ...)` がローカル変数では
+    -- なく組み込みの current_user に束縛され、`uuid = name` の演算子が見つからず
+    -- 毎回 SQLSTATE 42883 で失敗する。
+    -- (sprint13 attempt 2 でこのファイルにも修正を反映。migration 7 でも
+    -- create or replace で同じ定義を再投入する。)
+    v_uid        uuid := auth.uid();
     event_count  int;
     oldest_event timestamptz;
     retry_after  int;
 begin
-    if current_user is null then
+    if v_uid is null then
         -- 未ログインではレート制限は無意味。0 を返して通過させる
         -- (呼び出し側で notSignedIn になるはずだが、二重防御)。
         return 0;
@@ -101,7 +108,7 @@ begin
     select count(*), min(occurred_at)
       into event_count, oldest_event
     from public.rate_limit_events
-    where user_id = current_user
+    where user_id = v_uid
       and action = p_action
       and occurred_at > now() - make_interval(secs => p_window_seconds);
 
@@ -116,7 +123,7 @@ begin
 
     -- 通過。新しいイベントを記録。
     insert into public.rate_limit_events (user_id, action)
-    values (current_user, p_action);
+    values (v_uid, p_action);
 
     return 0;
 end;
@@ -300,19 +307,20 @@ security definer
 set search_path = public, auth
 as $$
 declare
-    current_user uuid := auth.uid();
+    -- 予約語 `current_user` を避け `v_uid` に統一。
+    v_uid uuid := auth.uid();
 begin
-    if current_user is null then
+    if v_uid is null then
         raise exception 'not signed in' using errcode = '28000';
     end if;
 
     -- 念のため posts/likes などもユーザー単位で消すが、外部キー cascade で
     -- auth.users の削除時に自動的に消えるはず。
-    delete from public.users where id = current_user;
+    delete from public.users where id = v_uid;
 
     -- auth.users 側の削除。auth.uid() レコードが消えるとクライアント側のトークンも
     -- 無効になる (次回起動時に再サインアップ)。
-    delete from auth.users where id = current_user;
+    delete from auth.users where id = v_uid;
 end;
 $$;
 

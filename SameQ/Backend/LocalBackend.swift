@@ -529,4 +529,15 @@ actor LocalBackend: Backend {
         let override = LaunchOptions.current.safetyLogRetentionSeconds
         return override > 0 ? override : SafetyLogDefaults.defaultRetentionSeconds
     }
+
+    // MARK: 安全ログの自動削除（F36・受け入れ条件6）
+
+    /// `pruneExpired(at: clock.now)` を呼び、削除された通報の件数を返す。
+    /// `AppSession.start()` から 1 度だけ呼ばれる。
+    func purgeExpiredSafetyLogs() async throws -> Int {
+        let before = state.reports.count
+        pruneExpired(at: clock.now)
+        let after = state.reports.count
+        return max(before - after, 0)
+    }
 }

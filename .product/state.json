@@ -1,7 +1,7 @@
 {
   "currentSprint": "13",
-  "attempt": 1,
-  "status": "needs_fix",
+  "attempt": 2,
+  "status": "awaiting_eval",
   "history": [
     {
       "sprint": "12",
@@ -420,6 +420,12 @@
       "attempt": 1,
       "result": "needs_fix",
       "note": "evaluator: iPhone 17 シミュレータ(iOS26.5) + 本番 Supabase(loqumzfgnahtclnvnrzb, migration 6 を評価者が db push で適用) + 匿名アカウント直叩き(/tmp/sameq_e2e/*.py)。受け入れ7条件中 充足2(条件3 world_timeline の status=active 除外、条件4 viewed_posts + my_viewed_posts)。不合格4基準。決定的ブロッカー: [1] consume_rate_limit と delete_my_account が予約語 current_user をローカル変数に使用 → 実行時 SQLSTATE 42883 'operator does not exist: uuid = name' で毎回 404。条件1・条件7 未達、かつ SupabaseBackend.setLike/reportPost が checkRateLimit の例外を throw するため Supabase 経由のいいね・通報が全滅(スプリント12 条件3 の回帰)。deleteAccount は try? で握り潰しサーバ無反応の無言失敗。[2] users_update_own の USING に status 条件が無く WITH CHECK は status='active' のみ許可 → 停止アカウントが PATCH 1発で自分の BAN を解除可能(条件2 未達)。[3] SupabaseBackend.promptState() が clock.now(端末時計)で prompts を絞る → 時計をずらすと表示お題/残り時間が変わる(条件5 未達、危険側の期限切れ閲覧/未開始投稿はサーバ now() で担保)。[4] purge_expired_safety_logs のロジックは正(ロールバック txn で検証)だが pg_cron 未導入・アプリからの呼び出し無しで自動削除が存在しない(条件6 未達)。ローカルテストは SameQTests 166/166・Sprint13 3/3・Sprint12 3/3・Sprint11 4/4・Sprint5 7/7・Sprint3 7/7 全緑だが全て LocalBackend で RPC 未検証。詳細: .product/sprints/13-server-enforcement/eval-1.md"
+    },
+    {
+      "sprint": "13",
+      "attempt": 2,
+      "result": "awaiting_eval",
+      "note": "eval-1.md の指摘4件＋改善提案1件に対応。[1] consume_rate_limit / delete_my_account のローカル変数を PostgreSQL 予約語 current_user から v_uid に全置換 (migration 6 側も原因 migration として修正を反映、migration 7 を新規追加して create or replace で再投入)。SQLSTATE 42883 を解消し、Supabase 経由の setLike/reportPost が checkRateLimit の throw で連鎖失敗していたスプリント12 の回帰も直す。[2] users_update_own ポリシーを drop → using (id = auth.uid() and status = 'active') で再作成 (banned 行はオーナーから一切 UPDATE 不能)。[3] SupabaseBackend.promptState() のフィルタを clock.now から current_server_time() RPC の結果に切替 (通信失敗時は端末時計へフォールバック)。端末時計を N 時間ずらしても今日のお題 id が同じになる。[4] Backend プロトコルに purgeExpiredSafetyLogs() async throws -> Int を追加し、AppSession.start() の BAN 判定直後で呼ぶ。LocalBackend は pruneExpired(at: clock.now) を実行、SupabaseBackend は app_purge_expired_safety_logs() RPC を呼ぶ (pg_cron 拡張が有効な環境では migration 7 の do $$ ... $$ ブロックで purge-safety-logs-daily を毎日 03:00 UTC にスケジュール登録)。[5] checkRateLimit を async throws -> Int から async -> Int に変更し SupabaseError 系の例外を do/catch で受けて 0 を返す (fail-open 化の完成)。SprintThirteenAcceptanceTests に test04_launchReachesForegroundAfterAutoPurgeHook を追加。テスト結果: ユニット 166/166 (5.93秒・TEST SUCCEEDED)、UI SprintThirteen 4/4 + SprintTwelve 3/3 + SprintEleven 4/4 = 11/11 (141.5秒・TEST EXECUTE SUCCEEDED)。Debug build-for-testing SUCCEEDED、Release build SUCCEEDED。クラッシュ0、未処理エラー0、タイムアウト0。実機 2 台での Supabase 経由 e2e は引き続き evaluator 担当 (generator は migration 7 の supabase db push を実行不可)。詳細: .product/sprints/13-server-enforcement/self-review.md (attempt 2)"
     }
   ]
 }

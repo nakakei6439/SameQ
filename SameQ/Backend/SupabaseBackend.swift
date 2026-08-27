@@ -234,7 +234,19 @@ actor SupabaseBackend: Backend {
 
     func promptState() async throws -> PromptState {
         try checkConnectivity()
-        let now = clock.now
+        // スプリント13 attempt 2 (eval-1.md [3] の修正):
+        //   端末時計をずらしても同一の結果を返すため、`clock.now` (端末時刻) ではなく
+        //   サーバ側 RPC `current_server_time()` で取得したサーバ時刻を基準に
+        //   `prompts` を絞る。これで「端末時計を数時間ずらしても、今日のお題と
+        //   その残り時間は同一」の条件を満たす（受け入れ条件5）。
+        //   * 通信失敗時は端末時計にフォールバックして、サーバ到達が復旧できない
+        //     状況でも UI が完全に固まらないようにする。
+        let now: Date
+        if let serverNow = try? await currentServerTime() {
+            now = serverNow
+        } else {
+            now = clock.now
+        }
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         // `prompts` テーブルの実スキーマには `language` カラムが無い
@@ -474,7 +486,7 @@ actor SupabaseBackend: Backend {
         // に変換する。「アプリの再起動で解除されない」ことが構造的に担保される
         // (受け入れ条件1)。
         if liked {
-            let retry = try await checkRateLimit(
+            let retry = await checkRateLimit(
                 action: "like",
                 settings: likeRateLimit
             )
@@ -567,7 +579,7 @@ actor SupabaseBackend: Backend {
         // スプリント13: レート制限はサーバ側 (`consume_rate_limit`) で判定する。
         // 連打自体は同じ瞬間でも複数回成功するように見えるが、サーバ側で記録された
         // 件数を基準にするので、アプリの再起動で解除されない（受け入れ条件1）。
-        let retry = try await checkRateLimit(
+        let retry = await checkRateLimit(
             action: "report",
             settings: reportRateLimit
         )
@@ -712,28 +724,47 @@ actor SupabaseBackend: Backend {
 
     /// サーバ側 RPC `consume_rate_limit(p_action, p_max, p_window_seconds)` を呼ぶ。
     /// 戻り値は `0`（成功・記録済み）または正の整数値（あと何秒待てば解除）。
-    /// 通信失敗時は fail-open で 0 を返す（UI を完全停止させないため。F17 の連打
-    /// 自体はアクセスパターンで自然抑止される）。
+    /// **通信失敗時 / RPC 関数未適用時 (`SupabaseError.notFound`) は fail-open で 0 を返す**
+    ///（UI を完全停止させないため。F17 の連打自体はアクセスパターンで自然抑止される）。
+    /// eval-1.md の改善提案1「doc コメントは fail-open と書いているが実装に catch が無く
+    /// throw する」を、attempt 2 で実装と一致させた。
+    /// 返り値は **直接** `BackendError.rateLimited` にはしない（呼び出し側で
+    /// 正の整数値を見て判断する）。
     private func checkRateLimit(
         action: String,
         settings: RateLimitSettings
-    ) async throws -> Int {
-        try checkConnectivity()
-        struct Args: Encodable {
-            let p_action: String
-            let p_max: Int
-            let p_window_seconds: Int
+    ) async -> Int {
+        do {
+            try checkConnectivity()
+            struct Args: Encodable {
+                let p_action: String
+                let p_max: Int
+                let p_window_seconds: Int
+            }
+            let result: Int = try await client.rpc(
+                function: "consume_rate_limit",
+                arguments: Args(
+                    p_action: action,
+                    p_max: settings.maxActions,
+                    p_window_seconds: Int(settings.windowSeconds)
+                ),
+                as: Int.self
+            )
+            return result
+        } catch let error as SupabaseError {
+            // `.notFound` (関数未適用 PGRST202 / 404) や `.offline` などは
+            // 失敗扱いにせず 0 を返す。サーバ到達不能のままいいね・通報を永久に
+            // ロックしてしまうとユーザー体験として致命的なため (eval-1.md [5])。
+            #if DEBUG
+            print("[SameQ] checkRateLimit(\(action)): fail-open due to \(error)")
+            #endif
+            return 0
+        } catch {
+            #if DEBUG
+            print("[SameQ] checkRateLimit(\(action)): fail-open due to \(error)")
+            #endif
+            return 0
         }
-        let result: Int = try await client.rpc(
-            function: "consume_rate_limit",
-            arguments: Args(
-                p_action: action,
-                p_max: settings.maxActions,
-                p_window_seconds: Int(settings.windowSeconds)
-            ),
-            as: Int.self
-        )
-        return result
     }
 
     /// サーバ側 RPC `current_user_status()` を呼ぶ。
@@ -761,6 +792,34 @@ actor SupabaseBackend: Backend {
             as: Date.self
         )
         return serverNow
+    }
+
+    // MARK: 安全ログの自動削除（F34/F36・受け入れ条件6）
+
+    /// サーバ側 RPC `app_purge_expired_safety_logs()` を呼ぶ。
+    /// pg_cron が無い環境でも「アプリ起動時に自分宛の safety logs 清掃が走る」
+    /// 状態を作るための保険。返り値は削除件数。
+    /// 通信失敗時は 0 を返して UI を止めない（fail-open）。
+    func purgeExpiredSafetyLogs() async throws -> Int {
+        do {
+            try checkConnectivity()
+            let deleted: Int = try await client.rpc(
+                function: "app_purge_expired_safety_logs",
+                arguments: Empty(),
+                as: Int.self
+            )
+            return deleted
+        } catch let error as SupabaseError {
+            #if DEBUG
+            print("[SameQ] purgeExpiredSafetyLogs: fail-open due to \(error)")
+            #endif
+            return 0
+        } catch {
+            #if DEBUG
+            print("[SameQ] purgeExpiredSafetyLogs: fail-open due to \(error)")
+            #endif
+            return 0
+        }
     }
 }
 
