@@ -1,8 +1,15 @@
 {
   "currentSprint": "12",
   "attempt": 13,
-  "status": "awaiting_eval",
+  "status": "passed",
   "history": [
+    {
+      "sprint": "12",
+      "attempt": 13,
+      "result": "passed",
+      "note": "attempt 13: eval-9 の [1]（RPC 引数名 post_id → target_post の不一致）と [2]（毎秒の誤アラート）に対応。SupabaseBackend.receivedLikeCount の Args を targetPost + CodingKeys で target_post にマップ、AppSession に hasShownReceivedLikesRpcNotFoundAlert 冪等ガードを追加。",
+      "evalNote": "eval-10: 合格。eval-7〜9 の唯一の決定的ブロッカーだった条件3（受信いいね +1）が解消。本番 Supabase 直叩き（/tmp/sameq_eval10.py）で {\"target_post\":<id>} が いいね前 200/0・いいね後 200/1、旧 {\"post_id\":…} は 404 PGRST202 を確認。SprintTwelveEvalE2ETests（アプリ UI で端末A投稿→URLSession別クライアントがいいね→アプリの today.receivedLikes が \"1\" を表示）が緑（16.1s）。eval-9 の毎秒アラートは RPC が 200 化したことで根本消滅（＋冪等ガード）。観測で確認した条件: 1・2・3・4・8 と条件6前半。条件5・6後半・条件7 は 2台実機＋機内モード切替＋期限切れ投稿生成が必要で観測未達だが eval-7〜9 と同じ環境制約であり新規破損なし（world_timeline ビュー定義・各書き込みの alertMessage・SprintTwelveOfflineAcceptanceTests で担保）。回帰: SameQTests 166/166・SprintSix 4/4（翻訳）・SprintNine 7/7・SprintEleven 4/4・SprintTwelve 系 7/7。クラッシュ0・未処理エラー0。使用性4。ユーザーへ: spec.md 評価者注記が求める 2台の物理端末での最終確認は F35 出荷前に別途通すことを推奨。詳細: .product/sprints/12-server-connection/eval-10.md"
+    },
     {
       "sprint": "12",
       "attempt": 10,
