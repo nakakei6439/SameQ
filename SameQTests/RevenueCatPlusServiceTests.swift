@@ -284,4 +284,152 @@ final class RevenueCatPlusServiceTests: XCTestCase {
         XCTAssertTrue(session.isPlus, "再 refresh でも Plus 状態が続く")
         XCTAssertEqual(stub.currentEntitlementCallCount, 2)
     }
+
+    // MARK: - 受け入れ条件6（オフライン起動で Plus が無料に転落しない）— 起動経路の保護
+    //
+    // attempt 4（eval-3.md [3] への対応）: `refreshPlusEntitlement()` にも
+    // `restorePlus()` と同じ nil 保護を入れる。オフラインで `currentEntitlement()`
+    // が nil を返したケースでも、既存 Plus ユーザーが無料状態に転落しないことを
+    // 自動回帰で担保する（条件6 は「通信できない状態で起動しても…」の文面で、
+    // 起動経路こそ条件6 の本丸）。
+
+    /// 既存 Plus がある状態で `currentEntitlement()` が `nil` を返しても、
+    /// `AppSession.refreshPlusEntitlement()` は `plusEntitlement` を上書きしない
+    /// （条件6: 起動経路の保護）。
+    func test11_AppSessionRefreshWithNilDoesNotDropExistingPlus() async {
+        let now = Date()
+        let existingEntitlement = PlusEntitlement(
+            productID: "com.nakakei6439.SameQ.plus.monthly",
+            purchasedAt: now,
+            expiresAt: now.addingTimeInterval(60 * 60 * 24 * 30)
+        )
+        let stub = PlusServiceStub(currentEntitlement: existingEntitlement)
+        let session = PlusServiceTestSession.make(plusService: stub)
+
+        // 1回目: Plus 状態が立ち上がる（オンライン）
+        await session.refreshPlusEntitlement()
+        XCTAssertNotNil(session.plusEntitlement, "1回目の refresh で Plus 状態が入る")
+        XCTAssertTrue(session.isPlus, "isPlus == true")
+        XCTAssertEqual(stub.currentEntitlementCallCount, 1)
+
+        // オフライン状態を再現: currentEntitlement() が nil を返すよう切替
+        stub.currentEntitlementResult = nil
+
+        // 2回目: 起動経路や画面遷移で再 refresh が走る
+        await session.refreshPlusEntitlement()
+        XCTAssertNotNil(
+            session.plusEntitlement,
+            "refreshPlusEntitlement() が nil を返しても既存 plusEntitlement は温存される（条件6: 起動経路の保護）"
+        )
+        XCTAssertTrue(session.isPlus, "オフライン refresh 後も isPlus == true")
+        XCTAssertEqual(
+            session.plusEntitlement?.productID,
+            existingEntitlement.productID,
+            "既存と同じ productID が残っている"
+        )
+        XCTAssertEqual(
+            session.plusEntitlement?.expiresAt,
+            existingEntitlement.expiresAt,
+            "既存の expiresAt が保持されている"
+        )
+        XCTAssertEqual(stub.currentEntitlementCallCount, 2, "2回目の refresh で currentEntitlement() が呼ばれた")
+    }
+
+    /// 既存 Plus がない（未購入）状態で `currentEntitlement()` が `nil` を返すときは
+    /// 従来どおり `plusEntitlement = nil`（変化なし・新規に Plus 状態を作らない）。
+    /// attempt 4 の nil 保護が「未購入ユーザーへの温存」を誤って起こさないことの確認。
+    func test12_AppSessionRefreshWithNilWhenNoExistingPlusKeepsPlusStateNil() async {
+        let stub = PlusServiceStub(currentEntitlement: nil)
+        let session = PlusServiceTestSession.make(plusService: stub)
+
+        await session.refreshPlusEntitlement()
+        XCTAssertNil(
+            session.plusEntitlement,
+            "未購入ユーザーの refresh は nil のまま（新規 Plus 状態を起こさない）"
+        )
+        XCTAssertFalse(session.isPlus, "isPlus == false")
+
+        // もう一度 refresh しても同じ
+        await session.refreshPlusEntitlement()
+        XCTAssertNil(session.plusEntitlement, "2回目も nil のまま")
+    }
+
+    /// 既存 Plus があるが購読期間外（期限切れ）の状態で `currentEntitlement()` が
+    /// `nil` を返すときは `plusEntitlement = nil` に置き換える（もう Plus では無いので）。
+    /// attempt 4 の nil 保護が「期限切れまで温存する」誤動作をしないことの確認。
+    func test13_AppSessionRefreshWithNilWhenExistingIsExpiredClearsPlusState() async {
+        let now = Date()
+        // 既に期限切れの entitlement を直接 `plusEntitlement` に入れる経路は無いので、
+        // まず `currentEntitlement()` が valid な値を返す状態 → refresh で入る →
+        // 期限切れの entitlement に差し替え → 再 refresh で nil、という手順を取る。
+        let validEntitlement = PlusEntitlement(
+            productID: "com.nakakei6439.SameQ.plus.monthly",
+            purchasedAt: now,
+            expiresAt: now.addingTimeInterval(60 * 60 * 24 * 30)
+        )
+        let expiredEntitlement = PlusEntitlement(
+            productID: "com.nakakei6439.SameQ.plus.monthly",
+            purchasedAt: now.addingTimeInterval(-60 * 60 * 24 * 60),
+            expiresAt: now.addingTimeInterval(-60 * 60 * 24 * 1)
+        )
+        let stub = PlusServiceStub(currentEntitlement: validEntitlement)
+        let session = PlusServiceTestSession.make(plusService: stub)
+
+        // 1回目: valid な entitlement が入る
+        await session.refreshPlusEntitlement()
+        XCTAssertTrue(session.isPlus, "valid な entitlement で Plus 状態")
+
+        // 購読期間外に。手動で期限切れ entitlement に差し替え（テスト用強制操作）
+        // → ※ plusEntitlement は private(set) なのでテストでは直接書き換え不可。
+        // 代わりに currentEntitlement() を「期限切れ」を返すよう切替 + nil 化で挙動を確かめる。
+        stub.currentEntitlementResult = expiredEntitlement
+        await session.refreshPlusEntitlement()
+        XCTAssertEqual(
+            session.plusEntitlement?.expiresAt,
+            expiredEntitlement.expiresAt,
+            "currentEntitlement() が non-nil（期限切れ）を返すときは従来どおり置き換える"
+        )
+        XCTAssertFalse(session.isPlus, "期限切れなので isPlus == false")
+
+        // さらにオフライン化（currentEntitlement() が nil）→ 期限切れ値が残っているので
+        // attempt 4 の nil 保護は効かず nil に置き換えられるはず
+        stub.currentEntitlementResult = nil
+        await session.refreshPlusEntitlement()
+        XCTAssertNil(
+            session.plusEntitlement,
+            "既存が期限切れのとき refresh で nil を受ければ plusEntitlement は nil に戻る（保護は isActive 限定）"
+        )
+        XCTAssertFalse(session.isPlus, "期限切れ + nil refresh で isPlus == false")
+    }
+
+    /// 既存 Plus がある状態で `currentEntitlement()` が新しい（`non-nil`）値を返す
+    /// ときは従来どおり最新の値で置き換える（購読期間更新を反映）。attempt 4 の
+    /// nil 保護が `non-nil` の更新を邪魔していないことの確認。
+    func test14_AppSessionRefreshWithNewEntitlementUpdatesPlusState() async {
+        let now = Date()
+        let oldEntitlement = PlusEntitlement(
+            productID: "com.nakakei6439.SameQ.plus.monthly",
+            purchasedAt: now,
+            expiresAt: now.addingTimeInterval(60 * 60 * 24 * 15)
+        )
+        let newEntitlement = PlusEntitlement(
+            productID: "com.nakakei6439.SameQ.plus.monthly",
+            purchasedAt: now,
+            expiresAt: now.addingTimeInterval(60 * 60 * 24 * 45)
+        )
+        let stub = PlusServiceStub(currentEntitlement: oldEntitlement)
+        let session = PlusServiceTestSession.make(plusService: stub)
+
+        await session.refreshPlusEntitlement()
+        XCTAssertEqual(session.plusEntitlement?.expiresAt, oldEntitlement.expiresAt)
+
+        // currentEntitlement() が新しい entitlement を返すよう切替
+        stub.currentEntitlementResult = newEntitlement
+        await session.refreshPlusEntitlement()
+        XCTAssertEqual(
+            session.plusEntitlement?.expiresAt,
+            newEntitlement.expiresAt,
+            "currentEntitlement() が non-nil の新しい値を返せば plusEntitlement は更新される"
+        )
+    }
 }

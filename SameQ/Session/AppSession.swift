@@ -290,6 +290,15 @@ final class AppSession {
     /// Plus の現在のエンタイトルメントを `plusService` から取り直して `plusEntitlement` に
     /// 反映する（F28 / F31）。「購入を復元」の直後、購入直後、`PlusView` を開いた
     /// タイミングで呼ぶ。
+    ///
+    /// **attempt 4（eval-3.md [3] への対応・条件6 保護）**: 起動経路や `PlusView` を開く
+    /// タイミングで呼ばれる `currentEntitlement()` が `nil` を返したとき、既存
+    /// `plusEntitlement` が購読期間内（`isActive(at: clock.now)`）であれば上書きしない。
+    /// オフライン + SDK キャッシュ喪失で `nil` が返る状況でも、すでに Plus だった
+    /// ユーザーが無料状態に転落しないための保護（受け入れ条件6「通信できない状態で
+    /// 起動しても、すでに Plus のユーザーが無料状態に転落せず」）。逆に、エンタイトルメント
+    /// 情報が得られた（`non-nil` だった）場合は最新の値で置き換える（購読期間更新を反映）。
+    /// `plusService` が `nil` のときは Plus 機能が無いときなので従来どおり `nil` を入れる。
     @discardableResult
     func refreshPlusEntitlement() async -> PlusEntitlement? {
         guard let plusService else {
@@ -297,8 +306,19 @@ final class AppSession {
             return nil
         }
         let entitlement = await plusService.currentEntitlement()
-        plusEntitlement = entitlement
-        return entitlement
+        if let entitlement {
+            // 取得できた: 最新の値で置き換える（購読期間更新・サブスク状態の変化を反映）。
+            plusEntitlement = entitlement
+        } else if let existing = plusEntitlement, existing.isActive(at: clock.now) {
+            // 取得できなかった（オフライン等で SDK キャッシュが空）が既存 Plus は生きている:
+            // 上書きしない（受け入れ条件6 保護）。 `isActive` が false の既存値（=期限切れ）は
+            // `nil` で置き換えて良い（もう Plus では無いので）。
+            return existing
+        } else {
+            // 取得できず、既存も無い or 期限切れ: `nil` で置き換える。
+            plusEntitlement = nil
+        }
+        return plusEntitlement
     }
 
     /// Plus 画面の表示中に SKU 一覧を取り直す（F28）。初回ロード・復元後に呼ぶ。

@@ -1,8 +1,15 @@
 {
   "currentSprint": "14",
-  "attempt": 3,
-  "status": "needs_fix",
+  "attempt": 4,
+  "status": "awaiting_eval",
   "history": [
+    {
+      "sprint": "14",
+      "attempt": 4,
+      "result": "awaiting_eval",
+      "note": "eval-3 [3] に対応。AppSession.refreshPlusEntitlement() に nil 保護を追加: currentEntitlement() が nil を返し既存 plusEntitlement が isActive(at: clock.now) なら上書きしない（条件6 起動経路の保護）。PlusServiceTestSession 経由で PlusServiceStub を動かし、test11: refresh に nil を渡しても既存 Plus が落ちない（主軸）/ test12: 未購入ユーザーが nil を受けても新規 Plus 状態を起こさない / test13: 期限切れは温存せず nil に戻る（保護は isActive 限定）/ test14: non-nil の新しい entitlement は従来どおり更新される、の 4 本を新規追加。ユニット 184/184 (6.066秒・TEST SUCCEEDED)、UI 回帰 SprintTen 7/7 + SprintEleven 4/4 + SprintThirteen 4/4 = 15/15 (229.2秒・TEST SUCCEEDED)。Debug / Release ビルドとも BUILD SUCCEEDED。クラッシュ0・未処理エラー0・タイムアウト0。受け入れ条件1・5・6・7 はテストで担保、条件4（ダッシュボード反映）は引き続き人間 evaluator 担当、条件2・3 は sandbox 購入が dashboard 商品未登録で実機不可、原因[2]（dashboard 商品未登録）も未解消。eval-2/eval-3 と同指摘がこれで3回連続。3-strike rule の観点では [3] は今回で潰したため autoloop 継続可能だが、[1][2] の解消はユーザー側作業必須。詳細: .product/sprints/14-undefined/self-review.md",
+      "evalNote": null
+    },
     {
       "sprint": "14",
       "attempt": 3,
