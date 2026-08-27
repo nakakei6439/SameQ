@@ -1,14 +1,21 @@
 {
   "currentSprint": "14",
   "attempt": 4,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "14",
       "attempt": 4,
-      "result": "awaiting_eval",
+      "result": "needs_fix",
+      "note": "evaluator eval-4",
+      "evalNote": "eval-4: 不合格。基準1（受け入れ条件）が100%未達。観測で確認できたのは条件7（SprintTen 7/7）と条件1の\"見た目・導線が同一\"部分（PlusView/PlusDecorationPicker はスプリント14で無変更）のみ。条件5・6 はモック/ユニットテスト（PlusServiceStub 経由 test06〜14 緑）で担保、実SDK経路は未観測。generator が対応した eval-3 [3]（起動経路 refreshPlusEntitlement の nil 保護）は git diff とtest11で解消を確認——コード側のやり残しは無い。だが条件1（価格一致）・2・3・4 は autoloop 環境で検証不能: 実機/Sandbox Apple ID なし、.storekit 構成なし、app.revenuecat.com 認証手段なし、.env.local は公開キー(appl_)のみで secret key なし。spec 行361 は条件4 を\"この確認ができない実装は不合格とする\"と明記。既定 RevenueCat 経路は毎起動 ERROR: Error fetching offerings（ダッシュボードに商品未登録）——この状態では実機購入でも plus エンタイトルメントが付与されず条件1・2・3 も失敗見込み。回帰は良好: ユニット184/184、UI SprintTen 7/7・SprintEleven 4/4・SprintThirteen 4/4、クラッシュ0、新規クラッシュレポート0。使用性3。eval-2/eval-3/前回eval-4 と同じ差し戻しが4回連続。ユーザー作業が必須（(a)App Store Connect + RevenueCat ダッシュボードに商品登録し手動実機検証＋ダッシュボード目視の運用へ / (b)secret key + .storekit 追加 / (c)条件4 を自動検証可能な形へ緩和）。詳細: .product/sprints/14-undefined/eval-4.md"
+    },
+    {
+      "sprint": "14",
+      "attempt": 4,
+      "result": "needs_fix",
       "note": "eval-3 [3] に対応。AppSession.refreshPlusEntitlement() に nil 保護を追加: currentEntitlement() が nil を返し既存 plusEntitlement が isActive(at: clock.now) なら上書きしない（条件6 起動経路の保護）。PlusServiceTestSession 経由で PlusServiceStub を動かし、test11: refresh に nil を渡しても既存 Plus が落ちない（主軸）/ test12: 未購入ユーザーが nil を受けても新規 Plus 状態を起こさない / test13: 期限切れは温存せず nil に戻る（保護は isActive 限定）/ test14: non-nil の新しい entitlement は従来どおり更新される、の 4 本を新規追加。ユニット 184/184 (6.066秒・TEST SUCCEEDED)、UI 回帰 SprintTen 7/7 + SprintEleven 4/4 + SprintThirteen 4/4 = 15/15 (229.2秒・TEST SUCCEEDED)。Debug / Release ビルドとも BUILD SUCCEEDED。クラッシュ0・未処理エラー0・タイムアウト0。受け入れ条件1・5・6・7 はテストで担保、条件4（ダッシュボード反映）は引き続き人間 evaluator 担当、条件2・3 は sandbox 購入が dashboard 商品未登録で実機不可、原因[2]（dashboard 商品未登録）も未解消。eval-2/eval-3 と同指摘がこれで3回連続。3-strike rule の観点では [3] は今回で潰したため autoloop 継続可能だが、[1][2] の解消はユーザー側作業必須。詳細: .product/sprints/14-undefined/self-review.md",
-      "evalNote": null
+      "evalNote": "eval-4: 不合格。基準1（受け入れ条件）が100%未達。観測で確認できたのは条件7（SprintTen 7/7）と条件1の\"見た目・導線が同一\"部分（PlusView/PlusDecorationPicker はスプリント14で無変更）のみ。条件5・6 はモック/ユニットテスト（PlusServiceStub 経由 test06〜14 緑）で担保、実SDK経路は未観測。generator が対応した eval-3 [3]（起動経路 refreshPlusEntitlement の nil 保護）は git diff とtest11で解消を確認——コード側のやり残しは無い。だが条件1（価格一致）・2・3・4 は autoloop 環境で検証不能: 実機/Sandbox Apple ID なし、.storekit 構成なし、app.revenuecat.com 認証手段なし、.env.local は公開キー(appl_)のみで secret key なし。spec 行361 は条件4 を\"この確認ができない実装は不合格とする\"と明記。既定 RevenueCat 経路は毎起動 ERROR: Error fetching offerings（ダッシュボードに商品未登録）——この状態では実機購入でも plus エンタイトルメントが付与されず条件1・2・3 も失敗見込み。回帰は良好: ユニット184/184、UI SprintTen 7/7・SprintEleven 4/4・SprintThirteen 4/4、クラッシュ0、新規クラッシュレポート0。使用性3。eval-2/eval-3/前回eval-4 と同じ差し戻しが4回連続。ユーザー作業が必須（(a)App Store Connect + RevenueCat ダッシュボードに商品登録し手動実機検証＋ダッシュボード目視の運用へ / (b)secret key + .storekit 追加 / (c)条件4 を自動検証可能な形へ緩和）。詳細: .product/sprints/14-undefined/eval-4.md"
     },
     {
       "sprint": "14",
