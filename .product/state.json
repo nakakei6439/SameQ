@@ -1,7 +1,7 @@
 {
   "currentSprint": "13",
   "attempt": 1,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "12",
@@ -414,6 +414,12 @@
       "result": "awaiting_eval",
       "note": "eval-9.md [1] と [2] 改善提案3 に対応。[1] SupabaseBackend.receivedLikeCount の Args を CodingKeys で JSON キー target_post にマップ (Swift 識別子 targetPost で lowerCamelCase 維持、JSON は SQL 関数引数名 target_post と完全一致)。PGRST202 (404) の根本原因が解消され、本番 RPC が 200 を返す。[2] AppSession に hasShownReceivedLikesRpcNotFoundAlert フラグを追加し、refreshReceivedLikeCount の case .notFound 経路で alertMessage を同一セッション 1 回だけにガード。deleteAccount() のリセットにも同フラグの false 化を追加。テスト結果: ユニット 166/166 (5.960秒・TEST SUCCEEDED)、SprintTwelve UI 7/7 (SprintTwelveAcceptanceTests 3/3=43.0秒 + SprintTwelveOfflineAcceptanceTests 3/3=18.8秒 + SprintTwelveEvalE2ETests 1/1=15.9秒、合計 95.7 秒)、回帰 SprintEleven/Ten/Nine 計 18/18 (327.6秒・TEST SUCCEEDED)。Debug / Release ビルドとも BUILD SUCCEEDED。クラッシュ0、未処理エラー0、タイムアウト0。受け実条件 1〜8 は generator 環境の SprintTwelveEvalE2ETests で実 e2e 確認 (条件1: world_timeline 経由で端末A 投稿取得、条件3: today.receivedLikes に「1 件のいいね」表示)。詳細: .product/sprints/12-server-connection/self-review.md (attempt 13)",
       "evalNote": null
+    },
+    {
+      "sprint": "13",
+      "attempt": 1,
+      "result": "needs_fix",
+      "note": "evaluator: iPhone 17 シミュレータ(iOS26.5) + 本番 Supabase(loqumzfgnahtclnvnrzb, migration 6 を評価者が db push で適用) + 匿名アカウント直叩き(/tmp/sameq_e2e/*.py)。受け入れ7条件中 充足2(条件3 world_timeline の status=active 除外、条件4 viewed_posts + my_viewed_posts)。不合格4基準。決定的ブロッカー: [1] consume_rate_limit と delete_my_account が予約語 current_user をローカル変数に使用 → 実行時 SQLSTATE 42883 'operator does not exist: uuid = name' で毎回 404。条件1・条件7 未達、かつ SupabaseBackend.setLike/reportPost が checkRateLimit の例外を throw するため Supabase 経由のいいね・通報が全滅(スプリント12 条件3 の回帰)。deleteAccount は try? で握り潰しサーバ無反応の無言失敗。[2] users_update_own の USING に status 条件が無く WITH CHECK は status='active' のみ許可 → 停止アカウントが PATCH 1発で自分の BAN を解除可能(条件2 未達)。[3] SupabaseBackend.promptState() が clock.now(端末時計)で prompts を絞る → 時計をずらすと表示お題/残り時間が変わる(条件5 未達、危険側の期限切れ閲覧/未開始投稿はサーバ now() で担保)。[4] purge_expired_safety_logs のロジックは正(ロールバック txn で検証)だが pg_cron 未導入・アプリからの呼び出し無しで自動削除が存在しない(条件6 未達)。ローカルテストは SameQTests 166/166・Sprint13 3/3・Sprint12 3/3・Sprint11 4/4・Sprint5 7/7・Sprint3 7/7 全緑だが全て LocalBackend で RPC 未検証。詳細: .product/sprints/13-server-enforcement/eval-1.md"
     }
   ]
 }
