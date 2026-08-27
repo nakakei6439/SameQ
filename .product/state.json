@@ -1,8 +1,15 @@
 {
   "currentSprint": "14",
   "attempt": 1,
-  "status": "blocked",
+  "status": "needs_fix",
   "history": [
+    {
+      "sprint": "14",
+      "attempt": 1,
+      "result": "user_action",
+      "note": "attempt1のblocked指摘3点すべてに対応（選択肢A）。(1) PROGRESS.mdの「外部パッケージ依存はゼロ」記述に、F37（Plus課金基盤をRevenueCatへ差し替え）に限った例外を明記（spec.md前提条件23行目が元々RevenueCatを指定していたことを根拠に）。(2) RevenueCatダッシュボードで新規プロジェクト「SameQ」を作成（Entitlement名: plus、iOS App Bundle ID: com.nakakei6439.SameQ、In-App Purchase KeyはKondate Cart用の既存キーを流用）。SDK用の公開APIキー（appl_で始まる）を取得し.env.localのREVENUECAT_API_KEYに追加。(3) 受け入れ条件4（ダッシュボード反映確認）はevaluatorが実際にRevenueCatダッシュボードにログインして目視確認する運用とし、generator側の対応は不要と判断。statusをblocked→needs_fixに戻してattempt2以降の実装再開を可能にする。",
+      "evalNote": null
+    },
     {
       "sprint": "14",
       "attempt": 1,
