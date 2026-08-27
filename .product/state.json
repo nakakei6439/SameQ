@@ -1,14 +1,14 @@
 {
   "currentSprint": "15",
   "attempt": 2,
-  "status": "awaiting_eval",
+  "status": "passed",
   "history": [
     {
       "sprint": "15",
       "attempt": 2,
-      "result": "awaiting_eval",
+      "result": "passed",
       "note": "eval-1.md [1] に対応。L10n.Plus.priceMonthlyNote を追加（useEnglish ? \"Monthly / Cancel anytime\" : \"月額 / いつでも解約できます\"）し、PlusView.swift:159 の Text(product.periodDescription) を Text(L10n.Plus.priceMonthlyNote) に差し替え。product.periodDescription はビューから消えるので3 Service の日本語リテラルが画面に出る経路は完全に消滅。ユニット 184/184 (6.506秒)、SprintFifteenAcceptanceTests 8/8 (78.9秒)、回帰 SprintTen+Eleven+Thirteen = 15/15 (230.3秒) すべて TEST SUCCEEDED。クラッシュ0・未処理エラー0・タイムアウト0。受け入れ条件1〜7 すべて達成見込み（Plus 画面の PRICE 直下が en/fr で英語、ja で日本語）。詳細は .product/sprints/15-app-ui-localization/self-review.md",
-      "evalNote": null
+      "evalNote": "eval-2: 合格（passed）。基準1〜5すべて閾値クリア。eval-1 の唯一の不合格点（Plus 画面 PRICE 直下の和文「月額 / いつでも解約できます」が en/fr でも出る）が解消。実機で en/fr/ja の Plus 画面を開いて確認: en/fr は「Monthly / Cancel anytime」、ja は「月額 / いつでも解約できます」。加えて利用停止・通報ブロックシート・連打制限アラート（en「Likes too fast. Please wait 8s...」/ ja「いいねが短時間に多すぎます。8秒...」）・空ブロック一覧・設定全セクション・アカウント削除確認・タイムラインを en/ja/fr で巡回し、アプリUIの和文0（残る和文はフェイク翻訳のお題／回答本文のみ＝対象外）。fr は英語フォールバック・記号羅列なし。回帰: SprintSix 4/4・SprintSeven 6/6・SprintTen 7/7・ユニット 184/184・SprintFifteen acceptance 8/8 すべて green。クラッシュ0・未処理エラー0。使用性4。改善提案（合否非該当・繰越）: (1) 規約/プライバシー本文が en でも日本語のまま（spec で本文は対象外だが条件1と文面がねじれ・ユーザー確認推奨）、(2) 連打制限アラートのタイトルが汎用の「Something went wrong」、(3) 3 Service の displayName「Plus （月額）」に和文リテラル残置（将来再発リスク）。詳細: .product/sprints/15-app-ui-localization/eval-2.md"
     },
     {
       "sprint": "15",
