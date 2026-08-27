@@ -1,14 +1,14 @@
 {
   "currentSprint": "16",
   "attempt": 1,
-  "status": "awaiting_eval",
+  "status": "passed",
   "history": [
     {
       "sprint": "16",
       "attempt": 1,
-      "result": "awaiting_eval",
+      "result": "passed",
       "note": "スプリント16（F39 + F40）実装。F39: TimelineView.promptStrip の背景を Theme.surface（白）に変更し hairline の細い枠線を組み合わせ、本文色を Theme.inkSecondary → Theme.ink に変更。白背景に対する ink のコントラスト比は約 14:1（WCAG AA 4.5:1 の3倍以上）。lineLimit(2) を撤去して全文折り返し表示に変更。F40: AppSession.unreadTimelineCount（max(0, candidate - viewed)）を追加し、TimelineView.shouldShowFewAnswersHint が timelineContent == .post && 1 <= unreadTimelineCount + 1 && unreadTimelineCount + 1 < 3 のとき L10n.Timeline.fewAnswersHint を promptStrip と cardStack のあいだに出す。.empty / .exhausted / .loading では出さない（二重防止）。L10n.fewAnswersHint は en: 'Not many answers yet. You might be one of the first.' / ja: 'まだ回答が少ない。あなたが最初の一人かもしれない' の2セット、数値・謝り表現なし。Unit 191/191 (TimelineUnreadCountTests 7本新規)、SprintSixteenAcceptanceTests 6/6、回帰 SprintThree/Six/Fifteen 17/17 すべて TEST SUCCEEDED。Debug/Release とも BUILD SUCCEEDED。クラッシュ0・未処理エラー0。受け入れ条件 1〜8 すべて達成見込み。注意点: 'いま見ているカードを未読に含める +1' の解釈は仕様『未読の回答』の自然な読み替えで、判断根拠は self-review.md weakness #1 に明記。",
-      "evalNote": null
+      "evalNote": "eval-1: 合格（passed）。基準1〜5すべて閾値クリア。受け入れ条件8/8を実機シミュレータ操作（iPhone 17 / iOS 26.5）で確認。(1)お題表示帯: 背景 Theme.surface=#FFFFFF・本文 Theme.ink≈#212521 でコントラスト比 約15.5:1（自前計算、WCAG相対輝度式）→閾値4.5:1を大きく超過。ライト／OS強制ダーク(-AppleInterfaceStyle Dark)の双方でスクショ目視、アプリは常時ライト描画のため比は不変。(2)カタログ最長のお題「『なんでもない』と流したけれど本当は少し気になっていることを教えてください。」(37字)を-SameQTimeOffsetMinutesで表示させ、白帯が全文折り返しで収まり省略記号なしを確認（lineLimit(2)撤去済み）。(3)-SameQAnswerCount 1/2 でヒント『まだ回答が少ない。あなたが最初の一人かもしれない』/英語『Not many answers yet. You might be one of the first.』が表示。(4)ヒント文に数字なし（UIテスト assert＋目視）。(5)-SameQAnswerCount 5 でヒント非表示を目視。(6)-SameQAnswerCount 0 で空状態『まだ誰も答えていません』が1つだけ、ヒント重複なし。読み切り後は『No new answers right now』のみ。(7)ヒント表示中に timeline.like タップ→選択状態化、timeline.more ヒッタブル、スワイプで読み切りまで到達（UIテスト test05＋目視）。(8)英語端末でヒント・周辺UI（Close / THE WORLD'S ANSWERS / PROMPT / Like / Swipe to meet another stranger）すべて英語、見切れ・重なりなし。『少なさを謝る』文言なし。安定性: クラッシュ0・未処理エラー0。テスト: SameQTests 191/191、SprintSixteenAcceptanceTests 6/6、回帰 SprintThree 7/7・SprintSix 4/4・SprintFifteen 8/8（計19/19）すべて緑。データ整合性: 本スプリントは表示ロジックのみで新規永続化なし、既読の再表示防止など既存永続化は SprintThree 回帰で担保。使用性4。改善提案（合否非該当・繰越）: (a)5件など多め回答のタイムラインで終盤2枚(残2/1)に入るとヒントが再出現し『まだ回答が少ない』が既読4枚後に出るのが軽い違和感、(b)『暗い表示モード』は実質ダークテーマ非対応（常時ライト・比は維持のため許容だがバックログ化推奨）、(c)ヒント非表示時にお題帯とカードの間の余白がやや広い。詳細: .product/sprints/16-timeline-prompt-and-few-answers/eval-1.md"
     },
     {
       "sprint": "15",
