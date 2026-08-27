@@ -1,8 +1,15 @@
 {
   "currentSprint": "12",
-  "attempt": 9,
-  "status": "needs_fix",
+  "attempt": 10,
+  "status": "awaiting_eval",
   "history": [
+    {
+      "sprint": "12",
+      "attempt": 10,
+      "result": "awaiting_eval",
+      "note": "eval-6.md 指摘の [1] 一次バグ（SupabaseBackend.createAnonymousUser で tokenBox.value に access_token を反映していない）と、os_log で実機追跡して発見した二次バグ（myPost / submitPost が posts テーブルに存在しない author_emoji / author_nickname を select / RETURNING していたため 400 で落ちる）を修正。tokenBox を init ローカル変数から actor stored property に昇格し、anonymousSignUp 直後に tokenBox.value = auth.accessToken を追加。Post.withAuthor(emoji:nickname:) を新設し、posts テーブルに存在しない author_* は手元の state.user から補完。SprintTwelve test03 を寛容な判定（alert 状態でも合格）から厳格な判定（today.* 到達 + alert 不在 + onboarding 離脱）に強化、待ち時間 15秒→30秒。テスト結果: ユニット 166/166（5.914秒・TEST SUCCEEDED）、SprintTwelve UI 3/3（test03 強化版を含む、test01 16.4秒・test02 16.0秒・test03 12.2秒）、回帰 UI SprintEleven/Ten/Nine 計 18/18（326.4秒・TEST SUCCEEDED）。Debug / Release ビルドとも BUILD SUCCEEDED。クラッシュ0、未処理エラー0、タイムアウト0。受け入れ条件 1〜5 は実機 2 台 e2e 必須のため evaluator 担当（generator はサインアップ → users INSERT → prompt 取得 → myPost 取得 → today 画面到達までの 1 端末 1 歩目を担保）。詳細: .product/sprints/12-server-connection/self-review.md (attempt 10)",
+      "evalNote": ""
+    },
     {
       "sprint": "12",
       "attempt": 9,

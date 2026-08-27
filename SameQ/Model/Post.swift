@@ -90,4 +90,29 @@ struct Post: Codable, Identifiable, Equatable, Sendable {
             decorations: decorations
         )
     }
+
+    /// サーバ往復時に `posts` テーブルから取れない author_emoji / author_nickname
+    /// を手元の `AppUser` から補完した新しいインスタンスを返す。
+    /// `posts` テーブル本体にはこれらのカラムは存在せず、`world_timeline`
+    /// ビュー側で `public.users` と JOIN して出す設計（migration
+    /// 20260817000001_init.sql / 20260819000004_server_connection.sql）。
+    /// 自分の投稿を SELECT で取り直す `myPost` / 直後に RETURNING で受け取る
+    /// `submitPost` の両方で使う（attempt 10 で `applyPromptState` 経由の
+    /// `myPost` が `column posts.author_emoji does not exist` で 400 を出して
+    /// オンボーディング直後に必ず失敗していた二次不具合を、この値で埋める
+    /// ことで回避する）。
+    func withAuthor(emoji: String, nickname: String?) -> Post {
+        Post(
+            id: id,
+            promptID: promptID,
+            authorID: authorID,
+            authorEmoji: emoji,
+            authorNickname: nickname,
+            body: body,
+            bodyLanguage: bodyLanguage,
+            createdAt: createdAt,
+            expiresAt: expiresAt,
+            decorations: decorations
+        )
+    }
 }

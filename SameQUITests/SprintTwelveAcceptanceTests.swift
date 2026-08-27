@@ -105,43 +105,62 @@ final class SprintTwelveAcceptanceTests: XCTestCase {
 
     /// Supabase 経路（`-SameQUseLocalBackend` を付けない）でオンボーディング
     /// が完走できる土台検証。匿名サインアップ（auth/v1/signup）が成功し、
-    /// オンボーディング画面から先に進めることを確認する。
+    /// オンボーディング画面から**確実に**出て、今日のお題画面
+    /// (`today.*`) のいずれかに到達することを厳格にassertする。
     ///
-    /// 最終的な画面（今日のお題 / お題待ち / 失敗）のどれに着地するかは
-    /// Supabase 側のデータ投入状況（prompts が空 / 投入済み）に依存するため、
-    /// generator 側ではオンボーディング完了 = 「コンセプト/規約/絵文字/ニックネーム/
-    /// 通知の5画面」から先に進めたことだけを担保する。具体的な最終画面の
-    /// 確認は seed が揃った後に evaluator が別途行う。
+    /// attempt 9 までの `onboardingNextGone || onboardingAlertShown
+    /// || onboardingLaterStillThere` は「アラートが出て onboarding に留
+    /// まった状態」も合格に含めてしまい、evaluator が実機で見つけた
+    /// 「anonymousSignUp 直後の tokenBox 未反映による HTTP 401 無限ループ」
+    /// を検出できなかった（attempt 9 self-review の弱点1）。
+    /// attempt 10 では SupabaseBackend.swift 側で `tokenBox.value =
+    /// auth.accessToken` を `anonymousSignUp` 直後に代入する修正を入れたので、
+    /// このテストでも「onboarding から確実に離脱できた」ことを厳格に確認する。
     ///
-    /// 失敗経路（通信失敗 alert）の検証は attempt 6 で実装した
-    /// `OnboardingView.alert` を evaluator が実機で再現済み。
+    /// 最終的な画面（`today.promptText` / `today.promptLoading` /
+    /// `today.input` / `today.locked` など）のどれに着地するかは Supabase
+    /// 側のデータ投入状況（prompts が空 / 投入済み）と翻訳モデル有無に
+    /// 依存するが、**いずれにせよ onboarding 画面から離脱して
+    /// today.* 系の画面に着地していること** 自体はサインアップ成功の
+    /// 必要十分条件として assert する。
     func test03_supabaseOnboardingCompletesWithoutCrash() {
         let app = launchSupabase(reset: true)
         completeOnboarding(app)
 
-        // completeOnboarding は「コンセプト → 規約 → 絵文字 → ニックネーム →
-        // 通知」の5画面を進め、最後に onboarding.notification.later をタップして
-        // お題画面（お題待ち / 今日のお題 / 失敗）のどれかへ遷移させる。
-        // サインアップが成功すれば onboarding.next ボタンは消える。
-        // 失敗すれば alert が出て onboarding.notification.later が残る。
-        // どちらの結果でも「画面が安定していてクラッシュしていない」ことだけ確認する。
-        sleep(3)
+        // `onboarding.notification.later` タップ後、サインアップ →
+        // users 行 INSERT → お題取得 → today.* 画面への遷移を最大 30 秒待つ
+        // （実機からの Supabase 往復は遅いことがあるため、attempt 9 の 15 秒では
+        // ネットワーク状況次第で取りこぼす可能性があった）。
+        let todayIdentifier = "today.identity"
+        let openedToday = app.staticTexts[todayIdentifier].waitForExistence(timeout: 30)
+            || app.otherElements[todayIdentifier].waitForExistence(timeout: 1)
 
-        // 3 秒後にアプリが応答していることを静的に確認する。
-        XCTAssertTrue(app.exists, "オンボーディング完了 3 秒後にアプリが応答しない")
+        // 失敗アラートが出ていないこと。
+        let failureAlertShown = app.staticTexts["うまくいきませんでした"].exists
 
-        // onboarding.next ボタンが消えているか（= onboarding を通り過ぎた）
-        // onboarding.notification.later ボタンが残っているか（= alert 状態で
-        // onboarding に留まっている）のどちらでも合格とする。
-        // 中途半端な状態（コンセプトの説明文だけが残っている等）で止まっていないことだけ
-        // 確認する。
-        let onboardingNextGone = !app.buttons["onboarding.next"].exists
-        let onboardingAlertShown = app.staticTexts["うまくいきませんでした"].exists
-        let onboardingLaterStillThere = app.buttons["onboarding.notification.later"].exists
-        XCTAssertTrue(
-            onboardingNextGone || onboardingAlertShown || onboardingLaterStillThere,
-            "Supabase 経路でオンボーディング後、onboarding 画面が中途半端な状態で止まっている"
+        // サインアップが失敗していると onboarding.notification.later が
+        // 画面に残ったまま alert が出ている（attempt 9 で観測された症状）。
+        let stuckOnOnboarding = app.buttons["onboarding.notification.later"].exists
+
+        XCTAssertFalse(
+            stuckOnOnboarding,
+            "サインアップ失敗の可能性: onboarding.notification.later が画面に残っている"
+                + "（attempt 9 で観測された tokenBox 未反映による 401 ループの状態）"
         )
+        XCTAssertFalse(
+            failureAlertShown,
+            "サインアップ失敗: 「うまくいきませんでした」アラートが表示されている"
+        )
+        XCTAssertTrue(
+            openedToday,
+            "オンボーディング完了後、today.* 画面（\(todayIdentifier)）に到達できない"
+                + "（サインアップは失敗していないはずだが、何らかの状態で today へ"
+                + " 遷移できていない）"
+        )
+
+        // 仕上げ: 3 秒後にアプリが応答していることを静的に確認する。
+        sleep(3)
+        XCTAssertTrue(app.exists, "オンボーディング完了 3 秒後にアプリが応答しない")
     }
 
     // MARK: 受け入れ条件 6（オフライン表示）の土台検証

@@ -22,6 +22,15 @@ actor SupabaseBackend: Backend {
     private let store: LocalStore
     private let clock: AppClock
     private let client: SupabaseClient
+    /// `SupabaseClient.tokenProvider` に現在値を返すための共有トークン箱。
+    /// `createAnonymousUser` で `anonymousSignUp()` 直後に新しい `access_token`
+    /// をこの箱へ代入し、続く `insertVoid`（Authorization ヘッダー付与）から
+    /// 新しいトークンが届くようにする。これがないと直後の INSERT が古い値
+    /// （新規アカウントでは `nil`）のまま PostgREST に届き HTTP 401 になる
+    /// （evaluator attempt 9 で観測された再現不具合の根本原因）。
+    /// `SupabaseBackend` 側の保持が必要なので stored property に昇格している
+    /// （以前は `init` 内のローカル変数で、サインアップ後の代入手段が無かった）。
+    private let tokenBox: TokenBox
     private let monitor: NWPathMonitor
     /// 直近の通信経路の状態。`start()` や書き込み系で `false` を確認したときに
     /// `.offline` を投げる。
@@ -49,7 +58,12 @@ actor SupabaseBackend: Backend {
         self.monitor = NWPathMonitor()
         // `tokenProvider` は `@Sendable` クロージャなので actor の `state` を直接参照できない。
         // 代わりに、`SupabaseBackend` 内のトークンを `TokenBox`（atomic な値）経由で読み出す。
+        // `tokenBox` は stored property に保持し、`createAnonymousUser` の
+        // `anonymousSignUp` 直後に新しい access_token を代入できるようにする
+        //（そうしないと直後の INSERT で Authorization ヘッダーが古い値のまま
+        // 送信され 401 になる）。
         let tokenBox = TokenBox(initial: store.load().supabaseAuth?.accessToken)
+        self.tokenBox = tokenBox
         self.client = SupabaseClient(
             session: session,
             tokenProvider: { tokenBox.value },
@@ -96,6 +110,13 @@ actor SupabaseBackend: Backend {
         try checkConnectivity()
         let trimmed = nickname?.trimmingCharacters(in: .whitespacesAndNewlines)
         let auth = try await client.anonymousSignUp()
+        // 直後の `insertVoid(table: "users", ...)` で `SupabaseClient` が
+        // `tokenProvider` から Authorization ヘッダー用トークンを読みにくるので、
+        // 新しい access_token を `tokenBox` へ反映しておく。これがないと
+        // 古い値（新規アカウントでは `nil`）のまま PostgREST に届き HTTP 401
+        // になり、オンボーディングが「セッションが切れました」アラートで
+        // 停止する（evaluator attempt 9 で 2回連続観測された不具合）。
+        tokenBox.value = auth.accessToken
         let user = AppUser(
             id: auth.userID,
             emoji: emoji,
@@ -252,13 +273,18 @@ actor SupabaseBackend: Backend {
     func myPost(promptID: String) async throws -> Post? {
         try checkConnectivity()
         guard let user = state.user else { return nil }
-        // `posts` テーブルの実スキーマには `decorations` カラムが無い
-        // (PostgreSQL init migration 20260817000001_init.sql)。
-        // 装飾はクライアント側で復元できない（取得できても欠落扱い）ため、
-        // サーバ往復時は body_language までのみを取得する。
+        // `posts` テーブルの実スキーマには `author_emoji` / `author_nickname` /
+        // `decorations` カラムが無い（PostgreSQL init migration
+        // 20260817000001_init.sql）。これらは `world_timeline` ビュー側で
+        // `public.users` と JOIN して出す設計。自分の投稿は自分が書いたもので
+        // あり、誰のものか曖昧にならないので、サーバ往復時は `posts` テーブル
+        // から実カラムだけを取得し、絵文字・ニックネームは `state.user` から
+        // 補完する（attempt 10: eval-6 の根本原因 tokenBox 未反映に加えて、
+        // `applyPromptState` 経由の myPost で 400 が連鎖してオンボーディング
+        // 完了直後に必ずアラートが出る二次不具合を修正）。
         let rows: [PostRow] = try await client.get(
             table: "posts",
-            select: "id,prompt_id,author_id,author_emoji,author_nickname,body,body_language,created_at,expires_at",
+            select: "id,prompt_id,author_id,body,body_language,created_at,expires_at",
             filters: [
                 "prompt_id": "eq.\(promptID)",
                 "author_id": "eq.\(user.id.uuidString)"
@@ -268,7 +294,12 @@ actor SupabaseBackend: Backend {
         guard let row = rows.first else { return nil }
         // 期限切れは nil として返す（F10）。
         guard row.expires_at > clock.now else { return nil }
-        return row.toPost()
+        // `posts` テーブルには author_emoji / author_nickname がないため、
+        // アップロード時に保存された現在の `state.user` から補完する
+        // （F32 でプロフィールを更新したら `submitPost` は再走しないので、
+        // この値は「自分の現在のプロフィール」であり、過去のプロフィール
+        // ではない点に注意。F35 の受け入れ条件には影響しない）。
+        return row.toPost().withAuthor(emoji: user.emoji, nickname: user.nickname)
     }
 
     @discardableResult
@@ -316,7 +347,13 @@ actor SupabaseBackend: Backend {
                     body: trimmed,
                     body_language: Locale.current.language.languageCode?.identifier ?? "und"
                 ),
-                select: "id,prompt_id,author_id,author_emoji,author_nickname,body,body_language,created_at,expires_at"
+                // `posts` テーブルの実スキーマには `author_emoji` /
+                // `author_nickname` / `decorations` カラムが無い
+                // (PostgreSQL init migration 20260817000001_init.sql)。
+                // RETURNING でそれらを要求すると 400 で INSERT が失敗するため、
+                // 実カラムだけを取得し、補完は `toPost` の戻り値に対して
+                // 手元の `state.user` から行う（myPost と同じ方針）。
+                select: "id,prompt_id,author_id,body,body_language,created_at,expires_at"
             )
         } catch let error as SupabaseError {
             // 一意制約違反 → すでにお題に回答済み。
@@ -330,7 +367,12 @@ actor SupabaseBackend: Backend {
             }
             throw error
         }
-        let post = row.toPost()
+        var post = row.toPost()
+        // `posts` テーブルには author_emoji / author_nickname がないため、
+        // RETURNING の select から省いた分を手元の `state.user` から補完する
+        // （myPost と同じ方針。F32 でプロフィール更新後は `state.user` の値で
+        // 上書きされるが、それは今回 INSERT した本人でしかないため許容）。
+        post = post.withAuthor(emoji: user.emoji, nickname: user.nickname)
         var next = state
         next.myPosts.append(post)
         next.lastPostBody = trimmed
