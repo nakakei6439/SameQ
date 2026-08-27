@@ -211,6 +211,14 @@ enum L10n {
             ? "You've read all the answers for this prompt. The words will fade after a while."
             : "このお題の回答はすべて読みました。読んだ言葉は、しばらくすると消えます。"
 
+        // スプリント16（F40）: 未読の回答が3件未満のときに前向きな案内として出す短い文言。
+        // 数値・件数・参加人数など「少なさ」を数量化してしまう言葉は使わない（受け入れ条件4）。
+        // 謝るような表現（申し訳ありません等）も使わない（spec.md 行403「少数であることを
+        // 謝っていたら不合格」）。
+        static let fewAnswersHint: String = useEnglish
+            ? "Not many answers yet. You might be one of the first."
+            : "まだ回答が少ない。あなたが最初の一人かもしれない"
+
         static let moreAccessibility: String = useEnglish
             ? "Report or block this reply"
             : "この回答を通報またはブロック"

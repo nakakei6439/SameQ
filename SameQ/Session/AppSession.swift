@@ -97,6 +97,14 @@ final class AppSession {
     /// Debug オーバーレイ用。いまのお題で表示しうる回答の総数と、既読の件数。
     private(set) var timelineCandidateCount = 0
     private(set) var timelineViewedCount = 0
+    /// いまのお題で**このユーザーがまだ読める未読の回答件数**（F40 / スプリント16）。
+    /// `timelineCandidateCount - timelineViewedCount` を `0` で床打ちした計算プロパティで、
+    /// `TimelineView` の前向きな案内表示の分岐に使う。`refreshTimelineCounts` で
+    /// `timelineCandidateCount` と `timelineViewedCount` が更新されるたび最新になる。
+    /// 候補が0件・既読数過多で負になり得ても、UI には「0件」として渡す。
+    var unreadTimelineCount: Int {
+        max(0, timelineCandidateCount - timelineViewedCount)
+    }
     private(set) var reportedCount = 0
     /// お題の自動生成（F26 / F27）で破棄された候補の累計件数
     /// （受け入れ条件 4「破棄された記録が残る」）。UI には出さないが
@@ -210,6 +218,17 @@ final class AppSession {
     var isPlus: Bool {
         plusEntitlement?.isActive(at: clock.now) ?? false
     }
+
+    #if DEBUG
+    /// テスト用：`unreadTimelineCount` の境界値検証のために `timelineCandidateCount` /
+    /// `timelineViewedCount` を直接書き換える。`refreshTimelineCounts` 相当の内部状態を
+    /// 任意の値で再現する目的のみで、本番経路（`drawNextPost` 内）では呼ばれない。
+    /// - Note: 単体テスト `TimelineUnreadCountTests` 専用。スプリント16（F40）。
+    func replaceTimelineCountsForTest(candidate: Int, viewed: Int) {
+        timelineCandidateCount = candidate
+        timelineViewedCount = viewed
+    }
+    #endif
 
     /// 起動時の読み込み。アカウントが無ければ初回設定へ、
     /// あればお題の状態に応じてお題待ち／今日のお題／タイムラインへ。

@@ -17,6 +17,13 @@ struct TimelineView: View {
         VStack(spacing: 0) {
             topBar
             promptStrip
+            // 未読の回答が3件未満のときだけ、前向きな案内をプロンプト帯とカードのあいだに出す
+            // （F40 / スプリント16）。`.empty` / `.exhausted` のときは本文側の終端表示が
+            // 「いま何が起きているか分かる文言」になるので、ここでは二重に出さない。
+            // 読み込み中（.loading）もちらつき防止のため出さない。
+            if shouldShowFewAnswersHint {
+                fewAnswersHint
+            }
 
             switch session.timelineContent {
             case .loading:
@@ -113,19 +120,23 @@ struct TimelineView: View {
 
     /// 今日のお題を、タイムライン閲覧中も上部に小さく常設表示する（並行タスク：UI調整）。
     /// 翻訳が確定するまでの「準備中…」の作法は `TodayPromptView.promptCard` に揃える。
+    ///
+    /// **スプリント16（F39）**: 背景を `Theme.promptStripSurface`（白）＋ hairline 枠線に変え、
+    /// 本文色を `Theme.ink`（≈ #212521）に上げた。白背景とのコントラスト比は約 14:1 で
+    /// WCAG AA（4.5:1）を大きく超える。`lineLimit(2)` を撤去し、長いお題でも全文が
+    /// 折り返して表示される（受け入れ条件2）。
     private var promptStrip: some View {
         HStack(alignment: .top, spacing: 10) {
             Text(L10n.Timeline.promptLabel)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Theme.inkTertiary)
+                .foregroundStyle(Theme.inkSecondary)
                 .tracking(1)
                 .padding(.top, 1)
 
             if let text = session.promptDisplayText {
                 Text(text)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(Theme.inkSecondary)
-                    .lineLimit(2)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Theme.ink)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("timeline.promptText")
@@ -135,7 +146,7 @@ struct TimelineView: View {
                         .tint(Theme.inkSecondary)
                     Text(L10n.Common.loading)
                         .font(.system(size: 13))
-                        .foregroundStyle(Theme.inkTertiary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 .accessibilityIdentifier("timeline.promptLoading")
             }
@@ -147,12 +158,53 @@ struct TimelineView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Theme.hairline.opacity(0.35))
+                .fill(Theme.promptStripSurface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Theme.promptStripBorder.opacity(0.6), lineWidth: 1)
         )
         .padding(.horizontal, 20)
         .padding(.bottom, 12)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("timeline.prompt")
+    }
+
+    /// 回答がまだ少ないときに、プロンプト帯とカードのあいだに出す前向きな案内（F40）。
+    /// 数値・件数・参加人数などは一切含めず、`.empty` / `.exhausted` の終端表示と二重に出ない
+    /// （`shouldShowFewAnswersHint` で `.post` のときしか出さない）。
+    /// 縦方向の小さなスペースだけを占有し、カードやボタンのヒット領域はそのまま。
+    private var fewAnswersHint: some View {
+        Text(L10n.Timeline.fewAnswersHint)
+            .font(.system(size: 12, weight: .medium, design: .rounded))
+            .foregroundStyle(Theme.inkSecondary)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 28)
+            .padding(.bottom, 8)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("timeline.fewAnswersHint")
+    }
+
+    /// `fewAnswersHint` を表示してよい状態か（F40 受け入れ条件）。
+    ///
+    /// 仕様「未読の回答が3件未満のとき前向きな案内が表示される」を、画面上の自然な形に
+    /// 解釈したもの:
+    /// - `.post` のときだけ（=いま回答が1枚見えているあいだ）。
+    /// - **いま見ているカードを含めて**「あと何件読めるか」を数える。
+    ///   `AppSession.markPostViewed` は描画確定時点で走るため、表示直後に
+    ///   `candidates == viewed` になっても、ユーザはまだそのカードを読んでいるので
+    ///   「いま見ている1枚」を残数として足し戻す。
+    /// - `.loading`（ちらつき防止）/ `.empty` / `.exhausted`（終端表示が既にある）
+    ///   のときは `false`。
+    /// - `unreadTimelineCount` は `AppSession` 側で `max(0, candidate - viewed)` に
+    ///   クランプ済み（負数にならない）。
+    private var shouldShowFewAnswersHint: Bool {
+        guard case .post = session.timelineContent else { return false }
+        // 現在表示中のカード1枚を足し戻す（これが「あなたが読める最後の1枚」になる）。
+        let remainingIncludingCurrent = session.unreadTimelineCount + 1
+        return remainingIncludingCurrent >= 1 && remainingIncludingCurrent < 3
     }
 
     private var loadingState: some View {

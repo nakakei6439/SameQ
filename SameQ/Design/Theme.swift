@@ -26,6 +26,13 @@ enum Theme {
         .ignoresSafeArea()
     }
 
+    /// 世界タイムラインの上部に出るお題表示帯の背景（F39 / スプリント16）。
+    /// 白サーフェスに hairline の細い枠線を組み合わせ、淡いキャンバス背景とのあいだで
+    /// `Theme.ink`（≈ #212521）のお題本文が WCAG AA の 4.5:1 を大きく超えるコントラスト
+    /// で読める。白（#FFFFFF）に対する ink のコントラスト比は約 14:1（十分）。
+    static let promptStripSurface: Color = surface
+    static let promptStripBorder: Color = hairline
+
 }
 
 /// 白い角丸カード。淡い影だけ落として、輪郭線は引かない。

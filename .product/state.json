@@ -1,8 +1,15 @@
 {
   "currentSprint": "16",
   "attempt": 1,
-  "status": "in_progress",
+  "status": "awaiting_eval",
   "history": [
+    {
+      "sprint": "16",
+      "attempt": 1,
+      "result": "awaiting_eval",
+      "note": "スプリント16（F39 + F40）実装。F39: TimelineView.promptStrip の背景を Theme.surface（白）に変更し hairline の細い枠線を組み合わせ、本文色を Theme.inkSecondary → Theme.ink に変更。白背景に対する ink のコントラスト比は約 14:1（WCAG AA 4.5:1 の3倍以上）。lineLimit(2) を撤去して全文折り返し表示に変更。F40: AppSession.unreadTimelineCount（max(0, candidate - viewed)）を追加し、TimelineView.shouldShowFewAnswersHint が timelineContent == .post && 1 <= unreadTimelineCount + 1 && unreadTimelineCount + 1 < 3 のとき L10n.Timeline.fewAnswersHint を promptStrip と cardStack のあいだに出す。.empty / .exhausted / .loading では出さない（二重防止）。L10n.fewAnswersHint は en: 'Not many answers yet. You might be one of the first.' / ja: 'まだ回答が少ない。あなたが最初の一人かもしれない' の2セット、数値・謝り表現なし。Unit 191/191 (TimelineUnreadCountTests 7本新規)、SprintSixteenAcceptanceTests 6/6、回帰 SprintThree/Six/Fifteen 17/17 すべて TEST SUCCEEDED。Debug/Release とも BUILD SUCCEEDED。クラッシュ0・未処理エラー0。受け入れ条件 1〜8 すべて達成見込み。注意点: 'いま見ているカードを未読に含める +1' の解釈は仕様『未読の回答』の自然な読み替えで、判断根拠は self-review.md weakness #1 に明記。",
+      "evalNote": null
+    },
     {
       "sprint": "15",
       "attempt": 2,
