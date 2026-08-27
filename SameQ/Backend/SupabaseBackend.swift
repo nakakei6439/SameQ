@@ -513,16 +513,30 @@ actor SupabaseBackend: Backend {
     ///
     /// `likes_select_own`（`user_id = auth.uid()`）だけの RLS では、他人のいいね行を
     /// 読むことができず常に 0 になる。attempt 11（eval-7.md [1] b）の修正で
-    /// サーバー側に `security definer` の `received_like_count(post_id uuid)` 関数を
+    /// サーバー側に `security definer` の `received_like_count(target_post uuid)` 関数を
     /// 追加し、RLS をバイパスして件数を返す RPC を使うようにした。
     /// 関数自体は `auth.uid()` を確認し、本人の投稿についてだけ集計するため、
     /// セキュリティ上の境界は壊さない（他人の投稿には呼んでも 0 を返す）。
+    ///
+    /// attempt 13（eval-9.md [1] の修正）:
+    ///   RPC 引数名は **SQL 関数の引数名と完全に一致** させる必要がある。
+    ///   PostgREST は名前付き引数で関数を解決するため、`post_id` のままだと
+    ///   `PGRST202`（404: 関数が schema cache に無い）を返してしまう。
+    ///   SQL 側は migration 4 (`20260819000004_server_connection.sql`) と
+    ///   migration 5 (`20260820000005_received_like_count.sql`) の両方で
+    ///   引数名を `target_post` で統一しているため、アプリ側も `target_post`
+    ///   で送る。`Args.target_post` を Encodable の CodingKeys で `target_post`
+    ///   にマップすれば、Swift の識別子規約（lowerCamelCase）を守ったまま
+    ///   JSON キーは SQL の引数名と一致させられる。
     func receivedLikeCount(forPostID postID: UUID) async throws -> Int {
         try checkConnectivity()
         struct Args: Encodable {
-            let post_id: String
+            let targetPost: String
+            enum CodingKeys: String, CodingKey {
+                case targetPost = "target_post"
+            }
         }
-        let args = Args(post_id: postID.uuidString)
+        let args = Args(targetPost: postID.uuidString)
         // `received_like_count` は単一の整数を返すのでそのまま受け取る。
         let count: Int = try await client.rpc(
             function: "received_like_count",

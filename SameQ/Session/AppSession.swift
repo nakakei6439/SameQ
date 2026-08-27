@@ -124,6 +124,13 @@ final class AppSession {
     /// 投稿失敗などの一時的なメッセージ。表示したら nil に戻す。
     var alertMessage: String?
 
+    /// `refreshReceivedLikeCount()` で `SupabaseError.notFound` を一度でも
+    /// 検知したかどうか（attempt 13: eval-9.md [2] 改善提案3）。
+    /// 毎秒の `refresh()` で同じ PGRST202 が連続しても、`alertMessage` を
+    /// 一度しか立てない（OK で閉じた直後に再ポップしない）。
+    /// `deleteAccount()` などの明示的な状態リセットでも false に戻す。
+    private var hasShownReceivedLikesRpcNotFoundAlert = false
+
     var isSubmitting = false
     /// `submit()` が投稿完了後に裏で起動した `openTimeline()` の `Task`（attempt 6）。
     /// `@Observable` の追跡対象にする必要が無い内部実装詳細。
@@ -391,13 +398,16 @@ final class AppSession {
     /// Supabase が `Backend.receivedLikeCount(forPostID:)` を持っているときだけ呼ばれる
     /// （ローカルバックエンドでは 0 を返す既定実装）。
     ///
-    /// 失敗時の挙動（attempt 12: eval-8.md の改善提案3）:
+    /// 失敗時の挙動（attempt 12: eval-8.md の改善提案3 / attempt 13: eval-9.md [2]）:
     ///   * `SupabaseError.notFound`（関数未適用 PGRST202 / 404）のときだけ `alertMessage`
     ///     を立て、それ以外は静かに `receivedLikeCount = 0` に戻す（バックエンドが
     ///     まだ古い・権限が無い等の状況でも画面を止めないため）。
-    ///   * 「無言で 0 のまま」を放置すると condition 7（通信失敗時に画面表示）の
+    ///   * `alertMessage` は **同一セッションで一度だけ**立てる（attempt 13 追加）。
+    ///     `RootView` の 1 秒ごとの `refresh()` で同じ 404 が連続しても、
+    ///     OK で閉じた直後に再ポップして毎秒エラーを連発しないようにする。
+    ///     「無言で 0 のまま」を放置すると condition 7（通信失敗時に画面表示）の
     ///     趣旨に反するため、関数未適用だけはユーザー（とデバッグログ）に
-    ///     知らせる。
+    ///     知らせる（ただし 1 回だけ）。
     private func refreshReceivedLikeCount() async {
         guard let myPost else {
             receivedLikeCount = 0
@@ -409,10 +419,13 @@ final class AppSession {
         } catch let error as SupabaseError {
             receivedLikeCount = 0
             if case .notFound = error {
-                alertMessage = "サーバー機能の一部が未適用です。アプリを再起動しても直らない場合はサポートまでお知らせください。"
                 #if DEBUG
                 print("[SameQ] refreshReceivedLikeCount: RPC notFound - migration 20260820000005_received_like_count.sql is not applied on remote.")
                 #endif
+                if !hasShownReceivedLikesRpcNotFoundAlert {
+                    hasShownReceivedLikesRpcNotFoundAlert = true
+                    alertMessage = "サーバー機能の一部が未適用です。アプリを再起動しても直らない場合はサポートまでお知らせください。"
+                }
             }
         } catch {
             receivedLikeCount = 0
@@ -557,6 +570,8 @@ final class AppSession {
         timelineViewedCount = 0
         reportedCount = 0
         discardedCandidatesCount = 0
+        receivedLikeCount = 0
+        hasShownReceivedLikesRpcNotFoundAlert = false
         screen = .onboarding
     }
 

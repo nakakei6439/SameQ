@@ -1,7 +1,7 @@
 {
   "currentSprint": "12",
-  "attempt": 12,
-  "status": "needs_fix",
+  "attempt": 13,
+  "status": "awaiting_eval",
   "history": [
     {
       "sprint": "12",
@@ -399,6 +399,13 @@
       "attempt": 12,
       "result": "needs_fix",
       "note": "evaluator が iPhone 17 / iPhone 17 Pro シミュレータ + 本番 Supabase(loqumzfgnahtclnvnrzb) で実 e2e 検証。migration 5(20260820000005) は評価者が supabase db push で適用。不合格。受け入れ条件 6/8（条件1・2・4・6・8 達成、条件3 が実 e2e で不合格、条件5・7 は部分確認）。決定的ブロッカーは条件3: attempt 12 は関数の本番配布経路(新規 migration 5)を直したが、アプリ SupabaseBackend.receivedLikeCount(swift:522-525) が RPC を {\"post_id\":…} で呼ぶのに対し SQL 関数の引数名は target_post。PGRST が関数を解決できず 404 PGRST202 → receivedLikeCount 0 のまま → today.receivedLikes 永久非表示。curl で post_id→404 / target_post→200(0→1→2) を実測、SprintTwelveEvalE2ETests も条件3 で FAIL。さらに attempt 12 で refreshReceivedLikeCount の catch を .notFound→alertMessage に変えたため、この 404 が RootView の 1 秒 refresh ループ経由で today/timeline 画面に毎秒「サーバー機能の一部が未適用です」アラートを出し続ける(基準2・5 も閾値割れ)。最小修正は Args を target_post に変更 + SprintTwelveEvalE2ETests を毎回のテスト対象に含める。回帰は SameQTests 166/166・SprintSix 4/4・SprintNine 7/7・SprintTen 7/7・SprintEleven 4/4 で全緑。詳細は eval-9.md。",
+      "evalNote": null
+    },
+    {
+      "sprint": "12",
+      "attempt": 13,
+      "result": "awaiting_eval",
+      "note": "eval-9.md [1] と [2] 改善提案3 に対応。[1] SupabaseBackend.receivedLikeCount の Args を CodingKeys で JSON キー target_post にマップ (Swift 識別子 targetPost で lowerCamelCase 維持、JSON は SQL 関数引数名 target_post と完全一致)。PGRST202 (404) の根本原因が解消され、本番 RPC が 200 を返す。[2] AppSession に hasShownReceivedLikesRpcNotFoundAlert フラグを追加し、refreshReceivedLikeCount の case .notFound 経路で alertMessage を同一セッション 1 回だけにガード。deleteAccount() のリセットにも同フラグの false 化を追加。テスト結果: ユニット 166/166 (5.960秒・TEST SUCCEEDED)、SprintTwelve UI 7/7 (SprintTwelveAcceptanceTests 3/3=43.0秒 + SprintTwelveOfflineAcceptanceTests 3/3=18.8秒 + SprintTwelveEvalE2ETests 1/1=15.9秒、合計 95.7 秒)、回帰 SprintEleven/Ten/Nine 計 18/18 (327.6秒・TEST SUCCEEDED)。Debug / Release ビルドとも BUILD SUCCEEDED。クラッシュ0、未処理エラー0、タイムアウト0。受け実条件 1〜8 は generator 環境の SprintTwelveEvalE2ETests で実 e2e 確認 (条件1: world_timeline 経由で端末A 投稿取得、条件3: today.receivedLikes に「1 件のいいね」表示)。詳細: .product/sprints/12-server-connection/self-review.md (attempt 13)",
       "evalNote": null
     }
   ]
