@@ -1,8 +1,15 @@
 {
   "currentSprint": "14",
   "attempt": 1,
-  "status": "in_progress",
+  "status": "blocked",
   "history": [
+    {
+      "sprint": "14",
+      "attempt": 1,
+      "result": "blocked",
+      "note": "仕様未定義のため着手不可。autoloop.sh の last_sprint=\"11\" が古いまま機械的に current_sprint を 13→14 へインクリメントしたが、.product/spec.md のスプリント計画は 01〜13 までしか定義していない（機能一覧 F01〜F36 はすべて 01〜13 に割当済み、含まれない残り機能は PROGRESS.md 行75〜88 のバックログ『アプリ自体のUIローカライズ』のみ、これはユーザー確定済み・スプリント未割当）。generator.md『仕様に無いものを作らない』『複数スプリントをまとめて進めない』に直接反するため着手停止。ユーザーに判断を仰ぐ：(A) バックログをスプリント14として spec.md に追記 / (B) autoloop の last_sprint を 13 に直して終了 / (C) state.json を current_sprint=\"13\" に戻す。autoloop は本作業冒頭で pkill -f autoloop.sh により停止済み（.product/autoloop.lock は trap で削除済み）。詳細: .product/sprints/14-undefined/self-review.md",
+      "evalNote": null
+    },
     {
       "sprint": "12",
       "attempt": 13,
