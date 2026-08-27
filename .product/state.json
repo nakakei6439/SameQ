@@ -1,7 +1,7 @@
 {
   "currentSprint": "12",
   "attempt": 12,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "12",
@@ -392,6 +392,13 @@
       "attempt": 12,
       "result": "awaiting_eval",
       "note": "eval-8.md [1][2] と改善提案3すべてに対応。[1] received_like_count 関数と liked_authors_view を **新規**マイグレーションファイル supabase/migrations/20260820000005_received_like_count.sql に切り出し（migration 4 側は create or replace のまま温存）。これで evaluator が supabase db push で migration 5 を初めてリモート適用可能になり、本番で POST /rest/v1/rpc/received_like_count が 200 を返す。[2] AppSession.refreshReceivedLikeCount() の catch ブロックを catch let error as SupabaseError に変更し、SupabaseError.notFound（PGRST202/404）のときだけ alertMessage を立ててユーザーに『サーバー機能の一部が未適用』を通知（条件7 の無言失敗回避）。その他のエラーは静かに 0 に戻す従来動作を維持。改善提案3 SprintTwelveOfflineAcceptanceTests（新規3テスト: test01 forceOfflineShowsFailureView / test02 forceOfflineRetryStaysOnFailureView / test03 normalSupabaseLaunchIsNotAffectedByForceOffline）を追加し、-SameQForceOffline で条件6・条件7 を毎回自動回帰できる土台を提供。実装メモ: iOS 26 + Xcode 26 の XCUITest で Text に付けた accessibilityIdentifier が空文字列として観測される問題を踏んだため、ラベル文字列（『読み込めませんでした』『もう一度試す』）と『通信できません』部分一致で assert する形に修正（自己評価の弱点1に記載）。テスト結果: ユニット 166/166（5.935秒・TEST SUCCEEDED）、SprintTwelve UI 6/6 (test01〜test03 + test01_offline + test02_offline + test03_normal、合計62.7秒)、回帰 SprintEleven/Ten/Nine 計 18/18（329.6秒・TEST SUCCEEDED）。Debug / Release ビルドとも BUILD SUCCEEDED。クラッシュ0、未処理エラー0、タイムアウト0。受け実条件 1・2・4・6・8 は前回 eval-7 / eval-8 で実 e2e/curl 確認済み。条件 3 は migration 5 適用 + prompt_001 投稿データ投入後に evaluator が実 e2e 可能。詳細: .product/sprints/12-server-connection/self-review.md (attempt 12)",
+      "evalNote": null
+    },
+    {
+      "sprint": "12",
+      "attempt": 12,
+      "result": "needs_fix",
+      "note": "evaluator が iPhone 17 / iPhone 17 Pro シミュレータ + 本番 Supabase(loqumzfgnahtclnvnrzb) で実 e2e 検証。migration 5(20260820000005) は評価者が supabase db push で適用。不合格。受け入れ条件 6/8（条件1・2・4・6・8 達成、条件3 が実 e2e で不合格、条件5・7 は部分確認）。決定的ブロッカーは条件3: attempt 12 は関数の本番配布経路(新規 migration 5)を直したが、アプリ SupabaseBackend.receivedLikeCount(swift:522-525) が RPC を {\"post_id\":…} で呼ぶのに対し SQL 関数の引数名は target_post。PGRST が関数を解決できず 404 PGRST202 → receivedLikeCount 0 のまま → today.receivedLikes 永久非表示。curl で post_id→404 / target_post→200(0→1→2) を実測、SprintTwelveEvalE2ETests も条件3 で FAIL。さらに attempt 12 で refreshReceivedLikeCount の catch を .notFound→alertMessage に変えたため、この 404 が RootView の 1 秒 refresh ループ経由で today/timeline 画面に毎秒「サーバー機能の一部が未適用です」アラートを出し続ける(基準2・5 も閾値割れ)。最小修正は Args を target_post に変更 + SprintTwelveEvalE2ETests を毎回のテスト対象に含める。回帰は SameQTests 166/166・SprintSix 4/4・SprintNine 7/7・SprintTen 7/7・SprintEleven 4/4 で全緑。詳細は eval-9.md。",
       "evalNote": null
     }
   ]
