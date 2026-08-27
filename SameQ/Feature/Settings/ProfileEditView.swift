@@ -29,7 +29,7 @@ struct ProfileEditView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    Text("あなたの印を\n1つ選んでください")
+                    Text(L10n.Settings.profileEditEmojiTitle)
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(Theme.ink)
                         .fixedSize(horizontal: false, vertical: true)
@@ -56,18 +56,18 @@ struct ProfileEditView: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityIdentifier("settings.profile.emoji.\(emoji)")
-                            .accessibilityLabel(Text("絵文字 \(emoji)"))
+                            .accessibilityLabel(Text(L10n.Onboarding.emojiAccessibility(emoji)))
                             .accessibilityAddTraits(selectedEmoji == emoji ? [.isSelected] : [])
                         }
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("呼び名（任意）")
+                        Text(L10n.Settings.profileEditNicknameLabel)
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(Theme.inkSecondary)
                         HStack(spacing: 12) {
                             Text(selectedEmoji).font(.system(size: 24))
-                            TextField("ニックネーム（任意）", text: $nickname)
+                            TextField(L10n.Settings.profileEditNicknamePlaceholder, text: $nickname)
                                 .font(.system(size: 16))
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
@@ -85,17 +85,17 @@ struct ProfileEditView: View {
                 .padding(.bottom, 32)
             }
             .background { Theme.canvas }
-            .navigationTitle("プロフィール編集")
+            .navigationTitle(L10n.Settings.profileEditTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("キャンセル") {
+                    Button(L10n.Common.cancel) {
                         dismiss()
                     }
                     .accessibilityIdentifier("settings.profile.cancel")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("保存") {
+                    Button(L10n.Common.save) {
                         Task { await save() }
                     }
                     .disabled(isSaving)
@@ -103,7 +103,7 @@ struct ProfileEditView: View {
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("完了") { isNicknameFocused = false }
+                    Button(L10n.Common.done) { isNicknameFocused = false }
                         .accessibilityIdentifier("settings.profile.keyboard.done")
                 }
             }

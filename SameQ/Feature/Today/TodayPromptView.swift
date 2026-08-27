@@ -59,13 +59,13 @@ struct TodayPromptView: View {
         // （両方が同時に `isPresented` になると、片方の提示がもう片方の提示を巻き込んで
         // タイムラインごと閉じてしまうことがあるため、必ずどちらか一方だけにする）。
         .alert(
-            "うまくいきませんでした / Something went wrong",
+            L10n.Onboarding.genericErrorTitle,
             isPresented: Binding(
                 get: { session.alertMessage != nil && !session.isTimelinePresented },
                 set: { if !$0 { session.alertMessage = nil } }
             )
         ) {
-            Button("OK", role: .cancel) { session.alertMessage = nil }
+            Button(L10n.Common.ok, role: .cancel) { session.alertMessage = nil }
         } message: {
             Text(session.alertMessage ?? "")
         }
@@ -101,7 +101,7 @@ struct TodayPromptView: View {
     /// 準備中は代わりにローディング表示を出す（F21）。
     private var promptCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("今日のお題")
+            Text(L10n.Today.promptLabel)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.inkTertiary)
                 .tracking(1)
@@ -115,7 +115,7 @@ struct TodayPromptView: View {
                 HStack(spacing: 8) {
                     ProgressView()
                         .tint(Theme.inkSecondary)
-                    Text("準備中…")
+                    Text(L10n.Common.loading)
                         .font(.system(size: 15))
                         .foregroundStyle(Theme.inkTertiary)
                 }
@@ -131,7 +131,7 @@ struct TodayPromptView: View {
         VStack(alignment: .leading, spacing: 12) {
             ZStack(alignment: .topLeading) {
                 if draft.isEmpty {
-                    Text("あなたの言葉で答えてみてください")
+                    Text(L10n.Today.composerPlaceholder)
                         .font(.system(size: 16))
                         .foregroundStyle(Theme.inkTertiary)
                         .padding(.horizontal, 18)
@@ -157,7 +157,7 @@ struct TodayPromptView: View {
                     .toolbar {
                         ToolbarItemGroup(placement: .keyboard) {
                             Spacer()
-                            Button("完了") { isEditorFocused = false }
+                            Button(L10n.Common.done) { isEditorFocused = false }
                                 .accessibilityIdentifier("today.doneEditing")
                         }
                     }
@@ -175,7 +175,7 @@ struct TodayPromptView: View {
                     .accessibilityIdentifier("today.counter")
             }
 
-            Button(session.isSubmitting ? "送信中…" : "投稿する") {
+            Button(session.isSubmitting ? L10n.Today.submittingButton : L10n.Today.submitButton) {
                 isEditorFocused = false
                 let body = draft
                 Task { await session.submit(body: body) }
@@ -194,9 +194,9 @@ struct TodayPromptView: View {
     /// 1お題1投稿の説明と、Plus モードの案内（無料ユーザーだけ）。
     private var messageText: String {
         if session.isPlus {
-            return "1つのお題に答えられるのは1回だけです（Plus 長文対応）"
+            return L10n.Today.oneAnswerPerPromptPlus
         }
-        return "1つのお題に答えられるのは1回だけです"
+        return L10n.Today.oneAnswerPerPrompt
     }
 
     /// ボタンの有効条件は「何か入力されているか」だけにする（trim 後の判定にしない）。
@@ -213,10 +213,10 @@ struct TodayPromptView: View {
             Image(systemName: "lock.fill")
                 .font(.system(size: 22))
                 .foregroundStyle(Theme.inkTertiary)
-            Text("世界の回答はまだ見られません")
+            Text(L10n.Today.lockedTitle)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Theme.inkSecondary)
-            Text("あなたが答えると、知らない誰かの言葉が1件ずつ見えるようになります。")
+            Text(L10n.Today.lockedBody)
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.inkTertiary)
                 .multilineTextAlignment(.center)
@@ -235,7 +235,7 @@ struct TodayPromptView: View {
     private func answeredSection(myPost: Post) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("あなたの回答")
+                Text(L10n.Today.yourAnswer)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Theme.inkTertiary)
                     .tracking(1)
@@ -246,7 +246,7 @@ struct TodayPromptView: View {
                     .accessibilityIdentifier("today.myAnswer")
                 // 受信いいね数（F35・受け入れ条件3）。0 のときは刺激が強いので出さない。
                 if session.receivedLikeCount > 0 {
-                    Text(receivedLikesLabel(count: session.receivedLikeCount))
+                    Text(L10n.Today.receivedLikesCount(session.receivedLikeCount))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Theme.like)
                         .padding(.top, 4)
@@ -260,19 +260,13 @@ struct TodayPromptView: View {
             // モデル未ダウンロードの言語をダウンロードしている間は「準備中…」にして
             // 連打を防ぐ（受け入れ条件4・attempt 5）。1件もダウンロードが要らなければ
             // 一瞬も表示されず、いつもどおりすぐタイムラインが開く。
-            Button(session.isPreparingTimeline ? "準備中…" : "世界の回答を読む") {
+            Button(session.isPreparingTimeline ? L10n.Today.preparingTimeline : L10n.Today.openTimeline) {
                 Task { await session.openTimeline() }
             }
             .buttonStyle(PrimaryButtonStyle(enabled: !session.isPreparingTimeline))
             .disabled(session.isPreparingTimeline)
             .accessibilityIdentifier("today.openTimeline")
         }
-    }
-
-    /// 受信いいね数の表示文字列（受け入れ条件3）。
-    /// 「3 件のいいね」「1 件のいいね」のように、日本語の助数詞付きで出す。
-    private func receivedLikesLabel(count: Int) -> String {
-        "\(count) 件のいいね"
     }
 
     /// 無料ユーザー向け Plus の案内（F28）。強制ではなく「あってもいいかも」程度の小さなカード。
@@ -283,10 +277,10 @@ struct TodayPromptView: View {
             HStack(spacing: 10) {
                 Text("✨").font(.system(size: 22))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("もっと書きたいときは")
+                    Text(L10n.Today.plusHintTitle)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Theme.ink)
-                    Text("Plus なら長文と装飾が使えます")
+                    Text(L10n.Today.plusHintBody)
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.inkSecondary)
                 }
@@ -331,6 +325,6 @@ struct PlusEntryButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("plus.open")
-        .accessibilityLabel(Text(session.isPlus ? "Plus に登録済み" : "Plus を見る"))
+        .accessibilityLabel(Text(session.isPlus ? L10n.Today.plusEntryLabelActive : L10n.Today.plusEntryLabelInactive))
     }
 }

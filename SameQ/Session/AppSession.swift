@@ -504,7 +504,7 @@ final class AppSession {
                 #endif
                 if !hasShownReceivedLikesRpcNotFoundAlert {
                     hasShownReceivedLikesRpcNotFoundAlert = true
-                    alertMessage = "サーバー機能の一部が未適用です。アプリを再起動しても直らない場合はサポートまでお知らせください。"
+                    alertMessage = L10n.Errors.supabaseFunctionMissing
                 }
             }
         } catch {

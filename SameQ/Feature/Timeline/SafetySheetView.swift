@@ -36,15 +36,15 @@ struct SafetySheetView: View {
             case .reportDone:
                 done(
                     symbol: "checkmark.circle.fill",
-                    title: "通報を受け付けました",
-                    detail: "この回答はもう表示されません。\n通報したことが相手に伝わることはありません。",
+                    title: L10n.Safety.reportDoneTitle,
+                    detail: L10n.Safety.reportDoneBody,
                     identifier: "safety.reportDone"
                 )
             case .blockDone:
                 done(
                     symbol: "checkmark.circle.fill",
-                    title: "この人をブロックしました",
-                    detail: "この人の回答は、これから1件も表示されません。\nブロックしたことが相手に伝わることはありません。\n設定からいつでも解除できます。",
+                    title: L10n.Safety.blockDoneTitle,
+                    detail: L10n.Safety.blockDoneBody,
                     identifier: "safety.blockDone"
                 )
             }
@@ -63,12 +63,12 @@ struct SafetySheetView: View {
 
     private var menu: some View {
         VStack(spacing: 14) {
-            header(title: "この回答について", detail: "選んだ内容が相手に伝わることはありません。")
+            header(title: L10n.Safety.menuHeader, detail: L10n.Safety.menuHeaderDetail)
 
             actionRow(
                 symbol: "flag",
-                title: "この回答を通報する",
-                detail: "理由を選んで送ります。この回答はすぐに表示されなくなります。",
+                title: L10n.Safety.reportAction,
+                detail: L10n.Safety.reportActionDetail,
                 identifier: "safety.report"
             ) {
                 selectedReason = nil
@@ -78,15 +78,15 @@ struct SafetySheetView: View {
 
             actionRow(
                 symbol: "hand.raised",
-                title: "この人をブロックする",
-                detail: "この人の回答が、これから1件も表示されなくなります。",
+                title: L10n.Safety.blockAction,
+                detail: L10n.Safety.blockActionDetail,
                 identifier: "safety.block"
             ) {
                 stage = .blockConfirm
             }
 
             Spacer(minLength: 0)
-            cancelButton(title: "キャンセル")
+            cancelButton(title: L10n.Common.cancel)
         }
         .padding(.horizontal, 20)
         .padding(.top, 24)
@@ -97,7 +97,7 @@ struct SafetySheetView: View {
 
     private var reasons: some View {
         VStack(spacing: 12) {
-            header(title: "通報の理由を選んでください", detail: "当てはまるものを1つ選びます。")
+            header(title: L10n.Safety.reasonsTitle, detail: L10n.Safety.reasonsDetail)
 
             ScrollView {
                 VStack(spacing: 8) {
@@ -108,7 +108,7 @@ struct SafetySheetView: View {
                 .padding(.vertical, 2)
             }
 
-            Button(isSending ? "送信中…" : "送信する") {
+            Button(isSending ? L10n.Common.submitting : L10n.Common.submit) {
                 guard let selectedReason, !isSending else { return }
                 isSending = true
                 Task {
@@ -126,7 +126,7 @@ struct SafetySheetView: View {
             .disabled(!canSend)
             .accessibilityIdentifier("safety.reportSubmit")
 
-            cancelButton(title: "やめる")
+            cancelButton(title: L10n.Common.stop)
         }
         .padding(.horizontal, 20)
         .padding(.top, 24)
@@ -165,13 +165,13 @@ struct SafetySheetView: View {
     private var blockConfirm: some View {
         VStack(spacing: 14) {
             header(
-                title: "この人をブロックしますか？",
-                detail: "この人の回答は、これから1件も表示されなくなります。\nブロックしたことが相手に伝わることはありません。"
+                title: L10n.Safety.blockConfirmTitle,
+                detail: L10n.Safety.blockConfirmDetail
             )
 
             Spacer(minLength: 0)
 
-            Button(isSending ? "処理中…" : "ブロックする") {
+            Button(isSending ? L10n.Common.processing : L10n.Safety.blockConfirmAction) {
                 guard !isSending else { return }
                 isSending = true
                 Task {
@@ -188,7 +188,7 @@ struct SafetySheetView: View {
             .disabled(isSending)
             .accessibilityIdentifier("safety.blockConfirm")
 
-            cancelButton(title: "やめる")
+            cancelButton(title: L10n.Common.stop)
         }
         .padding(.horizontal, 20)
         .padding(.top, 24)
@@ -214,7 +214,7 @@ struct SafetySheetView: View {
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
-            Button("閉じる") { dismiss() }
+            Button(L10n.Common.close) { dismiss() }
                 .buttonStyle(PrimaryButtonStyle())
                 .accessibilityIdentifier("safety.close")
         }

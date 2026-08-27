@@ -41,13 +41,13 @@ struct OnboardingView: View {
         // `TodayPromptView` / `TimelineView` の `.alert` とは同時に立ち上がらない
         // （`RootView` の `Group` で排他に表示される）。
         .alert(
-            "うまくいきませんでした / Something went wrong",
+            L10n.Onboarding.genericErrorTitle,
             isPresented: Binding(
                 get: { session.alertMessage != nil },
                 set: { if !$0 { session.alertMessage = nil } }
             )
         ) {
-            Button("OK", role: .cancel) { session.alertMessage = nil }
+            Button(L10n.Common.ok, role: .cancel) { session.alertMessage = nil }
         } message: {
             Text(session.alertMessage ?? "")
         }
@@ -58,7 +58,7 @@ struct OnboardingView: View {
     private var header: some View {
         HStack {
             if step != .concept {
-                Button("戻る") { back() }
+                Button(L10n.Common.back) { back() }
                     .buttonStyle(QuietButtonStyle())
                     .accessibilityIdentifier("onboarding.back")
             }
@@ -72,7 +72,7 @@ struct OnboardingView: View {
             }
             Spacer()
             // 左右の重みを揃えるためのダミー
-            Text("戻る").font(.system(size: 15, weight: .medium)).opacity(0)
+            Text(L10n.Common.back).font(.system(size: 15, weight: .medium)).opacity(0)
         }
         .padding(.horizontal, 20)
         .padding(.top, 12)
@@ -94,12 +94,12 @@ struct OnboardingView: View {
 
     private var conceptStep: some View {
         VStack(alignment: .leading, spacing: 24) {
-            stepTitle("同じ問いに、\n答えるだけ。")
+            stepTitle(L10n.Onboarding.conceptTitle)
             VStack(alignment: .leading, spacing: 18) {
-                conceptRow("🌍", "1日1回、世界共通のお題が届きます。いつ届くかは分かりません。")
-                conceptRow("✍️", "あなたが答えて初めて、世界の誰かの答えが見えるようになります。")
-                conceptRow("👋", "フォローも検索もランキングもありません。いいねを押して、次へ進むだけ。")
-                conceptRow("🌫️", "その日の言葉は、しばらくすると消えます。")
+                conceptRow("🌍", L10n.Onboarding.conceptE1)
+                conceptRow("✍️", L10n.Onboarding.conceptE2)
+                conceptRow("👋", L10n.Onboarding.conceptE3)
+                conceptRow("🌫️", L10n.Onboarding.conceptE4)
             }
             .padding(20)
             .cardBackground()
@@ -119,9 +119,9 @@ struct OnboardingView: View {
 
     private var termsStep: some View {
         VStack(alignment: .leading, spacing: 20) {
-            stepTitle("はじめる前に")
-            legalCard(title: "利用規約", body: LegalText.terms)
-            legalCard(title: "プライバシーポリシー", body: LegalText.privacy)
+            stepTitle(L10n.Onboarding.termsTitle)
+            legalCard(title: L10n.Onboarding.termsBody, body: LegalText.terms)
+            legalCard(title: L10n.Onboarding.privacyBody, body: LegalText.privacy)
 
             Button {
                 agreedToTerms.toggle()
@@ -130,7 +130,7 @@ struct OnboardingView: View {
                     Image(systemName: agreedToTerms ? "checkmark.square.fill" : "square")
                         .font(.system(size: 22))
                         .foregroundStyle(agreedToTerms ? Theme.accent : Theme.inkTertiary)
-                    Text("利用規約とプライバシーポリシーに同意します")
+                    Text(L10n.Onboarding.agreeLabel)
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(Theme.ink)
                         .multilineTextAlignment(.leading)
@@ -165,8 +165,8 @@ struct OnboardingView: View {
 
     private var emojiStep: some View {
         VStack(alignment: .leading, spacing: 20) {
-            stepTitle("あなたの印を\n1つ選んでください")
-            Text("世界の誰かには、この絵文字だけが見えます。あとから変えられます。")
+            stepTitle(L10n.Onboarding.emojiTitle)
+            Text(L10n.Onboarding.emojiDescription)
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.inkSecondary)
 
@@ -189,7 +189,7 @@ struct OnboardingView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("onboarding.emoji.\(emoji)")
-                    .accessibilityLabel(Text("絵文字 \(emoji)"))
+                    .accessibilityLabel(Text(L10n.Onboarding.emojiAccessibility(emoji)))
                     .accessibilityAddTraits(selectedEmoji == emoji ? [.isSelected] : [])
                 }
             }
@@ -199,14 +199,14 @@ struct OnboardingView: View {
 
     private var nicknameStep: some View {
         VStack(alignment: .leading, spacing: 20) {
-            stepTitle("呼び名を\n決めますか？")
-            Text("空のままでも進めます。未設定のときは絵文字だけが表示されます。")
+            stepTitle(L10n.Onboarding.nicknameTitle)
+            Text(L10n.Onboarding.nicknameDescription)
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.inkSecondary)
 
             HStack(spacing: 12) {
                 Text(selectedEmoji ?? "🙂").font(.system(size: 28))
-                TextField("ニックネーム（任意）", text: $nickname)
+                TextField(L10n.Onboarding.nicknamePlaceholder, text: $nickname)
                     .font(.system(size: 17))
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -218,7 +218,7 @@ struct OnboardingView: View {
             .padding(16)
             .cardBackground(cornerRadius: 16)
 
-            Text("本名は書かないでください。国や言語が分からないことが、このアプリの前提です。")
+            Text(L10n.Onboarding.nicknamePrivacyNote)
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.inkTertiary)
         }
@@ -227,14 +227,14 @@ struct OnboardingView: View {
 
     private var notificationStep: some View {
         VStack(alignment: .leading, spacing: 20) {
-            stepTitle("お題が届いたら\nお知らせします")
-            Text("通知は1日1回だけ。届く時刻は毎日変わります。あとで設定から変えられます。")
+            stepTitle(L10n.Onboarding.notificationTitle)
+            Text(L10n.Onboarding.notificationDescription)
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.inkSecondary)
 
             VStack(alignment: .leading, spacing: 12) {
                 Text("🔔").font(.system(size: 40))
-                Text("通知を切っていても、アプリを開けばその日のお題に答えられます。")
+                Text(L10n.Onboarding.notificationFootnote)
                     .font(.system(size: 14))
                     .foregroundStyle(Theme.ink)
             }
@@ -265,21 +265,21 @@ struct OnboardingView: View {
             }
 
             if step == .notification {
-                Button("通知を許可する") {
+                Button(L10n.Onboarding.allowNotifications) {
                     Task { await complete(requestNotifications: true) }
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(isCompleting)
                 .accessibilityIdentifier("onboarding.notification.allow")
 
-                Button("あとで設定する") {
+                Button(L10n.Onboarding.later) {
                     Task { await complete(requestNotifications: false) }
                 }
                 .buttonStyle(QuietButtonStyle())
                 .disabled(isCompleting)
                 .accessibilityIdentifier("onboarding.notification.later")
             } else {
-                Button("次へ") { advance() }
+                Button(L10n.Common.next) { advance() }
                     .buttonStyle(PrimaryButtonStyle(enabled: canProceed))
                     .disabled(!canProceed)
                     .accessibilityIdentifier("onboarding.next")
@@ -293,9 +293,9 @@ struct OnboardingView: View {
     private var blockingHint: String? {
         switch step {
         case .terms where !agreedToTerms:
-            return "同意すると次へ進めます"
+            return L10n.Onboarding.hintAgree
         case .emoji where selectedEmoji == nil:
-            return "絵文字を1つ選んでください"
+            return L10n.Onboarding.hintPickEmoji
         default:
             return nil
         }

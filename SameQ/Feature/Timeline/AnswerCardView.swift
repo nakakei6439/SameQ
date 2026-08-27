@@ -104,7 +104,7 @@ struct AnswerCardView: View {
             }
             if isLongForm {
                 Button(action: toggleExpanded) {
-                    Text(isExpanded ? "閉じる" : "…続き")
+                    Text(isExpanded ? L10n.Common.close : L10n.Common.readMore)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Theme.accent)
                 }
@@ -116,7 +116,9 @@ struct AnswerCardView: View {
     }
 
     private func balloonLabel(_ label: String) -> some View {
-        Text("「\(label)」")
+        let openMark = L10n.useEnglish ? "\u{201C}" : "\u{300C}"
+        let closeMark = L10n.useEnglish ? "\u{201D}" : "\u{300D}"
+        return Text("\(openMark)\(label)\(closeMark)")
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(Theme.inkSecondary)
             .padding(.horizontal, 10)

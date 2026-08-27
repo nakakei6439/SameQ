@@ -66,13 +66,13 @@ enum PlusPurchaseError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .userCancelled:
-            return "購入をキャンセルしました。"
+            return L10n.Errors.plusUserCancelled
         case .network:
-            return "通信に問題がありました。電波状況を確認してもう一度お試しください。"
+            return L10n.Errors.plusNetwork
         case .productNotFound:
-            return "Plus の商品情報を読み込めませんでした。"
+            return L10n.Errors.plusProductNotFound
         case .other(let detail):
-            return "購入に失敗しました（\(detail)）。"
+            return L10n.Errors.plusOther(detail)
         }
     }
 }

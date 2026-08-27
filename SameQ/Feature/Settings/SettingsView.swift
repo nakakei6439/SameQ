@@ -17,7 +17,7 @@ struct SettingsEntryButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("settings.open")
-        .accessibilityLabel(Text("設定"))
+        .accessibilityLabel(Text(L10n.Common.settings))
     }
 }
 
@@ -65,11 +65,11 @@ struct SettingsView: View {
                     .padding(.bottom, 32)
                 }
             }
-            .navigationTitle("設定")
+            .navigationTitle(L10n.Settings.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("閉じる") { dismiss() }
+                    Button(L10n.Common.close) { dismiss() }
                         .accessibilityIdentifier("settings.close")
                 }
             }
@@ -92,23 +92,23 @@ struct SettingsView: View {
                 .environment(session)
         }
         .confirmationDialog(
-            "アカウントを削除しますか？",
+            L10n.Settings.deleteDialogTitle,
             isPresented: $showsDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button("削除する", role: .destructive) {
+            Button(L10n.Settings.deleteDialogConfirm, role: .destructive) {
                 Task { await session.deleteAccount() }
             }
-            Button("キャンセル", role: .cancel) {}
+            Button(L10n.Common.cancel, role: .cancel) {}
         } message: {
-            Text("アカウント・投稿・いいね・ブロック・通報の記録がすべて消えます。\nこの操作は取り消せません。")
+            Text(L10n.Settings.deleteDialogMessage)
         }
     }
 
     /// 通知セクション（F25）。
     private var notificationSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("通知")
+            Text(L10n.Settings.notificationSection)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.inkTertiary)
                 .tracking(1)
@@ -124,7 +124,7 @@ struct SettingsView: View {
                     .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if let nextAt = session.nextScheduledNotificationAt {
-                    Text("次のお知らせ: \(Self.timeFormatter.string(from: nextAt))")
+                    Text("\(L10n.Settings.notificationNextPrefix)\(Self.timeFormatter.string(from: nextAt))")
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.inkTertiary)
                         .accessibilityIdentifier("settings.notification.nextAt")
@@ -140,11 +140,11 @@ struct SettingsView: View {
     private var notificationHeadline: String {
         switch session.notificationAuthorizationStatus {
         case .authorized, .provisional, .ephemeral:
-            return "お題のお知らせはオンです"
+            return L10n.Settings.notificationHeadlineOn
         case .denied:
-            return "お題のお知らせはオフです"
+            return L10n.Settings.notificationHeadlineOff
         case .notDetermined:
-            return "お題のお知らせはまだ決まっていません"
+            return L10n.Settings.notificationHeadlineUnknown
         case nil:
             return ""
         }
@@ -154,11 +154,11 @@ struct SettingsView: View {
     private var notificationDetail: String {
         switch session.notificationAuthorizationStatus {
         case .authorized, .provisional, .ephemeral:
-            return "1日1回、8:00〜22:00 の間のランダムな時刻に、新しいお題をお届けします。時刻は毎日変わります。"
+            return L10n.Settings.notificationDetailOn
         case .denied:
-            return "通知をオンにすると、1日1回ランダムな時刻に新しいお題が届きます。iOS の「設定 › 通知 › SameQ」からオンにできます。"
+            return L10n.Settings.notificationDetailOff
         case .notDetermined:
-            return "通知をオンにすると、1日1回ランダムな時刻に新しいお題が届きます。あとで設定 › 通知 › SameQ からいつでも変更できます。"
+            return L10n.Settings.notificationDetailUnknown
         case nil:
             return ""
         }
@@ -175,7 +175,7 @@ struct SettingsView: View {
     /// 同じ場所からアクセスできるようにしておく（F31）。
     private var plusSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Plus")
+            Text(L10n.Settings.plusSection)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.inkTertiary)
                 .tracking(1)
@@ -198,7 +198,7 @@ struct SettingsView: View {
                     .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 12) {
-                    Button("Plus を見る") {
+                    Button(L10n.Settings.plusOpen) {
                         session.isPlusViewPresented = true
                     }
                     .font(.system(size: 14, weight: .semibold))
@@ -206,7 +206,7 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("settings.plus.open")
 
-                    Button("購入を復元") {
+                    Button(L10n.Settings.plusRestore) {
                         Task { await session.restorePlus() }
                     }
                     .font(.system(size: 14, weight: .semibold))
@@ -223,20 +223,20 @@ struct SettingsView: View {
     }
 
     private var plusHeadline: String {
-        session.isPlus ? "Plus に登録済みです" : "Plus を使うと、もっと書ける"
+        session.isPlus ? L10n.Settings.plusHeadlineActive : L10n.Settings.plusHeadlineInactive
     }
 
     private var plusDetail: String {
         if session.isPlus {
-            return "長文と装飾（スタンプ・太字・斜体・吹き出し）が使えます。購読の管理は iOS の「設定 › Apple ID › サブスクリプション」から行えます。"
+            return L10n.Settings.plusDetailActive
         }
-        return "長文（140 文字超）と、スタンプ・太字・斜体・吹き出しの装飾が使えます。購入は App Store 経由で、解約はいつでもできます。"
+        return L10n.Settings.plusDetailInactive
     }
 
     /// ブロックセクション（F15）。
     private var blockedSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("ブロック中の人")
+            Text(L10n.Settings.blockedSection)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.inkTertiary)
                 .tracking(1)
@@ -250,7 +250,7 @@ struct SettingsView: View {
                         row(author)
                     }
                 }
-                Text("解除すると、その人の回答がまた表示されるようになります。")
+                Text(L10n.Settings.blockedUnblockHint)
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.inkTertiary)
                     .padding(.horizontal, 4)
@@ -262,11 +262,11 @@ struct SettingsView: View {
     private var blockedEmptyState: some View {
         VStack(spacing: 8) {
             Text("🫧").font(.system(size: 32))
-            Text("ブロックしている人はいません")
+            Text(L10n.Settings.blockedEmptyTitle)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Theme.inkSecondary)
                 .accessibilityIdentifier("settings.blocked.empty")
-            Text("タイムラインの ⋯ から、その人の回答を表示しないようにできます。")
+            Text(L10n.Settings.blockedEmptyBody)
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.inkTertiary)
                 .multilineTextAlignment(.center)
@@ -287,7 +287,7 @@ struct SettingsView: View {
                 .background(Circle().fill(Theme.background))
                 .accessibilityIdentifier("settings.blocked.emoji")
 
-            Text(displayed ?? "名前のない人")
+            Text(displayed ?? L10n.Settings.blockedNamePlaceholder)
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(displayed == nil ? Theme.inkTertiary : Theme.ink)
                 .lineLimit(1)
@@ -295,7 +295,7 @@ struct SettingsView: View {
 
             Spacer(minLength: 8)
 
-            Button("解除") {
+            Button(L10n.Common.remove) {
                 Task { await session.unblock(authorID: author.id) }
             }
             .font(.system(size: 15, weight: .semibold))
@@ -316,7 +316,7 @@ struct SettingsView: View {
     /// 自分の絵文字とニックネームを表示し、「編集」ボタンで `ProfileEditView` を sheet で開く。
     private var profileSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("プロフィール")
+            Text(L10n.Settings.profileSection)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.inkTertiary)
                 .tracking(1)
@@ -330,18 +330,18 @@ struct SettingsView: View {
                     .accessibilityIdentifier("settings.profile.emoji")
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(session.user?.displayNickname ?? "名前のない人")
+                    Text(session.user?.displayNickname ?? L10n.Settings.profilePlaceholder)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(session.user?.displayNickname == nil ? Theme.inkTertiary : Theme.ink)
                         .accessibilityIdentifier("settings.profile.nickname")
-                    Text("あとから変更できます")
+                    Text(L10n.Settings.profileEditHint)
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.inkTertiary)
                 }
 
                 Spacer()
 
-                Button("編集") {
+                Button(L10n.Common.edit) {
                     profileEditor = ProfileEditorPresentation(
                         emoji: session.user?.emoji ?? EmojiCatalog.all.first ?? "🙂",
                         nickname: session.user?.nickname ?? ""
@@ -364,7 +364,7 @@ struct SettingsView: View {
     /// リリース前にダミー本文を差し替える想定（`LegalText`）。
     private var legalSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("規約・プライバシー")
+            Text(L10n.Settings.legalSection)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.inkTertiary)
                 .tracking(1)
@@ -372,14 +372,14 @@ struct SettingsView: View {
 
             VStack(spacing: 0) {
                 legalRow(
-                    title: "利用規約",
+                    title: L10n.Settings.legalTerms,
                     identifier: "settings.legal.terms"
                 ) {
                     legalDocument = .terms
                 }
                 Divider().padding(.leading, 16)
                 legalRow(
-                    title: "プライバシーポリシー",
+                    title: L10n.Settings.legalPrivacy,
                     identifier: "settings.legal.privacy"
                 ) {
                     legalDocument = .privacy
@@ -418,7 +418,7 @@ struct SettingsView: View {
     /// 画面下部に Danger Zone として独立セクションで置く（誤タップ防止）。
     private var dangerZoneSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("アカウント")
+            Text(L10n.Settings.accountSection)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.inkTertiary)
                 .tracking(1)
@@ -428,7 +428,7 @@ struct SettingsView: View {
                 showsDeleteConfirmation = true
             } label: {
                 HStack {
-                    Text("アカウントを削除")
+                    Text(L10n.Settings.accountDelete)
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(.red)
                     Spacer()

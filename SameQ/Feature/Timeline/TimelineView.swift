@@ -27,16 +27,16 @@ struct TimelineView: View {
             case .empty:
                 endState(
                     symbol: "🫧",
-                    title: "まだ誰も答えていません",
-                    detail: "世界の誰かが答えると、ここに1件ずつ出てきます。",
+                    title: L10n.Timeline.emptyTitle,
+                    detail: L10n.Timeline.emptyBody,
                     identifier: "timeline.empty"
                 )
             case .exhausted:
                 endState(
                     // 🌫️ はシミュレータのフォントで欠け表示になるので使わない
                     symbol: "☁️",
-                    title: "今は新しい回答がありません",
-                    detail: "このお題の回答はすべて読みました。読んだ言葉は、しばらくすると消えます。",
+                    title: L10n.Timeline.exhaustedTitle,
+                    detail: L10n.Timeline.exhaustedBody,
                     identifier: "timeline.exhausted"
                 )
             }
@@ -53,13 +53,13 @@ struct TimelineView: View {
         // タイムライン表示中はこちらだけが `isPresented` になるようにする
         // （両方が同時に立つと、提示の競合でタイムラインごと閉じてしまうことがある）。
         .alert(
-            "うまくいきませんでした / Something went wrong",
+            L10n.Onboarding.genericErrorTitle,
             isPresented: Binding(
                 get: { session.alertMessage != nil && session.isTimelinePresented },
                 set: { if !$0 { session.alertMessage = nil } }
             )
         ) {
-            Button("OK", role: .cancel) { session.alertMessage = nil }
+            Button(L10n.Common.ok, role: .cancel) { session.alertMessage = nil }
         } message: {
             Text(session.alertMessage ?? "")
         }
@@ -74,7 +74,7 @@ struct TimelineView: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.down")
-                    Text("閉じる")
+                    Text(L10n.Common.close)
                 }
             }
             .buttonStyle(QuietButtonStyle())
@@ -82,7 +82,7 @@ struct TimelineView: View {
 
             Spacer()
 
-            Text("世界の回答")
+            Text(L10n.Timeline.title)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.inkTertiary)
                 .tracking(1)
@@ -104,7 +104,7 @@ struct TimelineView: View {
             .opacity(session.timelineContent.post == nil ? 0 : 1)
             .disabled(session.timelineContent.post == nil)
             .accessibilityIdentifier("timeline.more")
-            .accessibilityLabel(Text("この回答を通報またはブロック"))
+            .accessibilityLabel(Text(L10n.Timeline.moreAccessibility))
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
@@ -115,7 +115,7 @@ struct TimelineView: View {
     /// 翻訳が確定するまでの「準備中…」の作法は `TodayPromptView.promptCard` に揃える。
     private var promptStrip: some View {
         HStack(alignment: .top, spacing: 10) {
-            Text("お題")
+            Text(L10n.Timeline.promptLabel)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(Theme.inkTertiary)
                 .tracking(1)
@@ -133,7 +133,7 @@ struct TimelineView: View {
                 HStack(spacing: 6) {
                     ProgressView()
                         .tint(Theme.inkSecondary)
-                    Text("準備中…")
+                    Text(L10n.Common.loading)
                         .font(.system(size: 13))
                         .foregroundStyle(Theme.inkTertiary)
                 }
@@ -243,14 +243,14 @@ struct TimelineView: View {
             .buttonStyle(.plain)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isLiked)
             .accessibilityIdentifier("timeline.like")
-            .accessibilityLabel(Text(isLiked ? "いいね済み" : "いいね"))
+            .accessibilityLabel(Text(isLiked ? L10n.Timeline.liked : L10n.Timeline.like))
             .accessibilityAddTraits(isLiked ? [.isSelected] : [])
 
-            Text(isLiked ? "いいねしました" : "いいね")
+            Text(isLiked ? L10n.Timeline.likedStatus : L10n.Timeline.like)
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(isLiked ? Theme.like : Theme.inkTertiary)
 
-            Text("スワイプすると、次の知らない誰かへ")
+            Text(L10n.Timeline.swipeHint)
                 .font(.system(size: 12, design: .rounded))
                 .foregroundStyle(Theme.inkTertiary)
                 .padding(.top, 4)
@@ -282,7 +282,7 @@ struct TimelineView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 32)
             Spacer()
-            Button("閉じる") { session.closeTimeline() }
+            Button(L10n.Common.close) { session.closeTimeline() }
                 .buttonStyle(PrimaryButtonStyle())
                 .padding(.horizontal, 24)
                 .padding(.bottom, 28)

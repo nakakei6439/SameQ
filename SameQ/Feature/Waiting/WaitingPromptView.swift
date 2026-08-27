@@ -27,11 +27,11 @@ struct WaitingPromptView: View {
                 VStack(spacing: 16) {
                     Text("🌙")
                         .font(.system(size: 44))
-                    Text("いまはお題がありません")
+                    Text(L10n.Waiting.title)
                         .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(Theme.ink)
                         .accessibilityIdentifier("waiting.title")
-                    Text("次のお題が届くまで、少し待ってください。\n始まったら、この画面から答えられます。")
+                    Text(L10n.Waiting.body)
                         .font(.system(size: 14))
                         .foregroundStyle(Theme.inkSecondary)
                         .multilineTextAlignment(.center)
@@ -47,7 +47,7 @@ struct WaitingPromptView: View {
 
                 Spacer()
 
-                Text("その日の言葉は、その日のうちに消えます。")
+                Text(L10n.Waiting.footnote)
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.inkTertiary)
                     .padding(.bottom, 32)

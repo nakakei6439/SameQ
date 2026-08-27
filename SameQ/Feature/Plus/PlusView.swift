@@ -31,11 +31,11 @@ struct PlusView: View {
                     .padding(.bottom, 32)
                 }
             }
-            .navigationTitle("Plus")
+            .navigationTitle(L10n.Plus.navTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("閉じる") { dismiss() }
+                    Button(L10n.Common.close) { dismiss() }
                         .accessibilityIdentifier("plus.close")
                 }
             }
@@ -63,11 +63,11 @@ struct PlusView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 Text("✨").font(.system(size: 32))
-                Text("Plus で広がる表現")
+                Text(L10n.Plus.heroTitle)
                     .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(Theme.ink)
             }
-            Text("もっと長い文章で、もっとあなたらしく。長文と装飾で、言葉に少しだけ色を足せます。")
+            Text(L10n.Plus.heroBody)
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -80,7 +80,7 @@ struct PlusView: View {
 
     private var benefitsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Plus でできること")
+            Text(L10n.Plus.benefitsTitle)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.inkTertiary)
                 .tracking(1)
@@ -89,26 +89,26 @@ struct PlusView: View {
             VStack(spacing: 0) {
                 benefitRow(
                     icon: "📝",
-                    title: "長文の投稿",
-                    detail: "140文字を超えて、自分のペースで書き残せます。"
+                    title: L10n.Plus.benefitLongTitle,
+                    detail: L10n.Plus.benefitLongBody
                 )
                 Divider().padding(.leading, 56)
                 benefitRow(
                     icon: "🌸",
-                    title: "Plus 限定スタンプ",
-                    detail: "本文に添える絵文字スタンプで、語りにひとつ癖を加えられます。"
+                    title: L10n.Plus.benefitStampTitle,
+                    detail: L10n.Plus.benefitStampBody
                 )
                 Divider().padding(.leading, 56)
                 benefitRow(
                     icon: "🖋️",
-                    title: "文字装飾",
-                    detail: "本文の一部を太字・斜体に。強調したい言葉を引き立てます。"
+                    title: L10n.Plus.benefitDecorationTitle,
+                    detail: L10n.Plus.benefitDecorationBody
                 )
                 Divider().padding(.leading, 56)
                 benefitRow(
                     icon: "💬",
-                    title: "吹き出し装飾",
-                    detail: "本文を吹き出しで囲んで、ささやきや独り言のような形を作れます。"
+                    title: L10n.Plus.benefitBalloonTitle,
+                    detail: L10n.Plus.benefitBalloonBody
                 )
             }
             .padding(.vertical, 6)
@@ -139,7 +139,7 @@ struct PlusView: View {
 
     private var purchaseSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("料金")
+            Text(L10n.Plus.priceTitle)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.inkTertiary)
                 .tracking(1)
@@ -151,7 +151,7 @@ struct PlusView: View {
                         Text(product.displayPrice)
                             .font(.system(size: 32, weight: .bold, design: .rounded))
                             .foregroundStyle(Theme.ink)
-                        Text("/ 月額")
+                        Text(L10n.Plus.priceMonthlySuffix)
                             .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(Theme.inkSecondary)
                         Spacer()
@@ -165,7 +165,7 @@ struct PlusView: View {
                     // `FakePlusService` を使うときは常に出る（実機なしでも値が分かる）。
                     HStack {
                         ProgressView().tint(Theme.inkSecondary)
-                        Text("料金を読み込み中です…")
+                        Text(L10n.Common.loadingPrices)
                             .font(.system(size: 14))
                             .foregroundStyle(Theme.inkSecondary)
                     }
@@ -187,8 +187,8 @@ struct PlusView: View {
     }
 
     private var purchaseButtonLabel: String {
-        if session.isPlus { return "Plus に登録済み" }
-        return "Plus に登録する"
+        if session.isPlus { return L10n.Plus.purchaseActive }
+        return L10n.Plus.purchaseInactive
     }
 
     private var canPurchase: Bool {
@@ -214,20 +214,20 @@ struct PlusView: View {
 
     private var restoreSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("購入の復元")
+            Text(L10n.Plus.restoreTitle)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.inkTertiary)
                 .tracking(1)
                 .padding(.horizontal, 4)
 
             VStack(spacing: 12) {
-                Text("アプリを削除してから入れ直したときも、購入した状態を引き継げます。")
+                Text(L10n.Plus.restoreBody)
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.inkSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
                 Button(action: handleRestore) {
-                    Text(isWorking ? "復元中…" : "購入を復元")
+                    Text(isWorking ? L10n.Plus.restoreActive : L10n.Plus.restoreButton)
                 }
                 .buttonStyle(QuietButtonStyle())
                 .disabled(isWorking)
@@ -251,11 +251,11 @@ struct PlusView: View {
 
     private var disclaimerSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("購入は App Store 経由で決済されます。期間中はいつでも設定 › Apple ID › サブスクリプション から解約できます。")
+            Text(L10n.Plus.disclaimer1)
                 .font(.system(size: 11))
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("閲覧に課金制限はありません。Plus でない方も、他人の長文を「続きを読む」で全部読めます。")
+            Text(L10n.Plus.disclaimer2)
                 .font(.system(size: 11))
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)

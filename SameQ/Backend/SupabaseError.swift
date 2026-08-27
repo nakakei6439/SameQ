@@ -25,21 +25,21 @@ enum SupabaseError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .offline:
-            return "通信できません。ネットワーク接続を確認してください。"
+            return L10n.Errors.supabaseOffline
         case .unauthorized:
-            return "セッションが切れました。もう一度やり直してください。"
+            return L10n.Errors.supabaseUnauthorized
         case .notFound:
-            return "該当のデータが見つかりませんでした。"
+            return L10n.Errors.supabaseNotFound
         case .duplicate:
-            return "すでに同じデータが存在します。"
+            return L10n.Errors.supabaseDuplicate
         case .forbidden(let detail):
-            return "この操作は許可されていません（\(detail)）。"
+            return L10n.Errors.supabaseForbidden(detail)
         case .server(let message, _):
-            return "サーバーでエラーが発生しました（\(message)）。"
+            return L10n.Errors.supabaseServer(message)
         case .malformedResponse(let detail):
-            return "サーバーからの応答を解釈できませんでした（\(detail)）。"
+            return L10n.Errors.supabaseMalformed(detail)
         case .transport(let detail):
-            return "通信エラー（\(detail)）。"
+            return L10n.Errors.supabaseTransport(detail)
         }
     }
 }

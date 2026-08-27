@@ -157,7 +157,7 @@ struct RootView: View {
         ZStack {
             Theme.background.ignoresSafeArea()
             VStack(spacing: 16) {
-                Text("読み込めませんでした")
+                Text(L10n.Failure.title)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Theme.ink)
                     .accessibilityIdentifier("failure.title")
@@ -166,7 +166,7 @@ struct RootView: View {
                     .foregroundStyle(Theme.inkSecondary)
                     .multilineTextAlignment(.center)
                     .accessibilityIdentifier("failure.message")
-                Button("もう一度試す") {
+                Button(L10n.Common.retry) {
                     Task { await session.start() }
                 }
                 .buttonStyle(PrimaryButtonStyle())

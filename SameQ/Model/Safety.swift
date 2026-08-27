@@ -16,15 +16,16 @@ enum ReportReason: String, Codable, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 
     /// 選択肢に出す文言。短く、判断に迷わない粒度にする。
+    /// スプリント15（F38）で端末言語に追従。日本語端末では日本語、それ以外は英語。
     var label: String {
         switch self {
-        case .politics: return "政治的な対立をあおる"
-        case .religion: return "宗教的な対立をあおる"
-        case .discrimination: return "差別・ヘイト"
-        case .sexual: return "性的な内容"
-        case .crime: return "犯罪をすすめている"
-        case .privacy: return "個人情報が書かれている"
-        case .other: return "その他の不快な内容"
+        case .politics: return L10n.ReportReason.politics
+        case .religion: return L10n.ReportReason.religion
+        case .discrimination: return L10n.ReportReason.discrimination
+        case .sexual: return L10n.ReportReason.sexual
+        case .crime: return L10n.ReportReason.crime
+        case .privacy: return L10n.ReportReason.privacy
+        case .other: return L10n.ReportReason.other
         }
     }
 }

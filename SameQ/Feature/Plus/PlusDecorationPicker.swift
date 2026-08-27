@@ -19,14 +19,14 @@ struct PlusDecorationPicker: View {
             HStack(spacing: 6) {
                 Image(systemName: "sparkles")
                     .foregroundStyle(Theme.accent)
-                Text("Plus 装飾")
+                Text(L10n.Plus.pickerHeader)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Theme.ink)
             }
 
             // スタンプ（本文の末尾に emoji を追加する装飾）
             VStack(alignment: .leading, spacing: 6) {
-                Text("スタンプ")
+                Text(L10n.Plus.pickerStampLabel)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Theme.inkTertiary)
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -45,25 +45,25 @@ struct PlusDecorationPicker: View {
             // 装飾の取り消し（太字・斜体・吹き出しなど）の入口。
             HStack(spacing: 10) {
                 decorationToggleButton(
-                    label: "太字",
+                    label: L10n.Plus.pickerBoldLabel,
                     systemImage: "bold",
                     isOn: hasDecoration(kind: .bold)
                 ) {
                     toggleDecoration(kind: .bold, value: nil)
                 }
                 decorationToggleButton(
-                    label: "斜体",
+                    label: L10n.Plus.pickerItalicLabel,
                     systemImage: "italic",
                     isOn: hasDecoration(kind: .italic)
                 ) {
                     toggleDecoration(kind: .italic, value: nil)
                 }
                 decorationToggleButton(
-                    label: "吹き出し",
+                    label: L10n.Plus.pickerBalloonLabel,
                     systemImage: "bubble.left",
                     isOn: hasDecoration(kind: .balloon)
                 ) {
-                    toggleDecoration(kind: .balloon, value: "心の声")
+                    toggleDecoration(kind: .balloon, value: L10n.Plus.pickerBalloonValue)
                 }
             }
         }
@@ -94,7 +94,7 @@ struct PlusDecorationPicker: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("plus.stamp.\(emoji)")
-        .accessibilityLabel(isOn ? "スタンプ\(emoji)を選択中" : "スタンプ\(emoji)を選択")
+        .accessibilityLabel(isOn ? L10n.Plus.pickerStampAccessibilityOn(emoji) : L10n.Plus.pickerStampAccessibilityOff(emoji))
     }
 
     private var removeStampButton: some View {
@@ -110,7 +110,7 @@ struct PlusDecorationPicker: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("plus.stamp.remove")
-        .accessibilityLabel("スタンプを外す")
+        .accessibilityLabel(L10n.Plus.pickerRemoveStamp)
     }
 
     // MARK: 装飾トグル

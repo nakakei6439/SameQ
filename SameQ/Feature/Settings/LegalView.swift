@@ -22,7 +22,7 @@ struct LegalView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("閉じる") { dismiss() }
+                    Button(L10n.Common.close) { dismiss() }
                         .accessibilityIdentifier("settings.legal.close")
                 }
             }
@@ -31,8 +31,8 @@ struct LegalView: View {
 
     private var title: String {
         switch document {
-        case .terms: return "利用規約"
-        case .privacy: return "プライバシーポリシー"
+        case .terms: return L10n.Settings.legalSheetTermsTitle
+        case .privacy: return L10n.Settings.legalSheetPrivacyTitle
         }
     }
 

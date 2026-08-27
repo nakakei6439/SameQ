@@ -282,47 +282,28 @@ enum BackendError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notSignedIn:
-            return "アカウントが見つかりませんでした。アプリを起動し直してください。"
+            return L10n.Errors.notSignedIn
         case .emptyBody:
-            return Self.bilingual(
-                ja: "空白や改行だけの回答は投稿できません。",
-                en: "You can't post a reply that's only blank space or line breaks."
-            )
+            return L10n.Errors.emptyBody
         case .bodyTooLong(let limit):
-            return Self.bilingual(
-                ja: "回答は\(limit)文字までです。",
-                en: "Replies can be at most \(limit) characters."
-            )
+            return L10n.Errors.bodyTooLong(limit)
         case .alreadyAnswered:
-            return "このお題にはすでに回答しています。"
+            return L10n.Errors.alreadyAnswered
         case .promptNotActive:
-            return "このお題の時間は終わりました。次のお題をお待ちください。"
+            return L10n.Errors.promptNotActive
         case .seedDataMissing:
-            return "お題を読み込めませんでした。"
+            return L10n.Errors.seedDataMissing
         case .storageFailure(let detail):
-            return "保存に失敗しました（\(detail)）。"
+            return L10n.Errors.storageFailure(detail)
         case .duplicateBody:
-            return Self.bilingual(
-                ja: "直前の自分の投稿と同じ内容です。別の言葉に変えて投稿してください。",
-                en: "This is identical to your previous post. Please try different wording."
-            )
+            return L10n.Errors.duplicateBody
         case .meaninglessBody:
-            return Self.bilingual(
-                ja: "同じ文字を並べただけの投稿はできません。",
-                en: "A post made of the same character repeated isn't allowed."
-            )
+            return L10n.Errors.meaninglessBody
         case .rateLimited(let action, let retryAfterSeconds):
-            let ja = action == .like ? "いいね" : "通報"
-            let en = action == .like ? "Likes" : "Reports"
-            return Self.bilingual(
-                ja: "\(ja)が短時間に多すぎます。\(retryAfterSeconds)秒待ってからもう一度お試しください。",
-                en: "\(en) too fast. Please wait \(retryAfterSeconds)s and try again."
-            )
+            let actionName = action == .like
+                ? L10n.Errors.rateLimitedActionLike
+                : L10n.Errors.rateLimitedActionReport
+            return L10n.Errors.rateLimited(actionName, retryAfterSeconds)
         }
-    }
-
-    /// 日本語行と英語行を1つの文字列にまとめる（両言語の端末で読めるようにするため）。
-    private static func bilingual(ja: String, en: String) -> String {
-        "\(ja)\n\(en)"
     }
 }
