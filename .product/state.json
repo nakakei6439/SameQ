@@ -1,8 +1,15 @@
 {
   "currentSprint": "15",
   "attempt": 1,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
+    {
+      "sprint": "15",
+      "attempt": 1,
+      "result": "needs_fix",
+      "note": "evaluator eval-1",
+      "evalNote": "eval-1: 不合格。基準1（受け入れ条件）が100%未達 — 条件2「en/fr のまま Plus 画面を一巡してアプリの和文が出ない」が失敗。Plus 画面「PRICE」直下に「月額 / いつでも解約できます」が日本語のまま表示される（en/fr 両方）。原因は PlusView.swift:159 が product.periodDescription をそのまま描画し、その値が RevenueCatPlusService.swift:67 / StoreKitPlusService.swift:34 / FakePlusService.swift:81 の3か所で日本語リテラル固定（L10n 未経由）。本番 RevenueCat 経路でも同じ固定文字列なので実機英語端末でも必ず出る。修正は小さい: L10n.Plus に priceMonthlyNote を追加し PlusView:159 を差し替え（ついでに同ファイル群の displayName「Plus （月額）」も L10n 化推奨）。他は良好: コンセプト/絵文字/ニックネーム/通知/利用停止/通信失敗/お題待ち/通報ブロック全ステージ/空ブロック一覧/設定全セクション/連打制限アラートは en で全英語・自然、ja は全日本語、fr は英語フォールバック。条件5（レイアウト崩れ無し・iPhone17目視）OK。条件6・回帰OK: SprintSix4/4・SprintSeven6/6・SprintTen7/7・SprintEleven4/4・SprintThirteen4/4・ユニット184/184・SprintFifteen8/8、クラッシュ0。条件7（言語切替の再起動反映）OK。使用性4。参考（不合格理由ではない）: 利用規約/プライバシー本文は en 端末でも日本語のまま = spec「今回作る範囲」で本文は対象外と明記のため許容だが、条件1「日本語が1文字も残らない」と文面がねじれているのでユーザー確認推奨。詳細: .product/sprints/15-app-ui-localization/eval-1.md"
+    },
     {
       "sprint": "14",
       "attempt": 5,
