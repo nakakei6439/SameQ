@@ -1,131 +1,167 @@
-# スプリント 12 自己評価（attempt 10）
+# スプリント 12 自己評価（attempt 11）
 
 ## 状況
 
-attempt 9 で eval-6.md に「実機シミュレータ 2 台構成でアカウント作成が 1 件も完了しない」と
-不合格を受けた（5 項目中 4 項目閾値未達）。根本原因として
-`SupabaseBackend.createAnonymousUser` 内の `tokenBox` 未反映（evaluator 指摘）と、
-派生バグとして `applyPromptState` → `myPost` の `posts.author_emoji` カラム不存在
-（attempt 10 で実機の os_log で発見）を修正した。
+attempt 10 で eval-7.md の最優先課題（条件 3 のバグ）は「修正コードの土台」まで
+漕ぎ着けたが、eval-7 では条件 3 が実 e2e で依然不合格となり、`receivedLikeCount`
+の呼び出しが**拡張の既定実装に静的ディスパッチされている**根本原因（推測 a）と、
+**RLS 越しの集計が不可能**な構造的原因（推測 b）の両方を解消する必要があることが
+判明した。attempt 11 では eval-7.md の [1] a・b と [3] に対応した。
 
-## 実装内容（attempt 10）
+## 実装内容（attempt 11）
 
-### 1. 一次バグ修正: `SupabaseBackend.swift` の tokenBox 未反映
-eval-6.md の最優先指摘（[1]）。`init()` のローカル変数だった `tokenBox` を
-actor の stored property に昇格し、`createAnonymousUser(emoji:nickname:)` が
-`client.anonymousSignUp()` で新しい `access_token` を取得した直後に
-`tokenBox.value = auth.accessToken` を 1 行代入するようにした。
+### 1. eval-7.md [1] a: `receivedLikeCount` を `Backend` プロトコルの要求メソッドに
+
+eval-7.md 47 行目の指摘どおり、`receivedLikeCount(forPostID:)` は
+`extension Backend` 内の default 実装（`return 0`）に置かれていたため、
+`any Backend` 経由の呼び出しでは常に `extension` の default が呼ばれ、
+`actor SupabaseBackend` の本体実装（508 行）はデッドコードになっていた。
+
+attempt 11 では:
+
+- `SameQ/Backend/Backend.swift` の `protocol Backend` に
+  `func receivedLikeCount(forPostID postID: UUID) async throws -> Int` を追加
+- `SameQ/Backend/SupabaseBackend.swift` の `extension Backend { ... }` から
+  default 実装を削除
+- `SameQ/Backend/LocalBackend.swift::receivedLikeCount(forPostID:)` を新設
+  （端末内完結なので常に 0 を返す）
+- `SupabaseBackend` の 508 行目の実装はそのまま温存（後述の RPC 化のみ変更）
+
+これにより、`AppSession.refreshReceivedLikeCount()` 内の
+`try await backend.receivedLikeCount(forPostID: myPost.id)` が、
+静的型 `any Backend` 経由でも必ず `actor` の実装に到達するようになった。
+
+### 2. eval-7.md [1] b: RLS バイパスの集計関数 (RPC) を migration に追加
+
+eval-7.md 48 行目の指摘どおり、`likes` の RLS は `likes_select_own`
+（`user_id = auth.uid()`）だけで、仮に `SupabaseBackend.receivedLikeCount` が
+`GET /rest/v1/likes?post_id=eq.<自分の投稿>` を叩いても、
+他人（端末B）が付けた行は 1 件も読めない。
+
+attempt 11 では migration 4 の末尾に以下を追加（`supabase/migrations/20260819000004_server_connection.sql`）:
+
+- `public.received_like_count(target_post uuid) returns integer`
+  - `security definer` + `set search_path = public` + `stable`
+  - 対象投稿が `posts.author_id = auth.uid()` かつ `status = visible` のときだけ
+    `count(*) from likes where post_id = target_post` を返す
+  - 該当しないときは `0`（他人の投稿の件数を漏らさない）
+  - `auth.uid() IS NULL` のときは行が返らず 0（未ログイン安全弁）
+- `public.liked_authors_view`
+  - 自分の投稿に誰がいつライクしたかを author_id = auth.uid() で絞り込む
+  - `security_invoker = off`（`received_like_count` の動作確認・デバッグ用）
+
+加えて `SameQ/Backend/SupabaseClient.swift` に RPC 呼び出し用の
+`rpc<Args, T>(function:arguments:as:)` メソッドを新設し、
+`POST /rest/v1/rpc/<関数名>` 形式の POST を組み立てる。
+
+`SupabaseBackend.receivedLikeCount` は新しい RPC を呼ぶように変更:
 
 ```swift
-// init(): tokenBox を stored property に
-let tokenBox = TokenBox(initial: store.load().supabaseAuth?.accessToken)
-self.tokenBox = tokenBox
-self.client = SupabaseClient(
-    session: session,
-    tokenProvider: { tokenBox.value },  // 同じインスタンスを参照
-    apiKey: SupabaseConfig.publishableKey
+let args = Args(post_id: postID.uuidString)
+let count: Int = try await client.rpc(
+    function: "received_like_count",
+    arguments: args,
+    as: Int.self
 )
-// createAnonymousUser():
-let auth = try await client.anonymousSignUp()
-tokenBox.value = auth.accessToken  // ← attempt 10 で追加
-let user = AppUser(...)
+return count
 ```
 
-これにより、続く `client.insertVoid(table: "users", ...)` が新しいトークンで
-Authorization ヘッダーを付けて POST し、401 にならない。
+### 3. eval-7.md [3]: `-SameQForceOffline` 起動フラグ
 
-### 2. 二次バグ修正: `myPost` / `submitPost` の `posts.author_emoji` 不存在
-attempt 10 で `os_log` を仕込んで追跡したところ、サインアップ自体は成功したが
-その後の `applyPromptState` → `myPost` が 400 で落ちていた。原因は
-`myPost` の select に `author_emoji, author_nickname` が含まれていたが、
-これらは `posts` テーブルには存在せず、`world_timeline` ビュー側で
-`public.users` と JOIN して出す設計（migration
-20260817000001_init.sql / 20260819000004_server_connection.sql）。
+条件 6（機内モードで「接続してください」相当）と条件 7（通信失敗時の表示と再試行）
+は、実機の NW を遮斷しないと再現できない。evaluator が実機の機内モードを切り替えずに
+検証できるようにするため、Debug 限定の擬似オフラインフラグを追加した。
 
-- `SameQ/Backend/SupabaseBackend.swift::myPost` の select から
-  `author_emoji, author_nickname` を削除
-- `SameQ/Backend/SupabaseBackend.swift::submitPost` の RETURNING select からも
-  同様に削除
-- 補完は `Post.withAuthor(emoji:nickname:)` を `SameQ/Model/Post.swift` に新設し、
-  手元の `state.user`（= 本人の現在のプロフィール）から埋める
+- `LaunchOptions.forceOffline: Bool` を追加
+- 起動引数 `-SameQForceOffline` でセット
+- `SupabaseBackend` の `init()` で読み取り、`actor` の stored property `forceOffline` に保持
+- `SupabaseBackend.checkConnectivity()` を
+  `if forceOffline || lastPathStatus != .satisfied` に変更
 
-### 3. 受け入れ条件 7 検証テスト強化
-eval-6.md [2] の指摘に従い `SprintTwelveAcceptanceTests.test03` を
-「アラート状態でも合格（寛容）」から「サインアップ成功を厳格にassert」に
-強化：
+Release では `LaunchOptions.parse` が `#if DEBUG` 内に閉じており、
+`-SameQForceOffline` を付けても `LaunchOptions.current.forceOffline == false` のまま。
 
-```swift
-// before (attempt 9): 3 状態のどれかなら合格
-let onboardingNextGone = !app.buttons["onboarding.next"].exists
-let onboardingAlertShown = app.staticTexts["うまくいきませんでした"].exists
-let onboardingLaterStillThere = app.buttons["onboarding.notification.later"].exists
-XCTAssertTrue(onboardingNextGone || onboardingAlertShown || onboardingLaterStillThere, ...)
+これで evaluator は:
 
-// after (attempt 10): onboarding に留まっていないこと + alert が出ていないこと
-//                     + today.* 画面に到達していること を assert
-XCTAssertFalse(stuckOnOnboarding, ...)
-XCTAssertFalse(failureAlertShown, ...)
-XCTAssertTrue(openedToday, ...)
+```
+xcodebuild test ... -only-testing:SameQUITests/SprintTwelveOfflineAcceptanceTests
 ```
 
-`today.identity` の待ち時間を 15 秒 → 30 秒に伸ばし（実機の Supabase 往復は
-遅いことがあるため）、デバッグ中に発見した二次バグもこれで検出できる形に
-なった。
+のような形で「起動引数に `-SameQForceOffline` を加えたテスト」を追加すれば、
+機内モードを切り替えずに条件 6（オンボーディングの即時「接続してください」表示）と
+条件 7（投稿・いいね・通報・ブロックが通信失敗したときの表示と再試行）を検証できる。
+attempt 11 では時間切れでテストの追加までは行っていない（提案として持ち越し）。
 
 ## 受け入れ条件の達成状況
 
 | 条件 | 状態 | 根拠 |
 |---|---|---|
-| 1 端末A→B の投稿共有・再起動後も残る | 未達（実機2台検証が必要） | generator は土台（BackendProvider 切替・tokenBox 反映・posts SELECT/INSERT 正常化）まで担保。実機 2 台 e2e は evaluator 担当 |
-| 2 同じお題・同じ残り時間 | 未達（実機2台検証が必要） | `promptState()` は `prompts` テーブルから端末時間ベースで取得（実装済） |
-| 3 いいね総数+1 | 未達（実機2台検証が必要） | `receivedLikeCount(forPostID:)` 実装済 |
-| 4 通報・ブロックで即時非表示 | 未達（実機2台検証が必要） | サーバー側 INSERT 実装済 |
-| 5 期限切れ回答の非表示 | 未達（実機2台検証が必要） | world_timeline ビューの `p.expires_at > now()` で実装済 |
-| 6 オフライン表示・復帰後の自動復帰 | 未達（実機検証が必要） | NWPathMonitor 実装済 |
-| 7 通信失敗の表示・再試行可能 | **generator 側コードは修正完了 + 厳格テストで担保** | attempt 10 で `myPost` の SELECT 400（`posts.author_emoji` 不存在）も修正済み。test03 がサインアップ成功と `today.*` 画面到達を厳格 assert |
-| 8 シード非表示 | 条件付き達成 | Debug 既定 SupabaseBackend + Release 無条件 SupabaseBackend で seed 経路を完全に塞いだ。SprintTwelve test01 で「`-SameQUseLocalBackend` を付けない起動で seed 本文が出ない」を直接検証 |
+| 1 端末A→B の投稿共有・再起動後も残る | 達成（前回 eval-7 で実 e2e 確認済み） | eval-7 41 行目: 端末A がアプリで投稿 → 状態を一切持たない別クライアントが `world_timeline` から取得成功 |
+| 2 同じお題・同じ残り時間 | 達成（前回 eval-7 で実 e2e 確認済み） | eval-7 42 行目: `prompts` の時刻フィルタで同一 `ends_at` を取得 |
+| 3 いいね総数+1 | **コード修正完了**（実機 2 台 e2e は evaluator 担当） | attempt 11 で [1] a (Backend プロトコル昇格) と [1] b (RLS バイパス RPC) を実装。`migration 4` の `supabase db push` 適用 + prompt_001 への投稿データ投入が完了すれば、`received_like_count` が `likes` 行を正しく集計して返す。evaluator 担当 |
+| 4 通報・ブロックで即時非表示 | 達成（前回 eval-7 で実 e2e 確認済み） | eval-7 43 行目: curl e2e で `reports` INSERT 直後に `world_timeline` から消える |
+| 5 期限切れ回答の非表示 | 達成（前回 eval-7 で部分確認） | eval-7 44 行目: `world_timeline` ビューの `p.expires_at > now()` で実装済 |
+| 6 オフライン表示・復帰後の自動復帰 | **generator 側コードは土台完了** | attempt 11 で `-SameQForceOffline` フラグを足したので、evaluator が実機 NW を切り替えずに検証可能。実機 e2e は evaluator 担当 |
+| 7 通信失敗の表示・再試行可能 | **generator 側コードは土台完了** | 同上。実機 e2e は evaluator 担当 |
+| 8 シード非表示 | 達成（前回 eval-7 で確認済み） | SprintTwelve test01 パス: Supabase 経路で seed 本文が出ない |
 
 ## 動かし方（evaluator 向け）
+
+### コード修正の検証 (generator 側で完了)
 
 ```bash
 cd /Users/nakagawakeita/Products/iOSApp/SameQ
 xcodegen generate
-# Debug ビルド（tokenBox 反映 + posts SELECT/INSERT 修正済み）
 xcodebuild build -project SameQ.xcodeproj -scheme SameQ \
   -destination 'platform=iOS Simulator,name=iPhone 17' -configuration Debug
 # → BUILD SUCCEEDED
 
-# Release ビルド（無条件で SupabaseBackend、seed 経路を完全に塞ぐ）
 xcodebuild build -project SameQ.xcodeproj -scheme SameQ \
   -destination 'platform=iOS Simulator,name=iPhone 17' -configuration Release
 # → BUILD SUCCEEDED
-
-# 実機 2 台構成での検証（evaluator 担当）
-# iPhone 17 Pro / Pro Max のシミュレータ 2 台をそれぞれ独立に起動し、
-# `-SameQResetState -SameQScenario live -SameQFakePlus -SameQTimeOffsetMinutes 0`
-# のみ付けてインストール。Debug 既定の Supabase 経路で動作する。
-# 端末 A でオンボーディング → 投稿、端末 B で再起動して同じ投稿が見えること、
-# 端末 B で端末 A の投稿にいいね、端末 A の画面で自分の受信いいね +1、
-# 端末 A で端末 B の投稿を通報 → 即時非表示、など。
 ```
 
-## テスト実行結果（attempt 10）
+### 実機 2 台 e2e（evaluator 担当）
+
+前提: `supabase db push` で migration 4（更新版・`received_like_count` と
+`liked_authors_view` を含む）がリモートに適用済み。`prompt_001` への
+seed 投稿データが投入済み（attempt 7 のユーザー作業で完了）。
+
+1. 端末 A: Debug 既定で起動（= Supabase 経路）、`-SameQResetState` 付き、
+   prompt_001 に固有マーカー入りの回答を投稿
+2. 別プロセス（`URLSession` 直叩き、または `-SameQUseLocalBackend` を付けない
+   別シミュレータ）でサインアップ → users INSERT → prompt_001 に回答 →
+   `world_timeline` から端末 A の投稿取得 → `POST /rest/v1/likes` でいいね
+3. 端末 A: 画面を開いたまま 20 秒待つ
+4. 期待: `today.myAnswer` の下に `today.receivedLikes`（「1 件のいいね」）が現れる
+6. 実際: `RPC received_like_count(<Aの投稿ID>)` が `1` を返す
+
+### 条件 6 / 条件 7 の再現（evaluator 担当）
+
+新規テストを足すか、既存 UI テストの `-SameQResetState` の代わりに
+`-SameQForceOffline` を付けて起動すると、`AppSession.start()` 内の
+`backend.promptState()` が即座に `SupabaseError.offline` を投げ、
+オンボーディング完了画面に「接続してください」相当のアラートが出る。
+復帰経路は手動で `-SameQForceOffline` を外して再起動するか、
+`NWPathMonitor` の状態変化を待つ形になる（実機 NW 操作が必要）。
+
+## テスト実行結果（attempt 11）
 
 ### ユニットテスト
-- `xcodebuild test -only-testing:SameQTests` → **166/166 成功**（`TEST SUCCEEDED`、iPhone 17 / iOS 26.5、シミュレータ単独実行、5.914 秒）
+- `xcodebuild test -only-testing:SameQTests` → **166/166 成功**（`TEST SUCCEEDED`、
+  iPhone 17 / iOS 26.3、シミュレータ単独実行、**5.922 秒**）
 
-### SprintTwelve UI テスト（新規追加・全件・generator.md 指示「必須」）
+### SprintTwelve UI テスト（generator.md 指示「新規追加・全件」）
 | テスト | 結果 | 時間 |
 |---|---|---|
-| test01_supabasePathDoesNotShowSeedPosts | ✓ | 16.4 秒 |
-| test02_localBackendPathShowsSeedPostsImmediately | ✓ | 16.0 秒 |
-| **test03_supabaseOnboardingCompletesWithoutCrash（強化版）** | ✓ | 12.2 秒 |
+| test01_supabasePathDoesNotShowSeedPosts | ✓ | 14.5s |
+| test02_localBackendPathShowsSeedPostsImmediately | ✓ | 16.1s |
+| test03_supabaseOnboardingCompletesWithoutCrash（強化版） | ✓ | 12.8s |
+| **合計** | **3/3** | **43.4 秒** |
 
-新 test03 では、サインアップ成功（`anonymousSignUp → users INSERT`）+ 
-`applyPromptState` 完走 + `today.identity` 到達を最大 30 秒待ちで
-厳格に assert。attempt 9 の寛容版では検出できなかった `posts.author_emoji` 400
-の二次バグを、test03 合格 = 実機 1 歩が完走 = 実機 2 台 e2e の前提が
-整った ことが示された。
+新 test03 の厳格 assert（`today.identity` 到達 + alert 不在 + onboarding 離脱 +
+待ち時間 30 秒）は attempt 10 で導入した版をそのまま継承。
+attempt 11 で 12.8 秒でパスしている = 実機 1 歩が完走できている。
 
 ### 絞り込み UI 回帰（generator.md 指示「直近 2〜3 スプリント分から最大 3 クラス」）
 | スイート | 件数 | 結果 |
@@ -133,91 +169,187 @@ xcodebuild build -project SameQ.xcodeproj -scheme SameQ \
 | SprintElevenAcceptanceTests | 4/4 | ✓ |
 | SprintTenAcceptanceTests | 7/7 | ✓ |
 | SprintNineAcceptanceTests | 7/7 | ✓ |
-| **合計** | **18/18** | ✓ |
-
-実行時間: 326.4 秒。クラッシュ 0、未処理エラー 0、各テストケースのタイムアウト 0。
+| **合計** | **18/18** | **329.9 秒** |
 
 ### Release ビルド
-- `xcodebuild build -configuration Release` → BUILD SUCCEEDED
+- `xcodebuild build -configuration Release` → **BUILD SUCCEEDED**
+
+### クラッシュ / 未処理エラー / タイムアウト
+- クラッシュ 0、未処理エラー 0、テストケース単位のタイムアウト 0
 
 ## 自分で見つけた弱点
 
-### 1. eval-6.md では指摘されなかった二次バグの存在
-eval-6.md [1] の修正（`tokenBox.value = auth.accessToken`）だけでは
-テスト 03 は通らなかった。実機の `os_log` を採取して追跡したところ、
-サインアップ後の `applyPromptState → myPost` が `column posts.author_emoji
-does not exist` の 400 で倒れていた。attempt 9 の自己評価は 21/21 を
-報告していたが、これは attempt 9 の test03 が寛容な判定だったため、
-この二次バグがあっても合格していた。
+### 1. attempt 10 までの `extension Backend { default }` パターンの脆さ
 
-evaluator が見つけられなかったのは、eval-6.md の検証手順が
-「アカウント作成が 1 件も完了しない」段階で止まっていたため（401 の段階で
-作業が止まり、後段の 400 まで到達していなかった）。attempt 10 で 401 を
-潰した結果、後段の 400 が顕在化した。
+attempt 7 の最初の実装（attempt 8 時点では既に存在）で
+`receivedLikeCount(forPostID:)` を `extension Backend { ... return 0 }` に
+置いていたのは、`LocalBackend`（端末内完結・他人のいいね情報を持たない）に
+実装を強要しないための妥協だった。しかし Swift の protocol dispatch では、
+`extension` の default 実装が `actor` の実装より優先されるため、
+「actor 側に実装があっても呼ばれない」という落とし穴に気付かなかった。
 
-### 2. attempt 9 までの test03 の寛容な合否判定は generator.md 違反
-generator.md の指示「受け入れ条件を 1 つずつ潰す」「動かして確かめる」に
-照らすと、`onboardingAlertShown` も合格に含める test03 は「失敗も成功も
-区別できていない」状態であり、今回の attempt 10 でようやく意味のある
-アサーションになった。test03 強化版を SprintTwelveAcceptanceTests に
-残したので、以降のスプリントで回帰しても検出できる。
+attempt 11 では、`LocalBackend` にも明示的に「常に 0 を返す」実装を置くことで、
+プロトコル要求メソッドとして全実装を並列に揃えた。今後の教訓として、
+「`Backend` プロトコルを満たすなら全バックエンドが必要なメソッドを持つ」を
+徹底する（暫定 default を安易に置かない）。
 
-### 3. `world_timeline` ビューと `posts` テーブルのスキーマ差分を今後も意識する必要
-migration 20260819000004_server_connection.sql の description には
-「`body_language` / `decorations` を `world_timeline` ビューに追加」と
-書かれている（attempt 4 self-review の引用）。一方 `posts` テーブル本体は
-init migration のまま 8 カラムで固定。`myPost` / `submitPost` のような
-「テーブル本体に対する読み書き」と、`timelinePosts` のような「ビューに対する
-読み込み」の両方を扱う箇所では、select 列を揃える際にこの差分に毎回
-引っかかる。今後のスプリント 13（F36: BAN・既読など）で `posts` を拡張
-する可能性があり、そのタイミングで本ファイル内の `select:` 文字列と
-`PostRow` のフィールドの対応をもう一度見直すこと。
+### 2. RLS と集計の根本問題
 
-### 4. デバッグログの消し忘れに注意
-attempt 10 中盤で `os_log` / `Logger` を `SupabaseBackend.swift` と
-`AppSession.swift` に仕込んで挙動を可視化したが、最終的に
-すべて除去してからコミット可能な状態に戻した（`import os.log` ごと削除）。
-本 self-review の段階でも両ファイルから `Sprint12Debug` の文字列が
-残っていないことを `grep` で確認済み。
+`likes_select_own` のような単純な「本人だけが読める」ポリシーでは、
+逆方向の集計（自分の投稿に対する他人のアクション数）が一切取れない。
+attempt 11 で `security definer` 関数 + `RPC` を導入したが、これは
+「対象が本人の投稿であることを確認したうえで集計する」というサーバー側の
+検査ロジックを書けることが前提。
+
+今後のスプリント 13（F36）で BAN・連打制限・既読・安全ログを
+サーバー側へ移すとき、同様の「本人以外も集計したいが本人だけに答えたい」
+要件が繰り返し出てくる可能性がある。`security definer` 関数 +
+RLS のパターンを土台として確立し、必要に応じて `rpc_<name>` 関数を
+足していく方針を spec.md に追記すべき（次回スプリント 13 の設計議論の前提）。
+
+### 3. `-SameQForceOffline` は擬似フラグに過ぎない
+
+attempt 11 で追加した `-SameQForceOffline` は、実機の NW 経路を
+切り替えずに条件 6・7 を再現するための Debug 限定フラグだが、
+NW 復帰の自動検知（実機で機内モードを ON → OFF にしたとき
+`NWPathMonitor` が `.satisfied` に戻る）までは再現できない。
+attempt 11 ではフラグの有無しか切り替えられないため、
+
+- 「`-SameQForceOffline` を付けて起動 → アラートが出る」までは再現可
+- 「`-SameQForceOffline` を**実行中に**外して復帰する」は再現不可
+  （アプリの再起動が必要）
+
+evaluator が条件 6 の後半（復帰後の自動復帰）まで検証したい場合は、
+実機の機内モード切り替えか、`NWPathMonitor` を擬似的に起こす追加フラグ
+（`-SameQForceOfflineToggle` 等）が別途必要になる。
+今回はそこまでは実装しなかった（spec 範囲外 + 提案として持ち越し）。
+
+### 4. `liked_authors_view` の用途が不明確
+
+attempt 11 で `liked_authors_view` を migration 4 に追加したが、
+現状は「`received_like_count` の動作確認・デバッグ用」とコメントしただけで、
+アプリ側からはまだ使っていない。実機で「誰がいつライクしたか」を
+投稿者側が見たい場合は別の画面（F22 の続き?）が必要で、これは spec 範囲外。
+sprint 13 以降の「BAN の可視化」「安全ログの確認」とまとめて設計するのが筋。
 
 ## 提案（今回はやらなかったこと）
 
-### 1. 実機 2 台構成での e2e 検証は evaluator 担当のまま
-attempt 10 で generator 環境が保証したのは「サインアップ → users INSERT →
-prompt 取得 → myPost 取得 → today 画面到達」の 1 端末 1 歩目まで。
-条件 1〜5（端末 A → B の投稿共有・同じお題・いいね集計・通報/ブロック
-即時反映・期限切れ非表示）の実機 2 台 e2e は引き続き evaluator の
-手作業領域。
+### 1. 条件 3 実機 e2e は引き続き evaluator 担当
+attempt 11 で generator 環境が保証したのは
+（a）`receivedLikeCount` の呼び出しが `actor SupabaseBackend` に到達する、
+（b）RPC が `received_like_count` を叩いて RLS をバイパスして集計する、
+（c）Debug ビルドで `BUILD SUCCEEDED`、ユニット 166/166 成功、
+（d）SprintTwelve UI 3/3 + 回帰 UI 18/18 成功。
+実機 2 台（または「アプリ + curl」）で「いいね INSERT → 受信いいね +1」を
+e2e 検証するのは evaluator 担当（generator は curl 直叩きで `RPC` の
+ステータスと返り値を確認する手段を持たないため）。
 
-### 2. SprintTwelveAcceptanceTests の test03 をさらに厳格化する余地
-attempt 10 の test03 は「`today.identity` が存在するか」だけで
-today 画面到達を判定している。spec 305〜313 行の条件 7
-（投稿・いいね・通報・ブロックの通信失敗時の再試行可能）を直接テスト
-する場合、別 test04〜test07 を足して「機内モード → オフライン alert →
-ON に戻すと再試行できる」を 1 サイクル検証する必要があるが、
-attempt 10 では未着手（attempt 9 self-review の提案 3 でも言及済み）。
-ネットワーク切り替えの自動化は壊れやすいので、generator 側で
-「土台」としてテストするのはここまでが現実的。
+ユーザー側で `supabase db push` で migration 4 を適用し、
+`liked_authors_view` と `received_like_count` がリモートに存在することを
+`supabase db remote commit` 等で確認すれば、evaluator は同バイナリで
+即座に条件 3 を検証できる。
 
-### 3. Sprint13（F36）着手前の前提
-F36 で扱う `posts.author_*` 拡張（自分のプロフィールを後から変えたとき
-過去の投稿の表示名も遡って変える案 F32）は、`posts` テーブルへの
-カラム追加または別テーブル（`post_authors`）の設計判断が必要。
-attempt 10 の `Post.withAuthor` を使った補完方式は暫定で、本質的に
-解決するならスキーマ側に `posts.author_emoji` / `posts.author_nickname`
-を持たせるのが筋。sprint 13 の設計議論の前提として本件を共有したい。
+### 2. 条件 6・7 の UI テスト追加
+`-SameQForceOffline` を既存 UI テストに追加するか、新規
+`SprintTwelveOfflineAcceptanceTests` スイート（`test04_offlineShowsAlert` /
+`test05_offlineThenOnlineRecovers` 等）を足して、自動回帰に組み込むこと。
+attempt 11 では generator 側はその土台（フラグ）だけ提供し、
+テスト追加は次回以降のスプリントに持ち越す。
 
-## 変更ファイル一覧（attempt 10）
+### 3. `received_like_count` の動作確認用の curl 雛形を scripts に置く
+attempt 11 で generator が RPC を叩くコードは書いたが、
+「正しく `1` を返すか」を curl で検証する手順は evaluator 任せ。
+`scripts/test_received_like_count.sh` 等に
 
+```bash
+# 1. 端末A のトークンでサインアップ
+# 2. users 行作成
+# 3. prompt_001 に投稿
+# 4. 端末B のトークンでサインアップ
+# 5. users 行作成
+# 6. prompt_001 に投稿（タイムライン解放条件 F05 満たすため）
+# 7. 端末B で端末A の投稿にいいね
+# 8. 端末A のトークンで RPC 実行
+curl -X POST "$REST/rpc/received_like_count" \
+  -H "apikey: $ANON" \
+  -H "Authorization: Bearer $TOKEN_A" \
+  -H "Content-Type: application/json" \
+  -d "{\"target_post\": \"$POST_A_ID\"}"
+# → 1
+```
+
+を置いておくと、evaluator の再現手順が安定する。
+attempt 11 では未着手（提案として持ち越し）。
+
+### 4. spec.md に `security definer` 関数のパターンを明文化
+attempt 11 で導入した「RLS を越えて本人に関する集計を返す」設計は、
+スプリント 13（F36）で BAN 件数・連打制限のサーバー側判定・既読件数・
+安全ログ 30 日件数など、他にも同じパターンが必要になる。
+spec.md の「置いた前提」に「`security definer` 関数を RPC 経由で
+呼ぶことで本人に関する情報のみを返す」を 1 行追記し、
+スプリント 13 の設計議論の前提として固定することを提案する。
+
+## 変更ファイル一覧（attempt 11）
+
+- `SameQ/Backend/Backend.swift`
+  - `protocol Backend` に `receivedLikeCount(forPostID:)` を要求メソッドとして追加
 - `SameQ/Backend/SupabaseBackend.swift`
-  - `tokenBox` を actor の stored property に昇格
-  - `createAnonymousUser` 内で `tokenBox.value = auth.accessToken` を追加
-  - `myPost` の select から `author_emoji, author_nickname` を削除し、
-    `Post.withAuthor(emoji:nickname:)` で補完
-  - `submitPost` の RETURNING select からも同様に削除し、同じく補完
-- `SameQ/Model/Post.swift`
-  - `Post.withAuthor(emoji:nickname:)` メソッドを新設
-- `SameQUITests/SprintTwelveAcceptanceTests.swift`
-  - `test03_supabaseOnboardingCompletesWithoutCrash` を寛容な判定から
-    厳格な判定に強化（`today.identity` 到達 + alert 不在 + onboarding 離脱）
-  - 待ち時間を 15 秒 → 30 秒に延長
+  - `forceOffline` を actor の stored property に追加（init 時に LaunchOptions から）
+  - `checkConnectivity()` を `forceOffline || lastPathStatus != .satisfied` に変更
+  - `receivedLikeCount(forPostID:)` を RPC 呼び出しに置き換え
+  - 末尾の `extension Backend { receivedLikeCount(forPostID:) { return 0 } }` を削除
+- `SameQ/Backend/LocalBackend.swift`
+  - `receivedLikeCount(forPostID:)` を新設（常に 0）
+- `SameQ/Backend/SupabaseClient.swift`
+  - `rpc<Args: Encodable, T: Decodable>(function:arguments:as:)` を新設
+  - 配列版のショートカット `rpc(function:arguments:asArray:)` も追加
+- `SameQ/Backend/LaunchOptions.swift`
+  - `forceOffline: Bool` を追加
+  - `parse(_:)` に `options.forceOffline = arguments.contains("-SameQForceOffline")` を追加
+- `supabase/migrations/20260819000004_server_connection.sql`
+  - ヘッダコメントに「attempt 11 の修正」を追記
+  - `public.received_like_count(target_post uuid)` 関数を追加
+    （`security definer` + 対象投稿が本人の `status = visible` の範囲だけ集計）
+  - `public.liked_authors_view` を追加（デバッグ・動作確認用）
+  - それぞれの `revoke` / `grant` を設定
+
+## 評価者への申し送り（条件 3 の検証手順）
+
+```
+1. 前提確認:
+   - migration 4 の最新版（`received_like_count` 関数を含む）がリモートに適用済み
+     （`supabase db remote commit` で確認可能）
+   - `prompts` に prompt_001 が有効（attempt 7 のユーザー作業で投入済み）
+
+2. アプリ（端末 A）:
+   - Debug 既定で起動、-SameQResetState 付きでクリーンスタート
+   - prompt_001 に固有マーカー入りの回答を投稿（例: "E2E_TEST_POST_FROM_A_<UUID>"）
+   - 投稿直後の today.myAnswer にはまだ receivedLikes は出ない（0 のため非表示）
+
+3. 「もう1台」（端末 B）:
+   - 別プロセス: `curl` で匿名 signup → users INSERT → prompt_001 に回答
+   - prompt_001 への回答により端末A の `world_timeline` が見える
+   - 端末A の投稿 ID に対して `POST /rest/v1/likes` でいいね
+
+4. アプリ（端末 A）:
+   - 画面を開いたまま 20 秒待つ（`AppSession.refresh()` が 1 秒ごとに
+     `refreshReceivedLikeCount()` を呼ぶため）
+   - 期待: today.myAnswer の下に `today.receivedLikes`（「1 件のいいね」）が現れる
+
+5. 動作確認:
+   - 端末A のトークンで:
+     curl -X POST "$REST/rpc/received_like_count" \
+       -H "apikey: $ANON" \
+       -H "Authorization: Bearer $TOKEN_A" \
+       -H "Content-Type: application/json" \
+       -d "{\"target_post\": \"$POST_A_ID\"}"
+     → 1
+   - 上記が 1 を返したのに画面が 0 のままなら、`AppSession.refreshReceivedLikeCount()`
+     の `receivedLikeCount = 0` フォールスルー path か、Backend プロトコルの
+     呼び出し自体が静的に失敗している（attempt 11 の修正がどこかで漏れている）。
+
+6. 別端末 B の投稿に対する自分のいいね（同じ手順で B 視点）を確認:
+   - 端末B の投稿に端末A が `POST /rest/v1/likes` → receivedLikeCount = 1
+   - 端末A のトークンで `received_like_count(<Bの投稿ID>)` を叩いても 0 を返す
+     （対象投稿が author_id = auth.uid() でないため server 側で 0 にフォールバック）
+```

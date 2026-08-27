@@ -194,6 +194,44 @@ struct SupabaseClient: Sendable {
         return 0
     }
 
+    // MARK: - RPC（PostgREST /rpc/<関数名>）
+
+    /// `POST /rest/v1/rpc/<function>` を呼び出す（PostgREST の RPC エンドンド）。
+    /// 引数は `JSON` オブジェクトとして body に載せる。返り値は `T` にデコードされる。
+    /// `received_like_count(post_id)` のような `security definer` 関数を叩くために使う
+    ///（attempt 11: eval-7.md [1] b の修正）。
+    /// - Parameters:
+    ///   - function: PostgREST の関数名（snake_case）
+    ///   - arguments: 関数に渡す引数の辞書（`Codable` の `JSONEncoder` 互換型）
+    ///   - type: レスポンスをデコードする型
+    func rpc<Args: Encodable, T: Decodable>(
+        function: String,
+        arguments: Args,
+        as type: T.Type = T.self
+    ) async throws -> T {
+        let url = restBaseURL.appendingPathComponent("rpc/\(function)")
+        var request = makeRestRequest(url: url, method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try encodeJSON(arguments)
+        let (data, response) = try await performRequest(request)
+        try validate(response: response, data: data)
+        return try decode(T.self, from: data)
+    }
+
+    /// `T` が配列（`[Element]`）のときに使うショートカット。
+    func rpc<Args: Encodable, Element: Decodable>(
+        function: String,
+        arguments: Args,
+        asArray elementType: Element.Type = Element.self
+    ) async throws -> [Element] {
+        let array: [Element] = try await rpc(
+            function: function,
+            arguments: arguments,
+            as: [Element].self
+        )
+        return array
+    }
+
     // MARK: - Auth
 
     /// 匿名サインアップ。`POST /auth/v1/signup`。

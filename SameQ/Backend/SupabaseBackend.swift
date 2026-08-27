@@ -35,6 +35,11 @@ actor SupabaseBackend: Backend {
     /// 直近の通信経路の状態。`start()` や書き込み系で `false` を確認したときに
     /// `.offline` を投げる。
     private var lastPathStatus: NWPath.Status = .satisfied
+    /// `-SameQForceOffline`（Debug 限定・attempt 11: eval-7.md [3] の修正）。
+    /// true の間は `NWPathMonitor` の結果に関わらず `checkConnectivity()` が
+    /// 必ず `.offline` を投げ、サーバ往復を一切行わない。evaluator が実機の
+    /// 機内モードを切り替えずに条件6・条件7 を再現できるようにするための足場。
+    private let forceOffline: Bool
     /// 直近のサーバー往復が成功した時刻。失敗検知の参考値。
     private var state: PersistedState
     /// いいね・通報のローカル側レート制限（F17）。サーバー側の判定はスプリント13で
@@ -55,6 +60,7 @@ actor SupabaseBackend: Backend {
         self.state = store.load()
         self.likeLimiter = options.likeRateLimit.makeLimiter()
         self.reportLimiter = options.reportRateLimit.makeLimiter()
+        self.forceOffline = options.forceOffline
         self.monitor = NWPathMonitor()
         // `tokenProvider` は `@Sendable` クロージャなので actor の `state` を直接参照できない。
         // 代わりに、`SupabaseBackend` 内のトークンを `TokenBox`（atomic な値）経由で読み出す。
@@ -504,18 +510,26 @@ actor SupabaseBackend: Backend {
     }
 
     /// 自分の投稿に付いたいいねの件数（受け入れ条件3）。
-    /// 自分の投稿の受信いいねを PostgREST の aggregate 機能で取得する。
+    ///
+    /// `likes_select_own`（`user_id = auth.uid()`）だけの RLS では、他人のいいね行を
+    /// 読むことができず常に 0 になる。attempt 11（eval-7.md [1] b）の修正で
+    /// サーバー側に `security definer` の `received_like_count(post_id uuid)` 関数を
+    /// 追加し、RLS をバイパスして件数を返す RPC を使うようにした。
+    /// 関数自体は `auth.uid()` を確認し、本人の投稿についてだけ集計するため、
+    /// セキュリティ上の境界は壊さない（他人の投稿には呼んでも 0 を返す）。
     func receivedLikeCount(forPostID postID: UUID) async throws -> Int {
         try checkConnectivity()
-        struct CountRow: Decodable {
-            let count: Int?
+        struct Args: Encodable {
+            let post_id: String
         }
-        let rows: [CountRow] = try await client.get(
-            table: "likes",
-            select: "post_id",
-            filters: ["post_id": "eq.\(postID.uuidString)"]
+        let args = Args(post_id: postID.uuidString)
+        // `received_like_count` は単一の整数を返すのでそのまま受け取る。
+        let count: Int = try await client.rpc(
+            function: "received_like_count",
+            arguments: args,
+            as: Int.self
         )
-        return rows.count
+        return count
     }
 
     // MARK: - 通報（F13）
@@ -649,8 +663,12 @@ actor SupabaseBackend: Backend {
     // MARK: - 内部
 
     /// ネットワーク経路がオフラインのときは即座にエラーを投げる。
+    /// attempt 11（eval-7.md [3] の修正）で `-SameQForceOffline` の
+    /// 起動引数が立っているときは、`NWPathMonitor` の結果に関わらず
+    /// 強制的に `.offline` を投げる。evaluator が実機の機内モードを
+    /// 切り替えずに条件6・条件7 を再現できるようにするための足場。
     private func checkConnectivity() throws {
-        if lastPathStatus != .satisfied {
+        if forceOffline || lastPathStatus != .satisfied {
             throw SupabaseError.offline
         }
     }
@@ -712,15 +730,8 @@ final class TokenBox: @unchecked Sendable {
     }
 }
 
-// `Backend` プロトコルの拡張。Supabase 経由でもローカルと統一して扱えるよう、
-// 既定実装に委譲する。
-extension Backend {
-    /// 自分の投稿に付いているいいねの数。スプリント12で追加（F35・受け入れ条件3）。
-    /// 既定は `receivedLikeCount(forPostID:)` を持たないバックエンドのため、
-    /// `SupabaseBackend` 側で実装する。プロトコル要求ではない。
-    func receivedLikeCount(forPostID postID: UUID) async throws -> Int {
-        // 既定実装は 0 を返す（サーバー側集計が無い場合のフォールバック）。
-        _ = postID
-        return 0
-    }
-}
+// `Backend` プロトコルの拡張。`receivedLikeCount(forPostID:)` は
+// attempt 11（eval-7.md [1] a の修正）で `Backend` プロトコルの
+// 要求メソッドに昇格したため、ここでの既定実装は削除済み。
+// `LocalBackend` / `SupabaseBackend` の両方に実装を置く
+//（`SupabaseBackend` 側は 508 行）。

@@ -1,7 +1,7 @@
 {
   "currentSprint": "12",
-  "attempt": 10,
-  "status": "needs_fix",
+  "attempt": 11,
+  "status": "awaiting_eval",
   "history": [
     {
       "sprint": "12",
@@ -373,6 +373,13 @@
       "attempt": 5,
       "result": "needs_fix",
       "note": "evaluatorがiPhone 17 / iPhone 17 Pro シミュレータ2台（iOS 26.3）で実操作検証。不合格。受け入れ条件0/8（条件8のみSupabase経路限定で条件付き達成）。self-review.mdの自己申告どおり条件1〜7は検証不能だが、evaluatorはそれに加えて新規の致命的欠陥を発見した: -SameQUseSupabaseBackend でオンボーディングを最後まで進めて通知許可画面のボタンをタップすると、アカウント作成(auth/v1/signup)がHTTP 422 (\"Anonymous sign-ins are disabled\"、Supabase プロジェクト側の設定で匿名サインインが無効化されている)で失敗し、画面が23秒待っても一切変化せず無言のまま永久に止まることをlog stream・screenshotで直接確認した。OnboardingView.swiftはsession.alertMessageを一切購読しておらず(grep -rn alertMessage で確認、TodayPromptView/TimelineViewの2箇所にしか無い)、RootView.failureViewのリトライ可能なエラー表示パターンも新規ユーザーのオンボーディング失敗には使われない設計。これはSupabase側の設定を直しても、通信が一時的に失敗する限り再現するアプリ側の独立したバグ。また、保留中のmigration 20260819000004_server_connection.sql 自体がworld_timelineビューで存在しないposts.decorations列を参照しており、access-token取得後にsupabase db pushしても失敗する可能性が高いことをソース精読で新規発見(self-review.mdの提案通りに進めても解決しない)。evaluator環境ではsupabase CLIがログイン・link済みだったため、self-review.mdが\"generator側では手段がない\"としていたmigration list --linked等をevaluator側で独立に再実行し、migration 4未適用・prompts/posts/usersテーブルが全て空であることを確認した。一方、attempt 4で見つかったLocalBackend既定経路のregression(投稿後に他人の回答が出ない)はevaluator自身がSprintOneAcceptanceTests 5/5・SprintFourAcceptanceTests 7/7に加え抜き取りをSprintFive 7/7・SprintNine 7/7まで広げ(計4スプリント、要求最低3件を上回る)、ユニット166/166とあわせて解消を確認した。クラッシュ0・アプリ由来のFault 0。安定性(Supabase経路の主要動線が1歩も完走できない)・データ整合性(検証不能)・使用性(1)は閾値未達。判定基準5項目中4項目が未達のため不合格。詳細は .product/sprints/12-server-connection/eval-4.md"
+    },
+    {
+      "sprint": "12",
+      "attempt": 11,
+      "result": "awaiting_eval",
+      "note": "eval-7.md [1][3] に対応。[1a] receivedLikeCount(forPostID:) を Backend プロトコルの要求メソッドに昇格 (LocalBackend / SupabaseBackend 双方に実装を置いた、extension Backend の default は削除)。[1b] supabase/migrations/20260819000004_server_connection.sql に security definer 関数 received_like_count(target_post uuid) と liked_authors_view を追加 (likes_select_own RLS では他人のいいねが読めない問題)。SupabaseClient.rpc<T:Decodable>(function:arguments:as:) を新設して POST /rest/v1/rpc/<function> をサポート。SupabaseBackend.receivedLikeCount は rpc(function: \"received_like_count\") で呼ぶよう変更。[3] LaunchOptions.forceOffline と起動引数 -SameQForceOffline を新設し、SupabaseBackend に forceOffline stored property を追加して checkConnectivity() が NWPathMonitor の結果に関わらず .offline を投げるようにした (条件6・7 の再現用足場)。Debug/Release とも BUILD SUCCEEDED。ユニット 166/166 (5.922 秒・TEST SUCCEEDED)、SprintTwelve UI 3/3 (43.4 秒・test01 14.5s + test02 16.1s + test03 12.8s)、回帰 SprintEleven 4/4 + SprintTen 7/7 + SprintNine 7/7 = 18/18 (329.9 秒・TEST SUCCEEDED)。クラッシュ0・未処理エラー0・タイムアウト0。受け実条件 1・2・4・8 は前回 eval-7 で実 e2e / curl 確認済み。条件 3 (いいね) は今回コード修正完了だが実機 2 台 e2e が evaluator 担当 (migration 4 の apply と prompt_001 投稿データの投入はユーザー側継続課題)。条件 6・7 は -SameQForceOffline フラグで evaluator が再現可能。詳細: .product/sprints/12-server-connection/self-review.md (attempt 11)",
+      "evalNote": null
     }
   ]
 }

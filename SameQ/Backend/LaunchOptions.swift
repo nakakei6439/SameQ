@@ -99,6 +99,16 @@ struct LaunchOptions: Sendable {
     /// を付けない（= `useLocalBackend == false` で `SupabaseBackend`）。
     /// Release ビルドではこの値に関わらず常に `SupabaseBackend()` を返す。
     var useLocalBackend: Bool = false
+    /// `-SameQForceOffline`（Debug 限定・スプリント12 attempt 11）。
+    /// true の間は `SupabaseBackend.checkConnectivity()` が
+    /// `NWPathMonitor` の結果に関わらず常に `SupabaseError.offline` を投げる。
+    /// eval-7.md で条件6（機内モードでの起動）・条件7（通信失敗の表示と再試行）
+    /// の検証手段が無いと指摘された問題に対応するための擬似オフラインフラグ。
+    /// UI テストではこのフラグを付けて起動すると、`AppSession.start()` 内の
+    /// `backend.promptState()` などが即座に `.offline` を投げ、
+    /// 「接続してください」相当のアラート／空状態表示が現れる。
+    /// Release ビルドではこの値に関わらず常に false（接続状態は実機の NW に従う）。
+    var forceOffline: Bool = false
 
     /// このプロセスの設定。起動時に1度だけ解釈する。
     static let current = parse(ProcessInfo.processInfo.arguments)
@@ -154,6 +164,7 @@ struct LaunchOptions: Sendable {
             options.safetyLogRetentionSeconds = seconds
         }
         options.useLocalBackend = arguments.contains("-SameQUseLocalBackend")
+        options.forceOffline = arguments.contains("-SameQForceOffline")
         #endif
         return options
     }

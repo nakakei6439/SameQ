@@ -348,6 +348,18 @@ actor LocalBackend: Backend {
         state = next
     }
 
+    /// 自分の投稿に付いているいいねの件数（F35・受け入れ条件3）。
+    /// 端末内完結の `LocalBackend` では他人のいいね情報は保持しないので常に 0。
+    /// `Backend` プロトコルの要求メソッドになった（attempt 11: eval-7.md [1] a）。
+    /// - Parameter postID: 対象投稿（ローカルには存在しない参照）。
+    /// - Returns: 常に 0。
+    func receivedLikeCount(forPostID postID: UUID) async throws -> Int {
+        // ローカルには受信いいねの記録が無いため 0。
+        // Supabase 経路だけが「実機 2 台」で正しい値を返す（RPC で RLS バイパス）。
+        _ = postID
+        return 0
+    }
+
     // MARK: 通報（F13）
 
     func reportPost(postID: UUID, reason: ReportReason) async throws {

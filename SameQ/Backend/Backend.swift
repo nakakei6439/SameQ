@@ -117,6 +117,19 @@ protocol Backend: Sendable, TranslationAttemptPersisting {
     /// いいねを付ける／外す。
     func setLike(postID: UUID, liked: Bool) async throws
 
+    /// 自分の投稿に付いているいいねの件数（受け入れ条件3「受信したいいねの総数」）。
+    ///
+    /// `Backend` プロトコルの要求メソッド。
+    /// `extension` のデフォルト実装ではなく `actor` 実装が `any Backend` 経由で
+    /// 静的ディスパッチされるようにするため、`LocalBackend` / `SupabaseBackend` の両方に
+    /// 実装を置く（attempt 11: eval-7.md [1] a の修正）。
+    /// - Supabase 経路: `RPC received_like_count(post_id)` で `security definer` 関数を使い、
+    ///   `likes_select_own` RLS をバイパスして他人のいいね行も数えられる（attempt 11:
+    ///   eval-7.md [1] b の修正）。
+    /// - ローカル経路: `likedPostIDs` には他人のいいねは含まれないため常に 0。
+    ///   既定実装を `extension` に置かず、`LocalBackend` で明示的に 0 を返す。
+    func receivedLikeCount(forPostID postID: UUID) async throws -> Int
+
     // MARK: 通報（F13）
 
     /// 回答を理由付きで通報する。通報した回答は以後、自分の表示対象に入らない。
