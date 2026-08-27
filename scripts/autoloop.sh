@@ -23,7 +23,7 @@ STATE_FILE="$REPO_DIR/.product/state.json"
 LOGDIR="$REPO_DIR/.product/autoloop-logs"
 LOCK_FILE="$REPO_DIR/.product/autoloop.lock"
 MAX_ITERATIONS="${MAX_ITERATIONS:-60}"
-LAST_SPRINT="11"
+LAST_SPRINT="17"
 TIMEOUT_SECONDS=14400
 TIMEOUT_SENTINEL="$LOGDIR/.timeout_fired"
 
