@@ -39,10 +39,10 @@ log() {
 if [ -f "$LOCK_FILE" ]; then
   existing_pid=$(cat "$LOCK_FILE" 2>/dev/null || echo "")
   if [ -n "$existing_pid" ] && kill -0 "$existing_pid" 2>/dev/null; then
-    log "既に autoloop.sh が実行中です（PID $existing_pid）。多重起動を防ぐため終了します。"
+    log "既に autoloop.sh が実行中です（PID ${existing_pid}）。多重起動を防ぐため終了します。"
     exit 9
   fi
-  log "古いロックファイル（PID $existing_pid、既に終了済み）を上書きします。"
+  log "古いロックファイル（PID ${existing_pid}、既に終了済み）を上書きします。"
 fi
 echo "$$" > "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT
