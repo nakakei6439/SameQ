@@ -1,8 +1,15 @@
 {
   "currentSprint": "14",
-  "attempt": 4,
-  "status": "needs_fix",
+  "attempt": 5,
+  "status": "blocked",
   "history": [
+    {
+      "sprint": "14",
+      "attempt": 5,
+      "result": "blocked",
+      "note": "3-strike rule 発動。eval-2/eval-3/eval-4 (前回) / eval-4 (今回) で同一の差し戻し [1] RevenueCat ダッシュボード目視不可・[2] ダッシュボード商品未登録 が 4 回連続。evaluator (eval-4.md 最終行) も『generator は eval-3 [3] を今回で解消しており、コード側でのやり残しは無い。残っているのは全てユーザー側の課金基盤セットアップ作業と、autoloop 環境の検証手段の欠如』と明示。spec 行361『この確認ができない実装は不合格とする』が autoloop 環境 (実機・Sandbox Apple ID・`.storekit`・RevenueCat ダッシュボード認証・secret key のいずれも不在) と原理的に相いれないため、generator で突破不可能。ユーザー判断を仰ぐため status を blocked に。コード変更ゼロ (作業ツリー clean)。詳細は .product/sprints/14-undefined/self-review.md (attempt 5)",
+      "evalNote": null
+    },
     {
       "sprint": "14",
       "attempt": 4,

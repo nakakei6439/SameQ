@@ -1,228 +1,222 @@
-# スプリント 14 attempt 4: 起動経路の nil 保護（条件6）と再評価
+# スプリント 14 attempt 5: 3-strike rule 発動・blocked
 
 ## 結論
 
-eval-3 の **[3] 起動経路 `refreshPlusEntitlement()` の nil 保護欠落** を修正した。
-`refreshPlusEntitlement()` が `currentEntitlement()` から `nil` を返されたときも、
-既存 `plusEntitlement` が購読期間内（`isActive(at: clock.now)`）であれば
-**上書きしない**保護を追加し、新規ユニットテスト 4 本（test11〜14）でこの挙動を
-回帰防止付きで保証する。
+**3-strike rule 発動。autoloop を停止し、ユーザーの判断を仰ぐ。**
 
-[1]（ダッシュボード目視）と [2]（ダッシュボード商品未登録）はユーザー側ブロッカーの
-ため、generator では対応不可（spec が「確認できない実装は不合格」と明記）— eval-3
-から変更なし。`self-review.md` の「動かし方」節に詳しい手順を残し、
-evaluator（人間）担当として明示する。
+eval-2 → eval-3 → eval-4(前回) → eval-4(今回) と、4 回連続で同一の差し戻し
+[1]「RevenueCat ダッシュボード目視不可」・[2]「ダッシュボードに商品未登録」
+を受けた。evaluator 自身が eval-4.md 最終行で
+「generator は eval-3 [3] を今回で解消しており、**コード側でのやり残しは無い**。
+残っているのは全てユーザー側の課金基盤セットアップ作業と、autoloop 環境の検証手段の欠如」
+と明示しており、generator 側では原理的に突破できない。
 
-attempt 3 で `restorePlus()` に入れた保護を `refreshPlusEntitlement()` にも
-広げ、条件6「通信できない状態で起動しても、すでに Plus のユーザーが無料状態に
-転落せず」を**コード・自動テストの両方で担保**する。
+**コード変更ゼロ**（作業ツリー clean・前回 attempt 4 の `62d3330` を温存）。
+spec 行361「サンドボックスでの購入と復元が、運営側の課金ダッシュボードに取引として
+現れる（**この確認ができない実装は不合格とする**）」が、autoloop 環境
+（実機 / Sandbox Apple ID / `.storekit` 構成 / RevenueCat ダッシュボード認証 /
+secret key のいずれも不在）と相いれないため。
+
+status を `blocked` に更新し、autoloop の `case blocked` 分岐（exit 2）に
+乗せて停止させる。
 
 ## 受け入れ条件の達成状況
 
 | 条件 | 状態 | 根拠 |
 |---|---|---|
-| 1. Plus 画面の見た目・導線が同一 | 達成 | `PlusView` / `PlusDecorationPicker` は attempt 3 から無変更（git diff 0 行）。SprintTenAcceptanceTests test02/test06（価格表示・導線）緑 |
-| 2. サンドボックス購入で Plus 状態が有効化 | 達成（コード） | `purchase(_:)` → `Purchases.purchase(product:)` → 成功時に `CustomerInfo.entitlements["plus"]` を `PlusEntitlement` に詰める既存実装を維持。実機 Sandbox 購入はユーザー側検証（商品未登録のため現状未達） |
-| 3. 端末削除→復元で Plus 状態が戻る | 達成（コード） | `restore()` → `Purchases.restorePurchases()` 経路を維持。サンドボックス購入は RevenueCat サーバー側に記録されるため再インストールでも復帰する経路 |
-| 4. ダッシュボードに取引が現れる | **evaluator 担当** | autoloop から https://app.revenuecat.com/ へのログイン不可・トークン無し。実装側は条件1〜3 が満たれば RevenueCat サーバーへの POST が走る作り。「動かし方」節に手順を明記 |
-| 5. 購入キャンセル時に責めない | 達成（テスト追加・attempt 3 で担保） | attempt 3 で `PlusServiceStub.purchase(.failure(.userCancelled))` を AppSession に注入する test06 を追加済み。test07 で `.network` のときは `alertMessage` が立つことも同時確認 |
-| 6. **オフラインで Plus 状態が転落しない** | **達成（コード + テスト修正）** | **attempt 4** で ①`AppSession.refreshPlusEntitlement()` を「`currentEntitlement()` が `nil` を返し、既存 `plusEntitlement` が `isActive(at: clock.now)` のときは上書きしない」よう修正、②新規 test11 で「1回目 refresh で Plus 入り → オフライン化（`currentEntitlementResult = nil`） → 2回目 refresh でも Plus 維持」を直接確認、③test12 で「未購入ユーザーが nil を受けても新規 Plus 状態を起こさない」ことを確認、④test13 で「期限切れ + nil refresh で `nil` に戻る（保護は isActive 限定）」ことを確認、⑤test14 で「`currentEntitlement()` が non-nil の新しい entitlement を返すケースは従来どおり更新される」ことを確認 |
-| 7. スプリント10の受け入れ条件7項目維持 | 達成 | SprintTenAcceptanceTests 7/7 緑（FakePlus 経路・RevenueCat と独立）。SprintEleven（設定・復元ボタン）4/4 緑 |
+| 1. Plus 画面の見た目・導線が同一 | 達成 | `PlusView` / `PlusDecorationPicker` は attempt 4 以降無変更。SprintTenAcceptanceTests test02/test06 緑 |
+| 2. サンドボックス購入で Plus 状態が有効化 | 達成(コード) | `purchase(_:)` → `Purchases.purchase(product:)` 経路を維持。実機 Sandbox 購入はユーザー側検証（商品未登録のため現状未達） |
+| 3. 削除→復元で Plus 状態が戻る | 達成(コード) | `restore()` → `Purchases.restorePurchases()` 経路を維持 |
+| 4. ダッシュボードに取引が現れる | **3-strike・未達** | spec 仕様上「確認できない実装は不合格」と明記。autoloop 環境から原理的に検証不能 |
+| 5. 購入キャンセル時に責めない | 達成(テスト) | attempt 3 の test06 で `PlusServiceStub.purchase(.failure(.userCancelled))` を担保済み |
+| 6. 通信できない状態で起動しても Plus が転落しない | 達成(コード+テスト) | attempt 4 で `AppSession.refreshPlusEntitlement()` に nil 保護を追加、test11〜14 緑 |
+| 7. スプリント10の受け入れ条件7項目維持 | 達成 | SprintTenAcceptanceTests 7/7 緑 |
 
-## eval-3 指摘への対応
+## 3-strike rule の根拠
 
-### [3] 起動経路 `refreshPlusEntitlement()` の nil 保護欠落 — **今回修正**
-- **修正内容**: `AppSession.refreshPlusEntitlement()` を「`currentEntitlement()` が `non-nil` を返すときは従来どおり上書き、`nil` を返しかつ既存 `plusEntitlement` が `isActive(at: clock.now)` のときは温存、それ以外（既存 nil / 既存期限切れ）は `nil` に置き換え」の 3 経路に分岐。
-- **コード**: 11 行 → 17 行（コメント込み）。`plusService` が `nil` のときは従来どおり `nil` を入れる経路を温存。
-- **テスト**: `test11`（メイン条件6保護）/ `test12`（未購入で温存しない）/ `test13`（期限切れは温存しない）/ `test14`（non-nil 更新は従来どおり）の 4 本を追加。
+### 同一指摘の連続回数
 
-### [1] ダッシュボード目視 — ユーザー側ブロッカー（変化なし）
-- 3 回連続で同一指摘。autoloop 環境では原理的に検証不能。
-- self-review.md 「動かし方」節の手順で人間がダッシュボード目視するしかない。
+- eval-2.md (attempt 2): [1] ダッシュボード目視不可 / [2] ダッシュボード商品未登録
+- eval-3.md (attempt 3): [1] ダッシュボード目視不可 / [2] ダッシュボード商品未登録
+- eval-4.md (前回・attempt 4): [1] ダッシュボード目視不可 / [2] ダッシュボード商品未登録 / [3] 起動経路の nil 保護欠落
+- eval-4.md (今回・attempt 4 再評価): [1] ダッシュボード目視不可 / [2] ダッシュボード商品未登録 / [3] **解消確認**
 
-### [2] ダッシュボード商品未登録 — ユーザー側ブロッカー（変化なし）
-- 起動時の `ERROR: 🍎‼️ Error fetching offerings` ログは、商品未登録の直接の結果（仕様上「商品が 0 件」状態）。
-- ユーザー側で App Store Connect + RevenueCat ダッシュボードに商品を登録すれば消える。
+→ [1] と [2] が **4 回連続で同指摘**。3-strike rule（generator.md 5 項）に
+従い generator 作業を停止する。
 
-## 動かし方（evaluator 向け）
+### eval-4.md の最終行（generator 続行不可の宣言）
 
-### 受け入れ条件4（ダッシュボード反映）の確認手順 — 人間が実行
-1. **App Store Connect 側で商品登録**:
-   - https://appstoreconnect.apple.com/apps/6443888883/subscriptions （App ID `com.nakakei6439.SameQ`）
-   - Subscription Group に月額 Subscription を追加（Product ID: `com.nakakei6439.SameQ.plus.monthly`、期間: 1 month、価格: ¥480）
-   - Status を "Ready to Submit" 以上に
-2. **RevenueCat ダッシュボードで Product ↔ Entitlement を紐付け**:
-   - https://app.revenuecat.com/projects/e444c0e4/overview
-   - `Products` タブ: `com.nakakei6439.SameQ.plus.monthly` が登録され、App Store Connect と紐付いていること
-   - `Entitlements` タブ: `plus` が作成され、上記 Product がアタッチされていること
-3. **実機でサンドボックス購入**:
-   - App Store Connect → Users and Access → Sandbox Testers でテスター作成
-   - 実機 iPhone で Sandbox Apple ID としてサインイン（設定 → App Store → サインアウト → Sandbox アカウントで再サインイン）
-   - `PlusView` を開き、購入ボタンを押す → 購入完了
-4. **RevenueCat ダッシュボードで目視確認**:
-   - `Customers` タブで sandbox 購入を行ったユーザーの `app_user_id` を検索
-   - `Entitlements` が `plus` で active になっていること、購入時刻が記録されていることを確認
-   - `Transactions` タブで購入履歴が残る
-5. **復元経路の検証**:
-   - アプリを完全削除 → 再インストール → オンボーディング完了 → 設定画面 → 「購入を復元」を押す
-   - Plus ラベル / 長文入力・装飾が再び使えるようになることを確認
+> generator は eval-3 [3]（起動経路の nil 保護）を今回で解消しており、
+> **コード側でのやり残しは無い**。残っているのは全てユーザー側の課金基盤
+> セットアップ作業と、autoloop 環境の検証手段の欠如。
 
-### 受け入れ条件6（起動経路のオフライン保護）の確認手順
-1. **実機/シミュレータで実検証**: 上記手順で Plus 状態にしたあと、
-   - **実機**: 機内モード ON → アプリ完全終了 → 機内モードのまま起動 → Plus 状態が温存されていること（`debugStatusLine` に `plus` と表示されること）
-   - **コード上**: attempt 4 で `refreshPlusEntitlement()` に `isActive` 限定の nil 保護が入っていること、`test11` で実証済み
+### spec.md 行361（要件の絶対性）
 
-### Debug 経路（シミュレータで Plus 画面を触りたい場合）
-- `-SameQFakePlus`: `FakePlusService`（既存挙動と完全一致）
-- `-SameQUseStoreKitPlus`: 旧 `StoreKitPlusService` 経路（escape hatch）
-- 上記どちらも付けない既定: `RevenueCatPlusService`（スプリント14のリリース形）
+> サンドボックスでの購入と復元が、運営側の課金ダッシュボードに取引として現れる
+> （**この確認ができない実装は不合格とする。ダッシュボードに実績が残ることが
+> 今回の差し替えの目的そのもの**）
 
-### 自動テストの実行
-```bash
-# ユニット全件（184本）
-xcodebuild -project SameQ.xcodeproj -scheme SameQ \
-  -destination 'platform=iOS Simulator,name=iPhone 17' \
-  test -only-testing:SameQTests
+`不合格` という単語が要件として明記されているため、条件4 を「未検証 = 棄却」
+以外の形で扱うことは spec の読み替えになる。
 
-# 新規追加分のみ（attempt 4 で追加した 4 本）
-xcodebuild -project SameQ.xcodeproj -scheme SameQ \
-  -destination 'platform=iOS Simulator,name=iPhone 17' \
-  test -only-testing:SameQTests/RevenueCatPlusServiceTests/test11_AppSessionRefreshWithNilDoesNotDropExistingPlus
-```
+### autoloop 環境の制約（解決不能）
+
+| 必要なもの | autoloop の有無 | 取得元 |
+|---|---|---|
+| 実機 | なし | ユーザー |
+| Sandbox Apple ID | なし | ユーザー（App Store Connect → Users and Access → Sandbox Testers） |
+| `.storekit` 構成 | 0 件（`find . -name "*.storekit"` 確認済み） | ユーザーまたは generator（実装可能だが condition 4 は救えない） |
+| RevenueCat ダッシュボード認証 | なし | ユーザー |
+| RevenueCat secret key (`sk_`) | なし（公開キー `appl_` のみ） | ユーザー |
+| App Store Connect 商品登録 | なし | ユーザー |
+| RevenueCat ダッシュボード Product↔Entitlement 紐付け | なし | ユーザー |
+
+## generator で可能な追加施策とその限界
+
+### A. `.storekit` 構成の追加（条件2・3 をシミュレータで担保する案）
+- **メリット**: simulator の StoreKit Testing で条件2・3（購入・復元）を検証可能になる
+- **デメリット**: condition 4 は RevenueCat ダッシュボードへの実績送信が必要で、
+  StoreKit Testing 経由の「擬似購入」では RevenueCat ダッシュボードに取引が
+  残らない → **condition 4 は依然として検証不能**
+- **判断**: condition 4 が突破不能なら .storekit 追加も合格への到達は不確実。
+  ユーザー判断に委ねる
+
+### B. Plus 画面の「料金を読み込み中です…」にタイムアウト導線（評価者提案1）
+- **メリット**: 既定経路で商品が取得できないときの UX 改善
+- **デメリット**: spec には無い（Plus 画面の UI 改修）。condition 4 とは無関係
+- **判断**: スプリント範囲外（条件1 維持の制約も考慮）
+
+### C. 起動時の `ERROR: Error fetching offerings` ログを抑制（評価者提案2）
+- **メリット**: リリースビルドのユーザーログが ERROR レベルで汚れない
+- **デメリット**: condition 4 とは無関係。根本原因（商品未登録）は解消されない
+- **判断**: スプリント範囲外
+
+## 動かし方（evaluator / ユーザー向け）
+
+### autoloop の状態
+- status: `blocked`
+- attempt: 5
+- autoloop は次の iteration で `case blocked` 分岐に入り exit 2 で停止する
+- 手動で停止する場合は `pkill -f autoloop.sh`
+
+### ユーザー判断が必要な選択肢
+
+**(a)** **App Store Connect + RevenueCat ダッシュボードの商品登録を済ませ、
+人間が実機 Sandbox 購入 → ダッシュボード目視で検証する運用へ切り替える**
+- 条件: App Store Connect で Subscription Group + 商品 `com.nakakei6439.SameQ.plus.monthly` 登録、
+  RevenueCat ダッシュボードで `Products` タブに同 Product を追加、
+  `Entitlements` タブに `plus` を作って同 Product をアタッチ
+- 検証: 実機で Sandbox Apple ID サインイン → PlusView で購入 → `app.revenuecat.com` の
+  Customers / Transactions タブで購入実績を目視確認
+- メリット: spec の本来意図（ダッシュボードに実績が残る）に沿った検証
+- デメリット: ユーザー作業が必要
+
+**(b)** **`.env.local` に RevenueCat secret key (`sk_`) を追加 + `.storekit` 構成を追加**
+- 条件: `.env.local` に `REVENUECAT_SECRET_API_KEY=<sk_...>` を追加（gitignore 対象）、
+  Xcode に Configuration.storekit を作成して月額商品を定義、
+  `RevenueCatPlusService` の初期化を StoreKit Testing モードに対応
+- 検証: evaluator が REST API v2 で当該 app_user_id の transactions を照会可能に
+  （条件4 の一部を自動化）、シミュレータで条件1・2・3 を検証可能
+- メリット: autoloop 環境で大部分を自動検証可能に
+- デメリット: spec 条件4「ダッシュボードに実績が残る」の精神（実購入の実績）には
+  直接応えない（シミュレータ購入は RevenueCat ダッシュボードには届かない）
+
+**(c)** **spec の条件4 を autoloop で検証可能な形へ緩和する**
+- 条件: spec.md 行361 を「実装が RevenueCat SDK を経由しており、ダッシュボードに
+  登録する手順が明確である」程度に読み替える、または条件4 自体を削除
+- メリット: generator 環境で突破可能になる
+- デメリット: スプリント14 の本来の目的（ダッシュボードに実績が残る状態）を
+  骨抜きにする。spec は『この確認ができない実装は不合格』と明記しており、
+  planner の意図を越えた大きな変更になる
+
+### 推奨
+**(a)** が本来の目的に最も忠実だが、ユーザー側の作業負荷が大きい。
+現実的には **(a) + (b)** の併用（実機検証は手動・CI/autoloop では (b) の
+REST API + .storekit で部分自動化）が最も確実。
 
 ## 変更ファイル
 
-### 修正
-- **`SameQ/Session/AppSession.swift`** (`refreshPlusEntitlement()`): nil 保護を
-  追加（6 行）。既存 `plusEntitlement` が `isActive` のときに限り、
-  `currentEntitlement()` が `nil` を返しても `plusEntitlement` を上書きしない
-  （eval-3.md [3] への対応・条件6 起動経路の保護）。コメントで
-  attempt 4 (eval-3.md [3] への対応・条件6 保護) と理由を明記。
+なし。コード変更ゼロ（作業ツリー clean）。
 
-### 新規
-- **`SameQTests/RevenueCatPlusServiceTests.swift` (追記・test11〜14 を追加)**:
-  - test11: refresh に nil を渡しても既存 Plus が落ちない（条件6 起動経路の保護・主軸）
-  - test12: 未購入ユーザーが refresh で nil を受けても新規 Plus 状態を起こさない
-  - test13: 既存 Plus が購読期間外（期限切れ）のとき refresh で nil を受ければ `nil` に戻る（保護は isActive 限定）
-  - test14: refresh が non-nil の新しい entitlement を返すときは従来どおり更新される
+前回 attempt 4 の成果物（commit `62d3330`）をそのまま温存:
+- `SameQ/Session/AppSession.swift`: `refreshPlusEntitlement()` に nil 保護
+- `SameQTests/RevenueCatPlusServiceTests.swift`: test11〜14 追加（起動経路の nil 保護）
 
-## テスト実行結果
+## テスト実行結果（前回 attempt 4 を継承）
 
-### 新規ユニットテスト（4本）
-```
-Test Suite 'RevenueCatPlusServiceTests' passed
-  test11_AppSessionRefreshWithNilDoesNotDropExistingPlus   (0.002s) ✓
-  test12_AppSessionRefreshWithNilWhenNoExistingPlusKeepsPlusStateNil (0.001s) ✓
-  test13_AppSessionRefreshWithNilWhenExistingIsExpiredClearsPlusState (0.003s) ✓
-  test14_AppSessionRefreshWithNewEntitlementUpdatesPlusState (0.001s) ✓
-Executed 14 tests, with 0 failures (0 unexpected) in 0.064 seconds
-```
-
-### 全ユニットテスト（184本 = 既存180本 + 新規4本）
-```
-Executed 184 tests, with 0 failures (0 unexpected) in 6.066 seconds
-** TEST SUCCEEDED **
-```
-
-### UI 回帰（直近2〜3スプリント分から最大3クラス）
-- SprintTenAcceptanceTests 7/7（Plus 画面の FakePlus 経路・回帰確認）
-- SprintElevenAcceptanceTests 4/4（設定・復元ボタン）
-- SprintThirteenAcceptanceTests 4/4（サーバー側 BAN / 連打制限）
-- **合計 15/15 passed**（229.2秒・TEST SUCCEEDED）
-
-### ビルド
-- Debug: BUILD SUCCEEDED（test BUILD）
-- Release: BUILD SUCCEEDED（warning のみ・既存コード由来・今回追加分に由来する warning 無し）
+- ユニット 184/184（6.066秒・TEST SUCCEEDED）
+- UI 回帰 SprintTen 7/7 + SprintEleven 4/4 + SprintThirteen 4/4 = 15/15（229.2秒・TEST SUCCEEDED）
+- Debug / Release ビルドとも BUILD SUCCEEDED
 - クラッシュ 0・未処理エラー 0・タイムアウト 0
-
-## 実装メモ
-
-### 条件6 保護の設計判断（起動経路・attempt 4）
-attempt 3 の `restorePlus()` は設定画面の「購入を復元」ボタンを押したときしか
-通らない経路だった。条件6 は「**通信できない状態で起動しても**」の文面で、
-`start()` 内の `await refreshPlusEntitlement()`（行 262）が経路の本丸。
-attempt 3 ではここに nil 保護が無かったため、起動時にオフライン +
-SDK キャッシュ喪失で `currentEntitlement()` が `nil` を返すと
-既存 Plus ユーザーが無料状態に転落するリスクがあった。
-
-attempt 4 では 3 経路に分岐:
-1. **`non-nil` を取得**: 従来どおり上書き（購読期間更新を反映）
-2. **`nil` を取得 + 既存 `plusEntitlement` が `isActive`**: 温存（条件6 保護）
-3. **`nil` を取得 + 既存が無い or 期限切れ**: `nil` に置き換え
-
-`isActive` 限定にすることで、**期限切れの偽 Plus 状態**を持たないようにしている
-(test13 で回帰確認)。`plusService` 自体が `nil` のとき（Plus 機能無効）は
-従来どおり `plusEntitlement = nil`（行 305）。
-
-### test10（attempt 3 既存）との関係
-attempt 3 で追加した `test10_AppSessionRefreshAfterPurchaseReadsSameEntitlement` は
-「同じ Plus を繰り返し読める」回帰確認。attempt 4 で `refreshPlusEntitlement()` を
-変更したが、test10 は引き続き成功する（スタブが常に同じ Plus を返すため、
-attempt 4 のロジックは ①経路の「non-nil を取得 → 上書き」を通る）。
-attempt 4 で nil 保護を入れた経路は test11 が直接カバー。
-
-### 触らなかった判断
-- `PlusView` / `PlusDecorationPicker`: 無変更（条件1 維持）。
-- `RevenueCatPlusService` 本体: 無変更（attempt 2 の実装が条件5・6 を満たすことを確認）。
-- `FakePlusService` / `StoreKitPlusService`: 無変更（既存経路として温存）。
-- `Backend` プロトコル: 無変更（Plus 関連 API は無変更）。
-- `PlusService` プロトコル: 無変更（既存 `currentEntitlement()` の戻り値だけを見る）。
 
 ## 自分で見つけた弱点
 
-1. **条件4 は引き続き人間 evaluator 必須**（3 回連続で同じ指摘・未解消）:
-   `app.revenuecat.com` へのブラウザ認証・secret key・実機 Sandbox Apple ID が
-   autoloop には揃わず、generator 環境から到達不能。
-2. **原因[2] ダッシュボード商品未登録**（3 回連続で同じ指摘・未解消）:
-   起動時の `ERROR: 🍎‼️ Error fetching offerings` ログは、ユーザ側で
-   App Store Connect + RevenueCat ダッシュボードに商品を登録すれば消える
-   （generator 環境から到達不能）。
-3. **条件2・3 の実機サンドボックス購入も人間 evaluator 必須**:
-   商品未登録のため、現状サンドボックス購入で `plus` エンタイトルメントが
-   付与されない可能性が高い（条件2・3 も実機では未達見込み）。
-4. **SDK 起動時の "Error fetching offerings" ERROR ログ**: attempt 2 で観測、
-   attempt 4 でも継続。商品登録前の暫定挙動として app_product が空のままでも
-   UI クラッシュは起こさない既存実装を維持（`availableProducts()` は空配列を
-   返すだけ、`currentEntitlement()` は `nil` を返すだけ）。
-5. **Purchases.configure の冪等性**: テストで複数回 `RevenueCatPlusService` を
-   作ると SDK が「already configured. Ignoring duplicate call.」の INFO を出す。
-   機能上は無害だが、ログがうるさい場合は Purchases SDK のテスト用リセット API
-   （v5.x にはない）を待つしかない。
-6. **attempt 4 で `currentEntitlement()` の保護を入れたが、SDK の挙動が変わると
-   機能しなくなる**: test11〜14 は PlusServiceStub 経由のため、
-   **実 SDK のオフライン挙動を保証するテストではない**。これは test10 と同じ
-   限界（attempt 3 self-review の弱点5 に既記載）。
+1. **条件4 が引き続き人間 evaluator 必須**（4 回連続・未解消）: autoloop 環境に
+   RevenueCat ダッシュボード認証・secret key・実機 Sandbox Apple ID が無く、
+   generator 環境から到達不能
+2. **原因[2] ダッシュボード商品未登録**（4 回連続・未解消）: 起動時の
+   `ERROR: 🍎‼️ Error fetching offerings` ログは、ユーザ側で App Store Connect +
+   RevenueCat ダッシュボードに商品を登録すれば消える（generator 環境から到達不能）
+3. **条件2・3 の実機サンドボックス購入も人間 evaluator 必須**: 商品未登録のため、
+   現状サンドボックス購入で `plus` エンタイトルメントが付与されない可能性が高い
+4. **attempt 4 で `currentEntitlement()` の保護を入れたが、SDK の挙動が変わると
+   機能しなくなる**: test11〜14 は PlusServiceStub 経由のため、実 SDK のオフライン
+   挙動を保証するテストではない
 
 ## 提案（今回はやらなかったこと）
 
-### A. 人間 evaluator の確認結果を state.json / eval に添付する運用
-- 条件4 は原理的に autoloop では検証不能なので、「ユーザーがダッシュボードで
-  取引を確認した」という事実を明示的に残せる形（添付ファイル・JSON など）を
-  用意するのは次回以降の運用改善候補。
+### A. autoloop に「ユーザー側ブロッカー検出」フラグを追加する
+- 3 回連続で同じユーザー側ブロッカーを検出したとき、generator は code-side
+  work が無いことを明示して blocked に遷移する運用ルールを generator.md に明記。
+  これにより autoloop が「次の attempt でも同じ失敗をするだけ」の空回りを避けられる
 
-### B. Plus 画面の「料金を読み込み中です…」にタイムアウト導線
-- attempt 2 評価の改善提案2で挙がった、商品取得失敗時のユーザー案内。スプリント
-  範囲外（Plus 画面の UI 改修）のため未実装。
+### B. eval と self-review の attempt 番号整合
+- autoloop のコミットメッセージが attempt 番号と 1 ずれている事例があった
+  （eval-4.md 改善提案4）。追跡性のため autoloop 側で修正
 
-### C. SDK のキャッシュ喪失を強制する統合テスト
-- `URLProtocol` モック + SDK の内部キャッシュクリア API 呼び出しで
-  「実 SDK で offline → cache empty → nil → 既存 Plus 維持」を再現できれば
-  より直接的な保証になるが、SDK のバージョン依存と内部実装依存が強い。
-  attempt 4 は AppSession 側の挙動を保証する方に振り切っている（保守性重視）。
+### C. .storekit を「条件4 が検証不能なとき」の一時しのぎとして導入
+- 条件4 が (a) のダッシュボード目視で合格した後に、CI/autoloop 用の
+  バックアップ経路として .storekit を追加するのは妥当な選択肢
 
 ## 申し送り
 
-- **コード変更**: attempt 4 で完了（AppSession.refreshPlusEntitlement の 1 関数のみ）。
-  PlusService 本体（`RevenueCatPlusService` / `FakePlusService` /
-  `StoreKitPlusService`）は無変更。
-- **テスト**: 184/184 unit + 15/15 UI 回帰、すべて TEST SUCCEEDED
-- **ビルド**: Debug / Release とも BUILD SUCCEEDED
-- **evaluator 手順**: 「動かし方」節の「受け入れ条件4（ダッシュボード反映）の
-  確認手順」で人間がダッシュボード目視（条件4）+ 実機 Sandbox 購入（条件2・3）を
-  実施。条件6 は attempt 4 で自動担保済み（test11 が起動経路の nil 保護を直接確認）。
-- **3-strike rule 経過**: eval-2 / eval-3 / 今回 eval-4 で [1][2] は同指摘継続
-  だが、[3] は今回で潰した。**autoloop が継続するかどうかは evaluator の判定次第**。
-  次の評価で [3] が解消している前提で autoloop は sprint 15 へ進む想定だが、
-  ユーザー判断が必要なら evaluator がハンドオフする。
-- **autoloop**: status を `awaiting_eval` に更新すれば自動継続可能。
-  attempt 4 として記録される。
+- **コード変更**: attempt 5 ではゼロ。前回 attempt 4 の成果物（commit `62d3330`）を温存
+- **state.json**: status を `blocked`、attempt を 5 に更新済み
+- **autoloop**: 次の iteration で `case blocked` 分岐に入り exit 2 で停止する
+- **3-strike rule 経過**: eval-2/eval-3/eval-4(前回)/eval-4(今回) で [1][2] は同指摘
+  4 回連続。[3] は前回 attempt 4 で潰した。コード面のやり残しは無し
+- **再開条件**: 上記「ユーザー判断が必要な選択肢」(a)/(b)/(c) のいずれかを選択し、
+  ユーザー側で必要な作業（ダッシュボード登録 / secret key 追加 / spec 緩和）が
+  行われた後に、blocked を needs_fix に戻して autoloop を再開する
+- **注意**: blocked 状態から in_progress に手動で戻すには state.json を直接編集する
+  必要がある。autoloop は通常 blocked で停止するが、手動再開も可能
+
+---
+
+## 履歴（参考）
+
+### attempt 4 (前回) — needs_fix
+- AppSession.refreshPlusEntitlement() に nil 保護を追加
+- 起動経路で currentEntitlement() が nil を返しても既存 Plus を維持
+- test11〜14 を新規追加して 184/184 ユニット + 15/15 UI 回帰すべて緑
+- evaluator は [3] の解消を確認、[1][2] は同指摘継続
+
+### attempt 3 — needs_fix
+- PlusServiceStub.swift を新規作成して AppSession に注入可能に
+- RevenueCatPlusServiceTests に test06〜10 を追加（キャンセル時の alert なし・nil 復元）
+- AppSession.restorePlus() に nil 保護を追加（条件6）
+- ユニット 180/180 + UI 回帰 15/15 すべて緑
+- evaluator は [1][2] を同指摘継続
+
+### attempt 2 — needs_fix
+- RevenueCat SDK を SPM 依存として導入（RevenueCat 5.87.0）
+- RevenueCatPlusService.swift を新規作成（CustomerInfo.entitlements["plus"] → PlusEntitlement）
+- scripts/generate-secrets.sh で .env.local の REVENUECAT_API_KEY を注入
+- AppSession 既定を RevenueCatPlusService に切替
+- 5 本ユニットテストを新規追加（175/175 緑）
+- evaluator は [1] ダッシュボード目視不可・[2] ダッシュボード商品未登録を新規指摘
+
+### attempt 1 — blocked → user_action → needs_fix (eval-1)
+- 着手前調査でブロッカー3つ発見: spec 矛盾・API key 不在・condition 4 検証不能
+- ユーザー判断で選択肢(A) 採用: spec 矛盾解消 + API key 取得 + ダッシュボード目視運用化
+- evaluator は引き続き条件4 検証不能で不合格
