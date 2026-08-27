@@ -1,8 +1,15 @@
 {
   "currentSprint": "14",
   "attempt": 1,
-  "status": "in_progress",
+  "status": "blocked",
   "history": [
+    {
+      "sprint": "14",
+      "attempt": 1,
+      "result": "blocked",
+      "note": "着手前調査で3つのブロッカー発見: (1) spec.md内の構造的矛盾（行23/115/352がRevenueCat SDK必須 vs 行11「外部パッケージ依存はゼロ」）、(2) RevenueCat API keyが.env.localに不在（行1〜24を再確認、Supabase関連キーのみ）、(3) 受け入れ条件4「ダッシュボードに取引が現れる」はgenerator環境から検証不能（ブラウザ自動化なし・トークンなし）。コード変更ゼロ（既存StoreKitPlusService経路を温存）。ユーザーに3つの選択肢（A: rule 11緩和+API key提供 / B: sprint 14撤回 / C: 抽象化のみで条件4未達受容）を提示。autoloop.shはblockedでexit 2停止想定。詳細: .product/sprints/14-undefined/self-review.md",
+      "evalNote": null
+    },
     {
       "sprint": "14",
       "attempt": 1,
