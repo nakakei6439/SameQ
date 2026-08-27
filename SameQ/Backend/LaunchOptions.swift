@@ -77,10 +77,17 @@ struct LaunchOptions: Sendable {
     /// お題自動生成の動作を UI から確認したいときに使う。
     var skipSeed: Bool = false
     /// `-SameQFakePlus`（Debug 限定・スプリント10）。true の間は `PlusService` を
-    /// `StoreKitPlusService` ではなく `FakePlusService` で動かし、
+    /// `RevenueCatPlusService` / `StoreKitPlusService` ではなく `FakePlusService` で動かし、
     /// `Purchase` などの挙動を UI テストで決定的に再現できるようにする。
-    /// 既定（false）は App Store と接続する `StoreKitPlusService`。
+    /// 既定（false）は App Store と接続する `RevenueCatPlusService`（スプリント14）。
     var fakePlus: Bool = false
+    /// `-SameQUseStoreKitPlus`（Debug 限定・スプリント14 / escape hatch）。
+    /// true の間は `PlusService` を `RevenueCatPlusService` ではなく
+    /// `StoreKitPlusService`（旧 StoreKit 2 直接実装）で動かす。RevenueCat SDK の
+    /// 経路を切り分けたい検証や、暫定的に旧経路へ戻したいときに使う。
+    /// `fakePlus == true` のときは `FakePlusService` を優先（このフラグは無視）。
+    /// Release ビルドではこの値に関わらず常に `RevenueCatPlusService`。
+    var useStoreKitPlus: Bool = false
     /// `-SameQPlusActive`（Debug 限定・スプリント10）。`fakePlus` と組み合わせると、
     /// 起動時から Plus 購入済みの状態で開始する。受け入れ条件3,4,5 を UI テストで
     /// 確認するためのショートカット。
@@ -132,6 +139,7 @@ struct LaunchOptions: Sendable {
         options.seedOnly = arguments.contains("-SameQSeedOnly")
         options.skipSeed = arguments.contains("-SameQSkipSeed")
         options.fakePlus = arguments.contains("-SameQFakePlus")
+        options.useStoreKitPlus = arguments.contains("-SameQUseStoreKitPlus")
         options.plusActiveAtLaunch = arguments.contains("-SameQPlusActive")
         if let hour = value(after: "-SameQNotificationHour").flatMap(Int.init),
            (0...23).contains(hour) {

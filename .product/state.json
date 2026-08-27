@@ -1,8 +1,15 @@
 {
   "currentSprint": "14",
-  "attempt": 1,
-  "status": "needs_fix",
+  "attempt": 2,
+  "status": "awaiting_eval",
   "history": [
+    {
+      "sprint": "14",
+      "attempt": 2,
+      "result": "awaiting_eval",
+      "note": "blocked を解消して実装着手。F37 Plus課金基盤を RevenueCat SDK へ差し替え。project.yml に packages.RevenueCat (https://github.com/RevenueCat/purchases-ios, from 5.0.0) を追加して SPM 依存を解決（RevenueCat 5.87.0）、SameQ/Backend/RevenueCatPlusService.swift を新規作成して PlusService プロトコルに準拠させ、CustomerInfo.entitlements['plus'] を PlusEntitlement に詰める経路を実装。scripts/generate-secrets.sh + project.yml の preBuildScripts.GenerateSecrets で .env.local の REVENUECAT_API_KEY を SameQ/Secrets.swift に注入（.gitignore 対象・サンドボックス無効化）。AppSession.swift の既定を RevenueCatPlusService() に切替（LaunchOptions.useStoreKitPlus で旧 StoreKit 経路への escape hatch を残置、FakePlusService 経路も温存）。5本ユニットテスト新規 (RevenueCatPlusServiceTests: 初期化が落ちない / 空キーでも graceful / 復元が型付きエラー / PlusEntitlement 契約 / AppSession 配線) すべて成功。ユニット 175/175 (5.94秒・TEST SUCCEEDED)、UI 回帰 SprintTenAcceptanceTests 7/7 + SprintThirteenAcceptanceTests 4/4 = 11/11 (141.6秒・TEST SUCCEEDED)。Debug / Release ビルドとも BUILD SUCCEEDED。クラッシュ 0、未処理エラー 0、タイムアウト 0。受け入れ条件 1・2・3・5・6・7 はコード上達成、条件4 (ダッシュボード反映) は evaluator がサンドボックス購入→app.revenuecat.com ログイン目視で検証。詳細: .product/sprints/14-undefined/self-review.md",
+      "evalNote": null
+    },
     {
       "sprint": "14",
       "attempt": 1,

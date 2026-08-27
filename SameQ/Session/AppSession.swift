@@ -189,9 +189,19 @@ final class AppSession {
         if let plusService {
             self.plusService = plusService
         } else if LaunchOptions.current.fakePlus {
+            // UI テストや Debug 経路でのみ FakePlusService を使う（スプリント10 で導入）。
             self.plusService = FakePlusService(active: LaunchOptions.current.plusActiveAtLaunch)
         } else {
-            self.plusService = StoreKitPlusService()
+            // スプリント14（F37）: Plus 課金基盤を RevenueCat に差し替え済み。
+            // 既定の Release / Debug 経路は `RevenueCatPlusService`。
+            // 旧 `StoreKitPlusService` 経路は `-SameQUseStoreKitPlus` を付けたときだけ
+            // 一時的に使う（escape hatch）。運営側のダッシュボード反映確認は
+            // RevenueCat 経路で実施する（spec.md 受け入れ条件4）。
+            if LaunchOptions.current.useStoreKitPlus {
+                self.plusService = StoreKitPlusService()
+            } else {
+                self.plusService = RevenueCatPlusService()
+            }
         }
         self.now = clock.now
     }

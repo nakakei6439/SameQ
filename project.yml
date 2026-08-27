@@ -6,12 +6,25 @@ options:
   createIntermediateGroups: true
   generateEmptyDirectories: true
 
+# スプリント14（F37: Plus課金基盤のRevenueCat化）のみ、SPM 依存として
+# RevenueCat SDK を取り込む。これは spec.md 行23 / 行115 / 行352 が指定する
+# RevenueCat への差し替えを実現するための唯一の例外で、spec.md 行11 の
+# 「外部パッケージ依存はゼロ」ルールは本 SPM 依存（Purchases パッケージ）に
+# 限り緩和される（2026-08-27 ユーザー確定）。
+packages:
+  RevenueCat:
+    url: https://github.com/RevenueCat/purchases-ios
+    from: "5.0.0"
+
 settings:
   base:
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: "7PTQ6W4R3T"
     CODE_SIGN_STYLE: Automatic
-    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    # スプリント14: GenerateSecrets スクリプトが .env.local を読みに
+    # ファイルシステム全体へアクセスできるよう、ユーザースクリプトサンドボックスを無効化。
+    # サンドボックスを活かすと `Operation not permitted` で生成が失敗する。
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
 
 targets:
   SameQ:
@@ -20,6 +33,9 @@ targets:
     deploymentTarget: "18.0"
     sources:
       - path: SameQ
+    dependencies:
+      - package: RevenueCat
+        product: RevenueCat
     info:
       path: SameQ/Info.plist
       properties:
@@ -38,6 +54,19 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    # スプリント14（F37）: ビルド時に .env.local から Secrets.swift を生成する。
+    # RevenueCatPlusService は生成された Secrets.revenueCatAPIKey を読み込んで
+    # Purchases.configure(withAPIKey:) を呼ぶ。Secrets.swift は .gitignore 対象。
+    # preBuildScripts にして "Compile Sources" より先に走らせ、
+    # Secrets.swift を同ターゲットの Sources フォルダに置くことで
+    # xcodegen が次回の generate で勝手に拾う。
+    preBuildScripts:
+      - name: GenerateSecrets
+        script: |
+          "${SRCROOT}/scripts/generate-secrets.sh"
+        outputFiles:
+          - "$(SRCROOT)/SameQ/Secrets.swift"
+        basedOnDependencyAnalysis: false
 
   SameQTests:
     type: bundle.unit-test
