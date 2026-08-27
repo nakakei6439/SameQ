@@ -19,6 +19,7 @@
 		13C86913CC13351C4B05A09E /* SafetySheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73B36C2BB10616DA6C4D371F /* SafetySheetView.swift */; };
 		152BD7B1F68B05D1B4FBA251 /* NotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B2FFBDBC9C7648A293431E /* NotificationScheduler.swift */; };
 		18660A46379D22099A4B12C7 /* BackendProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A03A2063BBEEF3C1A2DA7B2 /* BackendProvider.swift */; };
+		1DE6F8802659CDA41628C500 /* SprintTwelveEvalE2ETests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C78F90B57A443957093B9F68 /* SprintTwelveEvalE2ETests.swift */; };
 		23B356C0F16A59C79E9371B5 /* SprintEightAcceptanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D183FCA4925C6AE1CB4E0820 /* SprintEightAcceptanceTests.swift */; };
 		26B6A6CAFE7F056DF0E0540E /* TodayPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BB7DB6A30B4D81FBC9CA714 /* TodayPromptView.swift */; };
 		2994023A45E3A5FEE4F25184 /* SupabaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0C812432CE509DEFE9DC481 /* SupabaseClient.swift */; };
@@ -174,6 +175,7 @@
 		BB4F040D088B3D08E1EDA941 /* LaunchOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchOptions.swift; sourceTree = "<group>"; };
 		BD8BFB060424576740EDD6A1 /* SprintSevenAcceptanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SprintSevenAcceptanceTests.swift; sourceTree = "<group>"; };
 		BFC2442146BCEC55E849B60E /* SprintFourAcceptanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SprintFourAcceptanceTests.swift; sourceTree = "<group>"; };
+		C78F90B57A443957093B9F68 /* SprintTwelveEvalE2ETests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SprintTwelveEvalE2ETests.swift; sourceTree = "<group>"; };
 		C9A354E56A5A7F8ED980C6FB /* AnswerCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerCardView.swift; sourceTree = "<group>"; };
 		CA55CF8ED18E633B1BA7641D /* SprintOneAcceptanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SprintOneAcceptanceTests.swift; sourceTree = "<group>"; };
 		D0C812432CE509DEFE9DC481 /* SupabaseClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseClient.swift; sourceTree = "<group>"; };
@@ -285,6 +287,7 @@
 				A3D786CD97F3424A99E68866 /* SprintTenAcceptanceTests.swift */,
 				27090CDBCEEFB99CF1DED1C8 /* SprintThreeAcceptanceTests.swift */,
 				24211E8DB96E7DD999391D9B /* SprintTwelveAcceptanceTests.swift */,
+				C78F90B57A443957093B9F68 /* SprintTwelveEvalE2ETests.swift */,
 				802FAA579F8CCE284657BEB5 /* SprintTwoAcceptanceTests.swift */,
 			);
 			path = SameQUITests;
@@ -634,6 +637,7 @@
 				CA4333C9C21D4E3D6C8D9B3F /* SprintTenAcceptanceTests.swift in Sources */,
 				D4692EF029B5EA51044138EB /* SprintThreeAcceptanceTests.swift in Sources */,
 				0E174C174572EC9A4DB921C4 /* SprintTwelveAcceptanceTests.swift in Sources */,
+				1DE6F8802659CDA41628C500 /* SprintTwelveEvalE2ETests.swift in Sources */,
 				D31CB43309AA57F06BBC5E77 /* SprintTwoAcceptanceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
