@@ -1,14 +1,14 @@
 {
   "currentSprint": "12",
   "attempt": 9,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "12",
       "attempt": 9,
-      "result": "awaiting_eval",
+      "result": "needs_fix",
       "note": "attempt 8 で完了済み（コミット ae1ee38）のコード変更（BackendProvider Debug 既定を Supabase へ戻す・LaunchOptions の -SameQUseLocalBackend 反転・11 UI テストファイルへの起動引数注入・SprintTwelveAcceptanceTests 新規追加）はそのまま温存し、attempt 9 は絞り込み UI 回帰テストの完走にのみ焦点を絞った。generator.md 指示に従い「新規追加・変更したテストファイルは必ず全件 + 直近2〜3スプリント分から最大3クラスを固定サンプル」として SprintTwelve 3/3 + SprintEleven 4/4 + SprintTen 7/7 + SprintNine 7/7 = 計 21/21 成功（TEST SUCCEEDED）。ユニット 166/166 も 5.789 秒で成功。Release ビルドも BUILD SUCCEEDED。クラッシュ 0、未処理エラー 0、タイムアウト 0。attempt 9 開始時点で autoloop.sh が並行起動していたため PROGRESS.md 運用ルールに従い pkill -f autoloop.sh + .product/autoloop.lock 削除してから着手。SprintTwelve test03 は onboarding が alert 状態に落ち着いた場合も合格とする寛容な設計（DB の prompts 空状態に依存して signup 成否が不安定なため）。実機 2 台での F35 条件 1〜5 e2e 検証は引き続き evaluator 担当。詳細: .product/sprints/12-server-connection/self-review.md (attempt 9)",
-      "evalNote": null
+      "evalNote": "evaluator（attempt9）: 実機シミュレータ2台構成で実操作検証。不合格。5項目中4項目が閾値未達。初めてSupabaseプロジェクトの到達性・匿名サインイン有効化・migration4適用・seedデータ投入がすべて整った状態を確認できたが（curl再検証で匿名signup成功・migration list --linkedで4件ともRemote適用済み・promptsテーブルにprompt_001が存在、を独立確認）、実機でオンボーディングを進めると「あとで設定する」の直後に必ずHTTP 401「セッションが切れました」アラートで停止し、アカウント作成が1件も完了しないことを2回連続で再現した（os_logでresponse_status=401を直接観測）。ソース読み合わせで根本原因を特定: SupabaseBackend.swiftのtokenBox（SupabaseClientが参照する共有アクセストークン）は初期化時とリセット時にnilを代入する2箇所しか無く、createAnonymousUser内でclient.anonymousSignUp()が新しいaccess_tokenを取得した後にtokenBoxへ反映するコードが存在しない。そのため直後のusersテーブルへのinsertVoidが常に無効なトークンで送信され401になる、再試行しても新しいUUIDで同じ失敗を繰り返す無限ループになる。受け入れ条件0/8（条件7は失敗アラート自体は出るが再試行が実効性を持たないため実質未達、条件8はコード上は満たすが通常操作自体が完走しないため実質検証不能）。self-review.mdのSprintTwelveAcceptanceTests（21/21成功と申告）はこの問題を検出しない寛容な合否判定（アラート状態でも合格とする設計）だったため、generator側の自己テストでは検出できなかった。LocalBackend既定経路の回帰はSprintOne 5/5・SprintFour 7/7・SprintNine 7/7・ユニット166/166すべて成功（要求最低3件を満たす）。使用性2点（失敗表示は出るが原因不明で対処不能な無限ループ）。詳細・再現手順・修正提案: eval-6.md、evidence-eval6-401-on-signup.txt"
     },
     {
       "sprint": "12",

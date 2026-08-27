@@ -1,0 +1,43 @@
+=== 再現手順 ===
+1. iPhone 17 Pro シミュレータ(UDID 07C68712-95E0-4180-87E8-360963E3B391)にDebugビルドを新規インストール
+2. -SameQResetState -SameQScenario live -SameQFakePlus -SameQTimeOffsetMinutes 0 で起動
+   （-SameQUseLocalBackendを付けない = Debug既定のSupabaseBackend経路）
+3. コンセプト→規約同意→絵文字選択→ニックネーム入力→「あとで設定する」まで進める
+4. 2回連続で同一の結果を確認（10:07 JSTと10:20 JST、それぞれ新規アカウントで）
+
+=== 観測されたエラー（os_log, CFNetwork） ===
+2026-08-27 10:07:16.898774+0900 SameQ: (CFNetwork) [com.apple.cfnetwork:h3stream]
+  Task <920ACB33-8FEE-404B-A5A9-0A7C9BA16B81>.<4> received response, status 401
+2026-08-27 10:07:16.902352+0900 SameQ: (CFNetwork) [com.apple.CFNetwork:Summary]
+  Task <...>.<4> summary for task success {..., response_status=401, ...}
+
+=== 観測されたUI（XCUITestのaccessibility tree dump） ===
+Alert, label: 'うまくいきませんでした / Something went wrong'
+  StaticText, label: 'うまくいきませんでした / Something went wrong'
+  StaticText, label: 'セッションが切れました。もう一度やり直してください。'
+  Button, label: 'OK'
+（onboarding.notification.later ボタンは画面に残ったまま = オンボーディングを一歩も
+  通過できていない）
+
+=== 根本原因（ソース読み合わせ） ===
+SameQ/Backend/SupabaseBackend.swift の init() 内で
+  let tokenBox = TokenBox(initial: store.load().supabaseAuth?.accessToken)
+  self.client = SupabaseClient(session: session, tokenProvider: { tokenBox.value }, ...)
+という形で、SupabaseClientが使うアクセストークンは `tokenBox.value` から都度取得する設計。
+しかし `tokenBox.value = ...` への代入はファイル全体でこの2箇所のみ:
+  - options.resetsState のとき tokenBox.value = nil
+  - state.supabaseAuth != nil && options.resetsState のとき tokenBox.value = nil
+createAnonymousUser(emoji:nickname:) は client.anonymousSignUp() で新しい
+access_token を取得する（`auth.accessToken`）が、その値を tokenBox に反映する
+コードがどこにも無い。そのため直後の
+  client.insertVoid(table: "users", body: UserInsert(...))
+は tokenBox.value（= nil、まだ更新されていない）のまま送信され、
+Authorization ヘッダーが欠落 or 無効な状態で PostgREST に届き 401 を受け取る。
+SupabaseClient.validate(response:data:) は 401 を無条件で
+SupabaseError.unauthorized（「セッションが切れました。もう一度やり直してください。」）
+に変換するだけで、リフレッシュや再試行のロジックは無い。
+`state.user` は insertVoid成功後（134行目以降）にしかセットされないため、
+このエラーが起きると `next.user = user` / `store.save(next)` にも到達せず、
+アカウント作成は一切完了しない。ユーザーが「OK」を押して再度「あとで設定する」を
+押しても、毎回 client.anonymousSignUp() から新しいUUIDでやり直すだけで、
+同じ理由で再び401になる（実際に2回再現、いずれも同じ失敗）。
