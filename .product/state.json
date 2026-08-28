@@ -1,8 +1,14 @@
 {
   "currentSprint": "17",
   "attempt": 3,
-  "status": "awaiting_eval",
+  "status": "passed",
   "history": [
+    {
+      "sprint": "17",
+      "attempt": 3,
+      "result": "passed",
+      "note": "evaluator eval-3.md: 合格。基準1〜5すべて閾値クリア。attempt 3 で追加した Debug オーバーレイの 'prepared [qtd]' により、eval-2 [1] の未達だった条件2後半（先読みの結果として準備中の待ちが消えた）が開発者向け手段で観測可能になった。peeked [qtd]（先読みが走った）+ prepared [qtd]（背景 peek がモデル準備を完走＝次回インライン準備待ちが消える）+ state.json への lastPrepareAttemptAt['qtd'] 永続化、の3点が実アプリ実行で観測できる（SprintSeventeenAcceptanceTests.test04 を evaluator が自分で実行し目視合格）。検証: BackgroundPeekTests 9/9、SprintSeventeenAcceptanceTests 4/4、回帰 SprintSix 4/4 + SprintFifteen 8/8 + SprintSixteen 6/6 = 18/18、その他ユニット 200+ 緑（0 失敗）。RevenueCatPlusServiceTests のみサンドボックス環境で実ネットワーク呼び出しがハングし実行不能（sprint17 の変更対象外）。クラッシュ0・未処理エラー0。使用性4。"
+    },
     {
       "sprint": "17",
       "attempt": 3,
