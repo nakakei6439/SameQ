@@ -371,8 +371,60 @@ final class Translator {
     ///   `.supported` のままなら従来どおり `.unavailable(permanent: false)` で読み飛ばす
     ///   （既読にしない＝クールダウンが明ければまた挑戦できる）。
     func prepareIfNeeded(sourceLanguageCode: String) async {
+        // 戻り値は破棄（`AppSession.openTimeline()` 経路では結果を見ない・`Bool` を
+        // 意識しない）。`peekPrepareIfNeeded` 経路だけが成功/失敗を観測する。
+        _ = await prepareAndReportOutcome(sourceLanguageCode: sourceLanguageCode)
+    }
+
+    /// `sourceLanguageCode` のダウンロードを**いま試みる価値があるか**を、実際には試みずに
+    /// 判定する（`.supported` かつクールダウン中でない）。
+    ///
+    /// `AppSession.prepareTimelineLanguagesIfNeeded` はタイムラインを開く前に、この関数で
+    /// 事前に「本当に試みる言語」を絞り込んでから `isPreparingTimeline` を立てる。全言語が
+    /// クールダウン中（＝直近で試して駄目だった）なら `isPreparingTimeline` すら一度も
+    /// true にならず、「世界の回答を読む」ボタンが「準備中…」に一瞬も変わらない
+    /// （eval-5.md [1] の副次対応。attempt 6）。
+    func needsPreparation(sourceLanguageCode: String) async -> Bool {
+        await shouldAttemptPreparation(sourceCode: sourceLanguageCode.lowercased())
+    }
+
+    /// アプリがバックグラウンドへ移ったタイミングで、ユーザー操作と無関係に
+    /// 翻訳モデルのダウンロードを試みる（F41・スプリント17）。
+    ///
+    /// 既存の `prepareIfNeeded(_:)` と同じ内部実装（`prepareAndReportOutcome`）を使う
+    /// （UI 状態を変更しない・throw しない・個別クールダウンを尊重する点は同じ）。
+    /// この薄いラッパを別途用意しているのは、`openTimeline()` 経路の事前準備とは
+    /// **目的が異なる**（=事後観測の必要がある）ことをコード上で明確にするため。
+    ///
+    /// 戻り値: 「準備を試みた結果、翻訳モデルが取得できた（=この言語の次回以降の
+    /// 初回表示待ちが消えた）」かどうか。`true` を返した言語は AppSession 側で
+    /// スナップショットされ、Debug オーバーレイ（`prepared [xx]`）や UI テストから
+    /// 「先読み前→先読み後」の差分として観測できる（eval-2.md の修正）。
+    ///
+    /// 呼び出し側（`AppSession.peekTranslationsInBackground`）が事前に
+    /// `isOnline()` を確認しているので、ここではネットワーク自体の可否は
+    /// チェックしない（既に `forceOffline` 経路は呼ばれない前提）。
+    /// `modelPrepareJobTimeoutSeconds` を超えるダウンロードは内部で打ち切られ、
+    /// 次回 background 時にクールダウン経過後リトライする（F41 受け入れ条件4）。
+    func peekPrepareIfNeeded(sourceLanguageCode: String) async -> Bool {
+        await prepareAndReportOutcome(sourceLanguageCode: sourceLanguageCode)
+    }
+
+    /// `prepareIfNeeded` / `peekPrepareIfNeeded` の共通実装（attempt 3: eval-2.md の修正）。
+    ///
+    /// 戻り値:
+    /// - `.unsupported` / 端末言語と同じ / 直近クールダウン中 / 既に fake-downloaded:
+    ///   `false`（何もしなかった。`lastPrepareAttemptAt` も更新されない）
+    /// - `.supported` かつ試行権がある → 試行を実施し、成功（fake で simulated /
+    ///   real で `prepareTranslation()` が通った）なら `true`、失敗・タイムアウトなら `false`
+    ///
+    /// どちらの経路でも「実際に試みた」場合は `lastPrepareAttemptAt[sourceCode]` と
+    /// `hydratedFromPersistenceSourceCodes`、永続化窓口への記録（あれば）は共通で実行する。
+    /// 失敗しても翻訳自体は続行してよい（クールダウンがプロセス内メモリだけに留まる
+    /// 旧来の挙動に戻るだけ）ので、記録後の例外は握りつぶす。
+    private func prepareAndReportOutcome(sourceLanguageCode: String) async -> Bool {
         let sourceCode = sourceLanguageCode.lowercased()
-        guard await shouldAttemptPreparation(sourceCode: sourceCode) else { return }
+        guard await shouldAttemptPreparation(sourceCode: sourceCode) else { return false }
 
         // 実際に試みる直前に記録する（成功・失敗・タイムアウトのいずれでも「試した」ことに
         // なる。ここを更新しないと、失敗するたびに次のクールダウン判定が効かない）。
@@ -396,10 +448,10 @@ final class Translator {
 
         if fakeTranslateEnabled {
             await fakePrepareIfNeeded(sourceCode: sourceCode)
-            return
+            return true
         }
 
-        _ = await sessionQueue.perform(
+        let result = await sessionQueue.perform(
             key: sourceCode,
             jobTimeoutSeconds: modelPrepareJobTimeoutSeconds,
             body: { session -> Bool in
@@ -419,35 +471,7 @@ final class Translator {
                 }
             }
         )
-    }
-
-    /// `sourceLanguageCode` のダウンロードを**いま試みる価値があるか**を、実際には試みずに
-    /// 判定する（`.supported` かつクールダウン中でない）。
-    ///
-    /// `AppSession.prepareTimelineLanguagesIfNeeded` はタイムラインを開く前に、この関数で
-    /// 事前に「本当に試みる言語」を絞り込んでから `isPreparingTimeline` を立てる。全言語が
-    /// クールダウン中（＝直近で試して駄目だった）なら `isPreparingTimeline` すら一度も
-    /// true にならず、「世界の回答を読む」ボタンが「準備中…」に一瞬も変わらない
-    /// （eval-5.md [1] の副次対応。attempt 6）。
-    func needsPreparation(sourceLanguageCode: String) async -> Bool {
-        await shouldAttemptPreparation(sourceCode: sourceLanguageCode.lowercased())
-    }
-
-    /// アプリがバックグラウンドへ移ったタイミングで、ユーザー操作と無関係に
-    /// 翻訳モデルのダウンロードを試みる（F41・スプリント17）。
-    ///
-    /// 既存の `prepareIfNeeded(_:)` をそのまま呼んでいる（UI 状態を変更しない・
-    /// throw しない・個別クールダウンを尊重する点も同じ）。この薄いラッパを別途
-    /// 用意しているのは、`openTimeline()` 経路の事前準備とは**目的が異なる**ことを
-    /// コード上で明確にするため（先行きの source position の目印にもなる）。
-    ///
-    /// 呼び出し側（`AppSession.peekTranslationsInBackground`）が事前に
-    /// `isOnline()` を確認しているので、ここではネットワーク自体の可否は
-    /// チェックしない（既に `forceOffline` 経路は呼ばれない前提）。
-    /// `modelPrepareJobTimeoutSeconds` を超えるダウンロードは内部で打ち切られ、
-    /// 次回 background 時にクールダウン経過後リトライする（F41 受け入れ条件4）。
-    func peekPrepareIfNeeded(sourceLanguageCode: String) async {
-        await prepareIfNeeded(sourceLanguageCode: sourceLanguageCode)
+        return result ?? false
     }
 
     private func shouldAttemptPreparation(sourceCode: String) async -> Bool {

@@ -221,22 +221,31 @@ final class SprintSeventeenAcceptanceTests: XCTestCase {
         app.swipeDown()  // タイムラインを閉じる
         sleep(1)
 
-        // あらゆる descendants から "peeked" を含むテキストを探す。
-        // オーバーレイの `label` には "peeked [qtd]" が必ず含まれる。
+        // あらゆる descendants から "peeked" / "prepared" を含むテキストを探す。
+        // オーバーレイの `label` には "peeked [qtd]" と "prepared [qtd]" が必ず含まれる
+        // (attempt 3: eval-2.md [1] の修正検証)。
         var foundPeeked = false
+        var foundPrepared = false
         let deadline = Date().addingTimeInterval(8)
-        while Date() < deadline && !foundPeeked {
+        while Date() < deadline && !(foundPeeked && foundPrepared) {
             for element in app.descendants(matching: .any).allElementsBoundByIndex {
-                if element.label.contains("peeked [qtd]") {
+                if !foundPeeked && element.label.contains("peeked [qtd]") {
                     foundPeeked = true
-                    break
                 }
+                if !foundPrepared && element.label.contains("prepared [qtd]") {
+                    foundPrepared = true
+                }
+                if foundPeeked && foundPrepared { break }
             }
-            if !foundPeeked { usleep(500_000) }
+            if !(foundPeeked && foundPrepared) { usleep(500_000) }
         }
         XCTAssertTrue(
             foundPeeked,
             "background 先読み後に Debug オーバーレイに 'peeked [qtd]' が出る（eval-1.md [1] の修正検証）"
+        )
+        XCTAssertTrue(
+            foundPrepared,
+            "background 先読み後に Debug オーバーレイに 'prepared [qtd]' が出る（eval-2.md [1] の修正検証・attempt 3）"
         )
 
         // pre-fetch の副作用として UI に alert が出ていないことも確認（受け入れ条件4・6）。

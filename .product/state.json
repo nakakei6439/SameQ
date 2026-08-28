@@ -1,8 +1,14 @@
 {
   "currentSprint": "17",
-  "attempt": 2,
-  "status": "needs_fix",
+  "attempt": 3,
+  "status": "awaiting_eval",
   "history": [
+    {
+      "sprint": "17",
+      "attempt": 3,
+      "result": "awaiting_eval",
+      "note": "eval-2.md [1] に対応。attempt 3 の変更点: (1) Translator.prepareIfNeeded と peekPrepareIfNeeded の共通実装を prepareAndReportOutcome(sourceLanguageCode:) async -> Bool に切り出し、prepareIfNeeded は戻り値を捨てる従来経路を維持、peekPrepareIfNeeded は Bool を返すように変更。(2) AppSession.lastPreparedLanguages: [String] を新設し、peekTranslationsInBackground 内で「試行に成功した（=fakeDownloadedSourceCodes に入った/実機 prepareTranslation() 成功）」言語だけ積む。debugStatusLine に 'prepared [xx]' を追加（-SameQDebugOverlay 指定時のみ、エンドユーザー向けには出ない）。(3) BackgroundPeekTests に testBackgroundPeekRecordsPreparedLanguages と testBackgroundPeekPreparedSnapshotResetsAcrossRuns の2本を追加。(4) SprintSeventeenAcceptanceTests.test04_backgroundPeekPersistsFakePrepareAttempt を拡張し、peeked [qtd] と prepared [qtd] の両方が Debug オーバーレイで end-to-end 観測できることを検証。(5) BackgroundPeekTests.swift:129 の絵文字リテラル U+FFFD を \"🐢\" に戻した（eval-2.md 改善提案1）。実行結果: SameQTests 全 212/212（8.058秒・TEST SUCCEEDED、+2 新規 BackgroundPeek）、SprintSeventeenAcceptanceTests 4/4（65.3秒・test04 拡張版含む）、回帰 SprintSix 4/4 + SprintFifteen 8/8 + SprintSixteen 6/6 = 18/18 すべて個別実行で TEST SUCCEEDED。Debug build-for-testing SUCCEEDED。クラッシュ0・未処理エラー0。受け入れ条件1〜6すべて達成見込み。weakness #1〜#5 を self-review.md に明記。詳細: .product/sprints/17-translation-prefetch/self-review.md"
+    },
     {
       "sprint": "17",
       "attempt": 2,

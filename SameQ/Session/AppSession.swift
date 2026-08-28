@@ -131,6 +131,15 @@ final class AppSession {
     /// 値は background に移るたびに上書きされ、foreground に戻ったあとも残る
     ///（検証で読み取るタイミングを `peek` 直後に固定しなくて済むように）。
     private(set) var lastPeekedLanguages: [String] = []
+    /// 直近の background 先読み（F41・スプリント17 attempt 3）で「準備に成功した」
+    /// 言語コードのスナップショット。`peeked [xx]` が「対象として選ばれた」を表す
+    /// のに対し、`prepared [xx]` は「実際にモデル取得まで完了した（=次回以降の
+    /// 初回表示待ちが消えた）」を表す。両者を Debug オーバーレイに並べることで、
+    /// 「先読み前 → 先読み後」の差分（eval-2.md [1] 後半の観測不能問題）を
+    /// 開発者向けに end-to-end で観測できるようにする。
+    /// エンドユーザー向け UI には出さない（受け入れ条件6・F19）。
+    /// 値は background に移るたびに上書きされ、foreground に戻ったあとも残る。
+    private(set) var lastPreparedLanguages: [String] = []
     /// 通知タップ（F25）で「今日は入力したい」「世界タイムラインを見たい」
     /// 「お題待ち画面を開きたい」のどれを開くべきかを `RootView` へ伝える。
     /// `start()` 完了後に消費される（nil に戻すと RootView も追従する）。
@@ -858,12 +867,21 @@ final class AppSession {
 
         // Debug オーバーレイと UI テストのためにスナップショットを保持する
         //（スプリント17 attempt 2: eval-1.md [1] の修正検証用）。
+        // `lastPreparedLanguages` も併せてリセットし、この run で「実際に準備が
+        // 完了した」言語だけを残す（attempt 3: eval-2.md の修正）。
         lastPeekedLanguages = candidates
+        lastPreparedLanguages = []
 
         let deadline = Date().addingTimeInterval(Self.backgroundPeekBudgetSeconds)
         for language in candidates {
             guard Date() < deadline else { break }
-            await translator.peekPrepareIfNeeded(sourceLanguageCode: language)
+            // attempt 3: 戻り値（準備の成否）を見て `prepared` スナップショットを
+            // 組み立てる。`false`（既に `.installed`・クールダウン中・失敗など）は
+            // 対象から除外する。`prepared` は「先読み前→先読み後」で値が増える側の
+            // 観測点として機能する（eval-2.md [1] 後半の観測不能問題への対応）。
+            if await translator.peekPrepareIfNeeded(sourceLanguageCode: language) {
+                lastPreparedLanguages.append(language)
+            }
         }
     }
 
@@ -1074,6 +1092,14 @@ final class AppSession {
         // エンドユーザー向け UI ではない（`-SameQDebugOverlay` 指定時のみ）。
         if !lastPeekedLanguages.isEmpty {
             parts.append("peeked [\(lastPeekedLanguages.joined(separator: ", "))]")
+        }
+        // F41・スプリント17 attempt 3: 「実際に準備が完了した（=次回以降の初回表示待ちが
+        // 消えた）」言語を Debug オーバーレイに出す。`peeked` が「対象として選んだ」を
+        // 表すのに対し `prepared` は「試行が成功した」を表すため、両者が並んだ状態で
+        // background 前後の差分として観測できる（eval-2.md [1] の修正）。
+        // 失敗・`.installed`・クールダウン中などはここに出ない。
+        if !lastPreparedLanguages.isEmpty {
+            parts.append("prepared [\(lastPreparedLanguages.joined(separator: ", "))]")
         }
         return parts.joined(separator: " · ")
     }
