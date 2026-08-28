@@ -1,7 +1,7 @@
 {
   "currentSprint": "14",
-  "attempt": 7,
-  "status": "blocked",
+  "attempt": 8,
+  "status": "awaiting_eval",
   "history": [
     {
       "sprint": "14",
@@ -575,6 +575,12 @@
       "attempt": 5,
       "result": "user_action",
       "note": "ユーザー判断: sprint14をblocked状態から再開。3-strikeの根本原因（[1]RevenueCatダッシュボードで購入実績が目視できない・[2]ダッシュボードに商品未登録）を実際に解消した。具体的には (1) App Store Connect の Monthly Plus サブスクリプション（com.nakakei6439.SameQ.plus.monthly）の配信可否が0か国だったのを175か国すべてに変更、(2) RevenueCatダッシュボードの SameQ (App Store) に同じ商品IDでProductを新規作成し entitlement plus にattach、(3) 同ProductをdefaultOfferingのMonthlyパッケージのApp Store欄（それまでNo productだった）に紐付け、(4) evaluatorがREST API v2で購入実績を照会できるよう secret API key（Customers/Subscriptions/Purchases のみRead only）を発行し .env.local の REVENUECAT_SECRET_API_KEY に保存、を実施済み。これにより実機Sandbox購入がRevenueCatダッシュボードに実績として現れる状態になったはずだが、実機での実purchaseによる最終確認はまだ行っていない。generatorへの申し送り: コード変更は不要な可能性が高いが、.storekit構成を追加してシミュレータでも条件2・3（購入・復元）を検証できるようにすることを推奨（self-review.md attempt5の提案B参照）。条件4（ダッシュボードに実績が残ること）の最終確認は人間による実機Sandbox購入が必要であり、evaluatorはコード面の検証とREST API v2での照会可能性を確認した上で、実機確認が必要な旨を明記して引き渡すこと。"
+    },
+    {
+      "sprint": "14",
+      "attempt": 7,
+      "result": "user_action",
+      "note": "ユーザーが実機（iPhone 17 Pro Max、iOS 26.6）でSandbox購入・削除→再インストール後の状態維持を検証済み。手順: (1) Sandboxテストアカウント nakakei6439+sandbox@gmail.com でPlusを購入 → [Environment: Sandbox]付きの購入完了ダイアログを確認。(2) RevenueCat REST API v2 (GET /customers/{id}/subscriptions) で該当customer(:35a3fc02c6ea441b805bb29cc62f1c6e)の実際の取引を確認: environment=sandbox, product_id=prod35f1b37ab1(com.nakakei6439.SameQ.plus.monthly), store=app_store, status=active, entitlements.plus.state=active, store_subscription_identifier=2000001228519951(実際のApple取引ID), total_revenue_in_usd記録あり。(3) RevenueCatダッシュボードのCustomer profile画面でも同じ内容を目視確認: Total Spent USD 3.14, Entitlements: plus(SameQ Plus Monthly, Active・renews in 3 minutes), Customer historyに「Started a subscription of SameQ Plus (Monthly)(com.nakakei6439.SameQ.plus.monthly) for JPY 500」の記録あり。これにより受け入れ条件4(ダッシュボードに取引実績が現れる)が実機で確認できた。(4) アプリを実機から削除→再インストール→起動したところ、明示的に「購入を復元」を押す前から画面右上に✨Plusバッジが表示され、Plus状態が維持されていることを確認(条件3に相当)。コード変更は無し。generatorはこれ以上対応不要、evaluatorへ正式な合否判定を委ねる。"
     }
   ]
 }
