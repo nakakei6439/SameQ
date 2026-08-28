@@ -41,6 +41,7 @@
 		518226EA4CD0E2F282A20E4C /* LanguageEncounterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E3DDAD017D8A75FAC876C19 /* LanguageEncounterTests.swift */; };
 		550B4FD7115CC92D59E55B2C /* WaitingPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 893268B1126040BEAB5CBB3A /* WaitingPromptView.swift */; };
 		5A9BEFAE82F168531C57977D /* SprintSixAcceptanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 963A1099071265F5F1FB9C2B /* SprintSixAcceptanceTests.swift */; };
+		60F7A74FE6973E73797BBC48 /* Configuration.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 35914EB5AB1D291884730119 /* Configuration.storekit */; };
 		620642EEC9051F0C44669DEC /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 036EA494C4458F2F0AED461D /* RevenueCat */; };
 		62C72D2FA4CB694A0C944267 /* LocalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD7109C21D489220699C922F /* LocalStore.swift */; };
 		638C35F67FA9BD1D22EB61C6 /* SprintSevenAcceptanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD8BFB060424576740EDD6A1 /* SprintSevenAcceptanceTests.swift */; };
@@ -139,6 +140,7 @@
 		2F6BCC7539157352ADD5BBD1 /* SessionRequestQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRequestQueue.swift; sourceTree = "<group>"; };
 		2FAFAB9E1A5FEBC7A224E26B /* SameQApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SameQApp.swift; sourceTree = "<group>"; };
 		32498090621188D2CDA707A0 /* PromptSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptSchedule.swift; sourceTree = "<group>"; };
+		35914EB5AB1D291884730119 /* Configuration.storekit */ = {isa = PBXFileReference; path = Configuration.storekit; sourceTree = "<group>"; };
 		3597445214701BFFBB4E291B /* NicknameTransliterator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NicknameTransliterator.swift; sourceTree = "<group>"; };
 		3645C8780FA0C4B10EE97874 /* PlusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlusView.swift; sourceTree = "<group>"; };
 		3CA8021DB506252DEFE89769 /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineView.swift; sourceTree = "<group>"; };
@@ -245,6 +247,7 @@
 		147EF6485CD2FD18ED8ACC1B /* SameQ */ = {
 			isa = PBXGroup;
 			children = (
+				35914EB5AB1D291884730119 /* Configuration.storekit */,
 				47CB3567D6C9642C24FCD82B /* Info.plist */,
 				5DBF7B84AFDBA8248F62220E /* L10n.swift */,
 				E7589D141234A5417DDF0158 /* Secrets.swift */,
@@ -596,6 +599,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FEE4EB3295B9B6303D071239 /* Assets.xcassets in Resources */,
+				60F7A74FE6973E73797BBC48 /* Configuration.storekit in Resources */,
 				C54322DF2A40E6785C43625B /* PrivacyInfo.xcprivacy in Resources */,
 				2AFE4AC67355B794B3F2DC21 /* SeedData.json in Resources */,
 			);
@@ -958,6 +962,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_STOREKIT_TESTING = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SameQ/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -977,6 +982,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_STOREKIT_TESTING = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SameQ/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;

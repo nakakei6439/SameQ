@@ -54,6 +54,11 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # スプリント14 attempt 6: StoreKit Testing を有効化。
+        # シミュレータで Configuration.storekit の商品定義が
+        # `Product.products(for:)` / `purchase()` に反映されるようにする。
+        # 実機ビルドでは効果がなく、App Store Connect の本物の商品を引く。
+        ENABLE_STOREKIT_TESTING: YES
     # スプリント14（F37）: ビルド時に .env.local から Secrets.swift を生成する。
     # RevenueCatPlusService は生成された Secrets.revenueCatAPIKey を読み込んで
     # Purchases.configure(withAPIKey:) を呼ぶ。Secrets.swift は .gitignore 対象。
@@ -104,10 +109,18 @@ schemes:
         SameQUITests: [test]
     run:
       config: Debug
+      # スプリント14 attempt 6: StoreKit Testing 構成をスキームに登録。
+      # `-SameQUseStoreKitPlus` 経路でシミュレータを起動したとき、
+      # `StoreKitPlusService.availableProducts()` / `purchase(_:)` が
+      # この構成ファイルの商品定義を使って動作するようにする。
+      # 実機では App Store Connect の本物の `com.nakakei6439.SameQ.plus.monthly`
+      # が解決されるため影響なし。
+      storeKitConfiguration: SameQ/Configuration.storekit
     test:
       config: Debug
       targets:
         - SameQTests
         - SameQUITests
+      storeKitConfiguration: SameQ/Configuration.storekit
     archive:
       config: Release
