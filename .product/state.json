@@ -1,8 +1,14 @@
 {
   "currentSprint": "14",
   "attempt": 8,
-  "status": "awaiting_eval",
+  "status": "passed",
   "history": [
+    {
+      "sprint": "14",
+      "attempt": 8,
+      "result": "passed",
+      "evalNote": "eval-8.md — 合格。5回連続の差し戻し理由だった受け入れ条件4（サンドボックスの購入・復元がRevenueCatダッシュボードに取引として現れる）を、evaluator自身がREST API v2で独立確認。project e444c0e4 のcustomer $RCAnonymousID:4543de61...（元購入者 35a3fc02... とエイリアス統合）に実サブスクリプション subAapb437... が存在: environment=sandbox, store=app_store, status=active, product com.nakakei6439.SameQ.plus.monthly, entitlement plus=active, 実Apple取引ID 2000001228522808, 累積revenue gross 9.41 USD, current_period 2026-08-28 20:06-20:21 UTC（本評価の数分前=LIVE）。/aliases に 35a3fc02(20:02)→0a89dc69(20:12)→4543de61(20:13) の3段エイリアス=削除→再インストール→復元の痕跡（条件3相当）。eval-6時点は全customerで取引0件だったのが実データありに変化。spec行361の「確認できない実装は不合格」を今回は満たす。条件1(UI無変更・git diff/テストで確認、実機金額はユーザー目視でJPY500履歴)・2・3・6はUI無変更＋自動テスト緑＋ユーザー実機検証＋条件4と同一課金経路のe2e機能で確認。条件5(test06-07)・7(SprintTen 7/7)テスト緑。基準2: 既定RevenueCat経路 install→launch→terminate→relaunch正常、新規クラッシュ0、offerings取得エラー無し継続。基準3: entitlement/subscription active・SprintTen test07緑。基準4: ユニット212/212、UI SprintTen7/7+SprintEleven4/4+SprintThirteen4/4=15/15すべてTEST SUCCEEDED。基準5=4。改善提案: (中).storekitのdisplayPrice 480が実額JPY500とズレ、(中)出荷経路のPlus購入XCUITest（SKTestSession）追加。"
+    },
     {
       "sprint": "14",
       "attempt": 7,
