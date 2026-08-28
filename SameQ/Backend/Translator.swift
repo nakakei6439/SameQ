@@ -374,13 +374,12 @@ final class Translator {
         let sourceCode = sourceLanguageCode.lowercased()
         guard await shouldAttemptPreparation(sourceCode: sourceCode) else { return }
 
-        if fakeTranslateEnabled {
-            await fakePrepareIfNeeded(sourceCode: sourceCode)
-            return
-        }
-
         // 実際に試みる直前に記録する（成功・失敗・タイムアウトのいずれでも「試した」ことに
         // なる。ここを更新しないと、失敗するたびに次のクールダウン判定が効かない）。
+        // `fakeTranslateEnabled` の有無に関わらず共通で実行する（attempt 2: eval-1.md [1]
+        // の修正）。疑似モードでも state.json に痕跡を残すことで、シミュレータ環境だけで
+        // 「background 先読みが実際に走ったこと」を後追い検証できるようにする
+        //（spec.md「評価者への注記」）。
         let attemptedAt = now()
         lastPrepareAttemptAt[sourceCode] = attemptedAt
         // 以後この言語は「プロセス内で一度触った」ことになるので、次にこのプロセス内で
@@ -394,6 +393,12 @@ final class Translator {
             // 留まる旧来の挙動に戻るだけで、翻訳のスキップ判定そのものは壊れない）。
             try? await attemptPersistence.recordModelPrepareAttempt(sourceLanguageCode: sourceCode, at: attemptedAt)
         }
+
+        if fakeTranslateEnabled {
+            await fakePrepareIfNeeded(sourceCode: sourceCode)
+            return
+        }
+
         _ = await sessionQueue.perform(
             key: sourceCode,
             jobTimeoutSeconds: modelPrepareJobTimeoutSeconds,

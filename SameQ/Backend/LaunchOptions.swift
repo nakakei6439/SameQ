@@ -116,6 +116,22 @@ struct LaunchOptions: Sendable {
     /// 「接続してください」相当のアラート／空状態表示が現れる。
     /// Release ビルドではこの値に関わらず常に false（接続状態は実機の NW に従う）。
     var forceOffline: Bool = false
+    /// `-SameQPeekTestQtdEncounter`（Debug 限定・スプリント17 attempt 2: eval-1.md [1]
+    /// の修正検証用）。true の間は `LocalBackend` の起動時に
+    /// `state.languageEncounters["qtd"] = 5` を強制的に設定する。
+    /// qtd 言語の encounter をシード経由でしか積めない（F41 受け入れ条件1「直近よく
+    /// 出会う言語」の材料は「タイムラインで実際に表示した回答」のため）ため、
+    /// background 先読み経路（`peekTranslationsInBackground`）を UI テストで
+    /// 確実にトリガするために設けた検証用エスケープハッチ。UI テストで
+    /// state.json に `lastPrepareAttemptAt["qtd"]` が書かれることを直接確認する
+    /// ために使う。Release ビルドではこの値に関わらず常に false。
+    var peekTestQtdEncounter: Bool = false
+    /// `SAMEQ_PEEK_TEST_LOG_PATH` 環境変数（Debug 限定・スプリント17 attempt 2）。
+    /// 値が非空のとき、`LocalBackend.recordModelPrepareAttempt` が呼ばれたときに
+    /// その事実（言語コード・試行時刻）を追記するログファイルの絶対パス。
+    /// UI テストでサンドボックス外から観測可能にするための検証用フック。
+    /// Release ビルドではこの値に関わらず常に nil。
+    var peekTestSharedLogPath: String? = nil
 
     /// このプロセスの設定。起動時に1度だけ解釈する。
     static let current = parse(ProcessInfo.processInfo.arguments)
@@ -173,6 +189,14 @@ struct LaunchOptions: Sendable {
         }
         options.useLocalBackend = arguments.contains("-SameQUseLocalBackend")
         options.forceOffline = arguments.contains("-SameQForceOffline")
+        options.peekTestQtdEncounter = arguments.contains("-SameQPeekTestQtdEncounter")
+        // `SAMEQ_PEEK_TEST_LOG_PATH` は環境変数経由（XCUITest では `launchEnvironment` で
+        // 渡される。`arguments` はコマンドライン引数なので共有ファイルパスは渡せない）。
+        let envLogPath = ProcessInfo.processInfo.environment["SAMEQ_PEEK_TEST_LOG_PATH"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if let envLogPath, !envLogPath.isEmpty {
+            options.peekTestSharedLogPath = envLogPath
+        }
         #endif
         return options
     }

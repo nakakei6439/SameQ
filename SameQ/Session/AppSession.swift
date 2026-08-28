@@ -1,5 +1,8 @@
 import Foundation
 import Observation
+import os.log
+
+private let peekLog = Logger(subsystem: "com.nakakei6439.SameQ", category: "peek")
 
 /// 画面の出し分けとバックエンド呼び出しをまとめる、アプリで唯一の状態。
 ///
@@ -121,6 +124,13 @@ final class AppSession {
     /// 0 のときは表示しない（無いいねは刺激が強いため）。
     /// Supabase から取得し、1秒ごとの `refresh()` で更新する。
     private(set) var receivedLikeCount: Int = 0
+    /// 直近の background 先読み（F41・スプリント17 attempt 2）で pre-fetch の対象として
+    /// 選ばれた言語コードのスナップショット。Debug オーバーレイでの目視確認と、
+    /// UI テストで「先読み対象として qtd が選ばれた」ことを assert するために使う。
+    /// エンドユーザー向け UI には出さない（受け入れ条件6・F19）。
+    /// 値は background に移るたびに上書きされ、foreground に戻ったあとも残る
+    ///（検証で読み取るタイミングを `peek` 直後に固定しなくて済むように）。
+    private(set) var lastPeekedLanguages: [String] = []
     /// 通知タップ（F25）で「今日は入力したい」「世界タイムラインを見たい」
     /// 「お題待ち画面を開きたい」のどれを開くべきかを `RootView` へ伝える。
     /// `start()` 完了後に消費される（nil に戻すと RootView も追従する）。
@@ -820,10 +830,35 @@ final class AppSession {
     ///   * 個別の throw は `Translator.prepareIfNeeded` 自身が内部で握るので、
     ///     ここに到達するのは言語配列が空のときだけ。
     func peekTranslationsInBackground() async {
-        guard user != nil else { return }
-        guard await backend.isOnline() else { return }
+        #if DEBUG
+        peekLog.notice("peekTranslationsInBackground: start, user=\(self.user != nil, privacy: .public)")
+        #endif
+        guard user != nil else {
+            #if DEBUG
+            peekLog.notice("peekTranslationsInBackground: no user, skip")
+            #endif
+            return
+        }
+        guard await backend.isOnline() else {
+            #if DEBUG
+            peekLog.notice("peekTranslationsInBackground: offline, skip")
+            #endif
+            return
+        }
         let candidates = (try? await backend.topEncounteredLanguages(limit: Self.backgroundPeekLimit)) ?? []
-        guard !candidates.isEmpty else { return }
+        #if DEBUG
+        peekLog.notice("peekTranslationsInBackground: candidates=\(candidates.joined(separator: ","), privacy: .public)")
+        #endif
+        guard !candidates.isEmpty else {
+            #if DEBUG
+            peekLog.notice("peekTranslationsInBackground: empty candidates, skip")
+            #endif
+            return
+        }
+
+        // Debug オーバーレイと UI テストのためにスナップショットを保持する
+        //（スプリント17 attempt 2: eval-1.md [1] の修正検証用）。
+        lastPeekedLanguages = candidates
 
         let deadline = Date().addingTimeInterval(Self.backgroundPeekBudgetSeconds)
         for language in candidates {
@@ -880,13 +915,19 @@ final class AppSession {
                     case .unavailable(let permanent):
                         if permanent {
                             try await backend.markPostViewed(post.id)
-                            // 恒久的に翻訳できない言語も「出会った」事実として記録する
-                            // （=その言語の翻訳モデルが今後インストールされる見込みは
-                            // ほぼ無いが、pre-fetch の判定材料としては記録しておく方が
-                            // 確実にオフになる。クールダウン判定が活きて結果的に
-                            // 再試行しないので害もない）。
-                            try? await backend.recordLanguageEncounter(languageCode: post.bodyLanguage)
-                        } else {
+                        }
+                        // 「出会った」事実として言語コードをバックエンドへ記録する。
+                        // attempt 1 では恒久失敗（`.unavailable(permanent: true)`）の
+                        // ときだけ記録していたが、F41 の「直近よく出会う言語」は
+                        // 一時失敗（モデル未DL 等）も含むべき。記録しておかないと
+                        // `qtd`（疑似モードで「モデル未DL」を再現するマーカー）など、
+                        // 「準備中」でスキップされ続けた言語がいつまでも
+                        // `topEncounteredLanguages` に入らず、background 先読みの
+                        // 対象にもならない（eval-1.md [1] の修正）。
+                        // クールダウン判定は `Translator` 側で効くので、過剰に
+                        // 再試行する心配は無い。
+                        try? await backend.recordLanguageEncounter(languageCode: post.bodyLanguage)
+                        if !permanent {
                             skippedThisDraw.insert(post.id)
                         }
                         continue draw
@@ -1027,6 +1068,12 @@ final class AppSession {
             parts.append("next notif \(formatter.string(from: next))")
         } else {
             parts.append("next notif none")
+        }
+        // F41・スプリント17 attempt 2: 直近の background 先読みで対象になった言語を
+        // Debug オーバーレイに出し、「実際に走った痕跡」を目視で確認できるようにする。
+        // エンドユーザー向け UI ではない（`-SameQDebugOverlay` 指定時のみ）。
+        if !lastPeekedLanguages.isEmpty {
+            parts.append("peeked [\(lastPeekedLanguages.joined(separator: ", "))]")
         }
         return parts.joined(separator: " · ")
     }

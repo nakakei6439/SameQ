@@ -1,4 +1,7 @@
 import Foundation
+import os.log
+
+private let peekLog = Logger(subsystem: "com.nakakei6439.SameQ", category: "peek")
 
 /// 端末内で完結する `Backend` 実装。
 ///
@@ -65,6 +68,18 @@ actor LocalBackend: Backend {
                 empty.discardedCandidatesCount = generation.discarded.count
                 try? store.save(empty)
             }
+            // `-SameQPeekTestQtdEncounter`（Debug 限定・スプリント17 attempt 2）は
+            // resetsState 経路でも有効にする（UI テストは reset → 再起動のサイクルで
+            // 検証するため）。
+            if options.peekTestQtdEncounter {
+                var next = state
+                next.languageEncounters["qtd"] = 5
+                try? store.save(next)
+                self.state = next
+                #if DEBUG
+                peekLog.notice("peekTestQtdEncounter (resetsState): forced languageEncounters[\"qtd\"] = 5")
+                #endif
+            }
             return
         }
         var loaded = store.load()
@@ -81,6 +96,23 @@ actor LocalBackend: Backend {
             try? store.save(loaded)
         }
         self.state = loaded
+        // `-SameQPeekTestQtdEncounter`（Debug 限定・スプリント17 attempt 2）:
+        // qtd encounter を強制的に 5 件積んで background 先読み経路を
+        // 確実にトリガする。検証用エスケープハッチ（`LaunchOptions` のコメント参照）。
+        if options.peekTestQtdEncounter, loaded.languageEncounters["qtd"] == nil {
+            var next = loaded
+            next.languageEncounters["qtd"] = 5
+            try? store.save(next)
+            self.state = next
+            #if DEBUG
+            peekLog.notice("peekTestQtdEncounter: forced languageEncounters[\"qtd\"] = 5")
+            #endif
+        } else if options.peekTestQtdEncounter {
+            #if DEBUG
+            let existing = loaded.languageEncounters["qtd"] ?? 0
+            peekLog.notice("peekTestQtdEncounter: languageEncounters qtd already present, count=\(existing, privacy: .public)")
+            #endif
+        }
     }
 
     // MARK: アカウント
@@ -470,10 +502,58 @@ actor LocalBackend: Backend {
 
     /// `Translator` が実際にダウンロードを試みた直後に呼ばれる。
     func recordModelPrepareAttempt(sourceLanguageCode: String, at date: Date) async throws {
+        #if DEBUG
+        let debugLogPath = LaunchOptions.current.peekTestSharedLogPath ?? ""
+        print("[SameQ] recordModelPrepareAttempt: \(sourceLanguageCode) logPath='\(debugLogPath)'")
+        #endif
         var next = state
         next.lastPrepareAttemptAt[sourceLanguageCode.lowercased()] = date
         try store.save(next)
         state = next
+        // スプリント17 attempt 2: UI テストから観測するための検証用フック。
+        // 共有ファイルパスが指定されていれば、`languageCode` と試行時刻を
+        // 1 行で追記する（評価者がサンドボックス外から観測できる）。
+        if let logPath = LaunchOptions.current.peekTestSharedLogPath, !logPath.isEmpty {
+            let formatter = ISO8601DateFormatter()
+            let line = "\(sourceLanguageCode.lowercased())\t\(formatter.string(from: date))\n"
+            let url = URL(fileURLWithPath: logPath)
+            let dir = url.deletingLastPathComponent()
+            do {
+                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            } catch {
+                #if DEBUG
+                print("[SameQ] peek log mkdir failed: \(error)")
+                #endif
+            }
+            if let data = line.data(using: .utf8) {
+                if FileManager.default.fileExists(atPath: logPath) {
+                    do {
+                        let handle = try FileHandle(forWritingTo: url)
+                        defer { try? handle.close() }
+                        try handle.seekToEnd()
+                        try handle.write(contentsOf: data)
+                        #if DEBUG
+                        print("[SameQ] peek log appended: \(line.trimmingCharacters(in: .whitespacesAndNewlines))")
+                        #endif
+                    } catch {
+                        #if DEBUG
+                        print("[SameQ] peek log write failed: \(error)")
+                        #endif
+                    }
+                } else {
+                    do {
+                        try data.write(to: url)
+                        #if DEBUG
+                        print("[SameQ] peek log created: \(line.trimmingCharacters(in: .whitespacesAndNewlines))")
+                        #endif
+                    } catch {
+                        #if DEBUG
+                        print("[SameQ] peek log create failed: \(error)")
+                        #endif
+                    }
+                }
+            }
+        }
     }
 
     // MARK: 期限切れの掃除（F10 / F34）

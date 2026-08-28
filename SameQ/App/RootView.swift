@@ -1,5 +1,8 @@
 import SwiftUI
 import UserNotifications
+import os.log
+
+private let peekLog = Logger(subsystem: "com.nakakei6439.SameQ", category: "peek")
 
 /// 画面の入り口。`AppSession.screen` の値だけで表示を決める。
 ///
@@ -81,6 +84,9 @@ struct RootView: View {
             attemptDispatchPendingNotificationTap()
         }
         .onChange(of: scenePhase) { _, phase in
+            #if DEBUG
+            peekLog.notice("scenePhase changed to \(String(describing: phase), privacy: .public)")
+            #endif
             // バックグラウンドから戻ったときは、待たずにその場で見直す。
             // 同時に、通知の許可状態は OS 側でも変わり得るので読み直し、
             // 許可されていれば通知を再予約する（F24）。
@@ -91,6 +97,9 @@ struct RootView: View {
                 }
                 Task { await session.refresh() }
             } else if phase == .background {
+                #if DEBUG
+                peekLog.notice("triggering peekTranslationsInBackground")
+                #endif
                 // F41（スプリント17）: アプリがバックグラウンドへ移った瞬間に
                 // 翻訳の先読みを起動する。内部で `isOnline()` を確認し、
                 // オフライン時は即 return（受け入れ条件5前半）。
