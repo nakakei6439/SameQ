@@ -1,7 +1,7 @@
 {
-  "currentSprint": "17",
-  "attempt": 3,
-  "status": "passed",
+  "currentSprint": "18",
+  "attempt": 1,
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "14",
@@ -593,6 +593,12 @@
       "attempt": 1,
       "result": "user_action",
       "note": "ユーザー判断: sprint14合格後にautoloopがsprint15(既に本物のevaluatorで合格済み)を再検証し始めたため停止。sprint15の再検証は生成物の差分なし(self-review更新のみ)。sprint16・17の冗長な再検証も省略するため、currentSprintを17・attemptを3・statusをpassedに書き換える(sprint17は元々2026-08-28 11:39:21に本物のevaluatorで合格済み)。次のiterationで全スプリント完了として正常終了する想定。"
+    },
+    {
+      "sprint": "18",
+      "attempt": 0,
+      "result": "user_action",
+      "note": "ユーザー依頼によりコーディネーターが直接実装(統合ヘッダー・ハンバーガーメニュー・お知らせ画面・隠し開発者モード・Plus1ヶ月無料トライアル)。ビルド成功・ユニットテスト212/212成功を確認済み(コミット0047faf)。App Store Connectで無料トライアル(1ヶ月・全175か国・終了日なし)も設定済み。plannerによりspec.mdへスプリント18として正式追記済み(F42-F45)。残作業(既存UIテストSprintEight/Eleven/Fifteen/Seventeen/Sevenのmenu.open対応・新規UIテスト追加・ユニットテスト追加・Supabaseマイグレーション本番適用)をgenerator/evaluatorへ引き継ぐ。statusをneeds_fixにするのは「まっさらな新規実装」ではなく「既存コードの仕上げ」であることをgeneratorへ明示するため。"
     }
   ]
 }
