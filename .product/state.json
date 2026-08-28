@@ -1,7 +1,7 @@
 {
-  "currentSprint": "17",
-  "attempt": 3,
-  "status": "passed",
+  "currentSprint": "14",
+  "attempt": 6,
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "17",
@@ -562,6 +562,12 @@
       "attempt": 5,
       "result": "user_action",
       "note": "ユーザー判断: スプリント14(RevenueCatダッシュボードでの実績確認が必須条件のため3-strikeでblocked)は一旦保留し、依存関係のないスプリント15〜17を先に進める。ユーザーが仕事から帰宅後にスプリント14の再開方法(実機Sandbox購入によるダッシュボード確認/secret key追加による部分自動化/spec条件の緩和のいずれか)を判断する。currentSprintを15、attemptを1、statusをin_progressに変更してスキップ。詳細は .product/sprints/14-undefined/self-review.md (attempt5) 参照。"
+    },
+    {
+      "sprint": "14",
+      "attempt": 5,
+      "result": "user_action",
+      "note": "ユーザー判断: sprint14をblocked状態から再開。3-strikeの根本原因（[1]RevenueCatダッシュボードで購入実績が目視できない・[2]ダッシュボードに商品未登録）を実際に解消した。具体的には (1) App Store Connect の Monthly Plus サブスクリプション（com.nakakei6439.SameQ.plus.monthly）の配信可否が0か国だったのを175か国すべてに変更、(2) RevenueCatダッシュボードの SameQ (App Store) に同じ商品IDでProductを新規作成し entitlement plus にattach、(3) 同ProductをdefaultOfferingのMonthlyパッケージのApp Store欄（それまでNo productだった）に紐付け、(4) evaluatorがREST API v2で購入実績を照会できるよう secret API key（Customers/Subscriptions/Purchases のみRead only）を発行し .env.local の REVENUECAT_SECRET_API_KEY に保存、を実施済み。これにより実機Sandbox購入がRevenueCatダッシュボードに実績として現れる状態になったはずだが、実機での実purchaseによる最終確認はまだ行っていない。generatorへの申し送り: コード変更は不要な可能性が高いが、.storekit構成を追加してシミュレータでも条件2・3（購入・復元）を検証できるようにすることを推奨（self-review.md attempt5の提案B参照）。条件4（ダッシュボードに実績が残ること）の最終確認は人間による実機Sandbox購入が必要であり、evaluatorはコード面の検証とREST API v2での照会可能性を確認した上で、実機確認が必要な旨を明記して引き渡すこと。"
     }
   ]
 }
