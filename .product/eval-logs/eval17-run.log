@@ -1,0 +1,1316 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project SameQ.xcodeproj -scheme SameQ -destination "platform=iOS Simulator,id=35AAC789-1DF1-4C51-B14D-94A5084F6B26" -derivedDataPath build/derived "-only-testing:SameQUITests/EvalSeventeenTests" test
+
+Resolve Package Graph
+
+
+Resolved source packages:
+  RevenueCat: https://github.com/RevenueCat/purchases-ios @ 5.87.0
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (6 targets)
+    Target 'SameQUITests' in project 'SameQ'
+        ➜ Explicit dependency on target 'SameQ' in project 'SameQ'
+    Target 'SameQTests' in project 'SameQ'
+        ➜ Explicit dependency on target 'SameQ' in project 'SameQ'
+    Target 'SameQ' in project 'SameQ'
+        ➜ Explicit dependency on target 'RevenueCat' in project 'RevenueCat'
+    Target 'RevenueCat' in project 'RevenueCat'
+        ➜ Explicit dependency on target 'RevenueCat' in project 'RevenueCat'
+        ➜ Explicit dependency on target 'RevenueCat_RevenueCat' in project 'RevenueCat'
+    Target 'RevenueCat' in project 'RevenueCat'
+        ➜ Explicit dependency on target 'RevenueCat_RevenueCat' in project 'RevenueCat'
+    Target 'RevenueCat_RevenueCat' in project 'RevenueCat' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/nakagawakeita/Products/iOSApp/SameQ/SameQ/Resources/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+ReadFileContents /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/share/docc/features.json
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+Build description signature: fe2384e40a616ce4950b5ed5b2c03332
+Build description path: /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/XCBuildData/fe2384e40a616ce4950b5ed5b2c03332.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ/SameQ.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -o /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache
+
+ProcessInfoPlistFile /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/RevenueCat_RevenueCat.bundle/Info.plist /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/RevenueCat.build/Debug-iphonesimulator/RevenueCat_RevenueCat.build/empty-RevenueCat_RevenueCat.plist (in target 'RevenueCat_RevenueCat' from project 'RevenueCat')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/SourcePackages/checkouts/purchases-ios
+    builtin-infoPlistUtility /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/RevenueCat.build/Debug-iphonesimulator/RevenueCat_RevenueCat.build/empty-RevenueCat_RevenueCat.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/RevenueCat_RevenueCat.bundle/Info.plist
+
+WriteAuxiliaryFile /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.SwiftFileList (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    write-file /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.SwiftFileList
+
+WriteAuxiliaryFile /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.LinkFileList (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    write-file /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.LinkFileList
+
+WriteAuxiliaryFile /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests-OutputFileMap.json (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    write-file /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests-OutputFileMap.json
+
+WriteAuxiliaryFile /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.SwiftConstValuesFileList (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    write-file /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.SwiftConstValuesFileList
+
+note: Run script build phase 'GenerateSecrets' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'SameQ' from project 'SameQ')
+PhaseScriptExecution GenerateSecrets /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Script-7364118A3F9579303F3156CF.sh (in target 'SameQ' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    export ACTION\=build
+    export AD_HOC_CODE_SIGNING_ALLOWED\=YES
+    export AGGREGATE_TRACKED_DOMAINS\=YES
+    export ALLOW_BUILD_REQUEST_OVERRIDES\=NO
+    export ALLOW_TARGET_PLATFORM_SPECIALIZATION\=NO
+    export ALTERNATE_GROUP\=staff
+    export ALTERNATE_MODE\=u+w,go-w,a+rX
+    export ALTERNATE_OWNER\=nakagawakeita
+    export ALTERNATIVE_DISTRIBUTION_WEB\=NO
+    export ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES\=NO
+    export ALWAYS_SEARCH_USER_PATHS\=NO
+    export ALWAYS_USE_SEPARATE_HEADERMAPS\=NO
+    export APPLICATION_EXTENSION_API_ONLY\=NO
+    export APPLY_RULES_IN_COPY_FILES\=NO
+    export APPLY_RULES_IN_COPY_HEADERS\=NO
+    export APP_SHORTCUTS_ENABLE_FLEXIBLE_MATCHING\=YES
+    export ARCHS\=arm64
+    export ARCHS_BASE\=arm64
+    export ARCHS_STANDARD\=arm64\ x86_64
+    export ARCHS_STANDARD_32_64_BIT\=arm64\ x86_64
+    export ARCHS_STANDARD_64_BIT\=arm64\ x86_64
+    export ARCHS_STANDARD_INCLUDING_64_BIT\=arm64\ x86_64
+    export ARCHS_UNIVERSAL_IPHONE_OS\=arm64\ x86_64
+    export ASSETCATALOG_COMPILER_APPICON_NAME\=AppIcon
+    export ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME\=AccentColor
+    export ASSETCATALOG_FILTER_FOR_DEVICE_MODEL\=iPhone18,3
+    export ASSETCATALOG_FILTER_FOR_DEVICE_OS_VERSION\=26.5
+    export ASSETCATALOG_FILTER_FOR_THINNING_DEVICE_CONFIGURATION\=iPhone18,3
+    export AUTOMATICALLY_MERGE_DEPENDENCIES\=NO
+    export AUTOMATION_APPLE_EVENTS\=NO
+    export AVAILABLE_PLATFORMS\=android\ appletvos\ appletvsimulator\ driverkit\ freebsd\ iphoneos\ iphonesimulator\ linux\ macosx\ none\ openbsd\ qnx\ watchos\ watchsimulator\ webassembly\ xros\ xrsimulator
+    export AppIdentifierPrefix\=7PTQ6W4R3T.
+    export BUILD_ACTIVE_RESOURCES_ONLY\=YES
+    export BUILD_COMPONENTS\=headers\ build
+    export BUILD_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products
+    export BUILD_LIBRARY_FOR_DISTRIBUTION\=NO
+    export BUILD_ONLY_KNOWN_LOCALIZATIONS\=NO
+    export BUILD_ROOT\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products
+    export BUILD_STYLE\=
+    export BUILD_VARIANTS\=normal
+    export BUILT_PRODUCTS_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator
+    export BUNDLE_CONTENTS_FOLDER_PATH_deep\=Contents/
+    export BUNDLE_EXECUTABLE_FOLDER_NAME_deep\=MacOS
+    export BUNDLE_EXTENSIONS_FOLDER_PATH\=Extensions
+    export BUNDLE_FORMAT\=shallow
+    export BUNDLE_FRAMEWORKS_FOLDER_PATH\=Frameworks
+    export BUNDLE_PLUGINS_FOLDER_PATH\=PlugIns
+    export BUNDLE_PRIVATE_HEADERS_FOLDER_PATH\=PrivateHeaders
+    export BUNDLE_PUBLIC_HEADERS_FOLDER_PATH\=Headers
+    export CACHE_ROOT\=/var/folders/3f/gknrcjbj7wj3hgmk0q9_tfcr0000gn/C/com.apple.DeveloperTools/26.6-17F113/Xcode
+    export CCHROOT\=/var/folders/3f/gknrcjbj7wj3hgmk0q9_tfcr0000gn/C/com.apple.DeveloperTools/26.6-17F113/Xcode
+    export CHMOD\=/bin/chmod
+    export CHOWN\=chown
+    export CLANG_ANALYZER_NONNULL\=YES
+    export CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION\=YES_AGGRESSIVE
+    export CLANG_CACHE_FINE_GRAINED_OUTPUTS\=YES
+    export CLANG_CXX_LANGUAGE_STANDARD\=gnu++14
+    export CLANG_CXX_LIBRARY\=libc++
+    export CLANG_ENABLE_EXPLICIT_MODULES\=YES
+    export CLANG_ENABLE_MODULES\=YES
+    export CLANG_ENABLE_OBJC_ARC\=YES
+    export CLANG_ENABLE_OBJC_WEAK\=YES
+    export CLANG_MODULES_BUILD_SESSION_FILE\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex/Session.modulevalidation
+    export CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING\=YES
+    export CLANG_WARN_BOOL_CONVERSION\=YES
+    export CLANG_WARN_COMMA\=YES
+    export CLANG_WARN_CONSTANT_CONVERSION\=YES
+    export CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS\=YES
+    export CLANG_WARN_DIRECT_OBJC_ISA_USAGE\=YES_ERROR
+    export CLANG_WARN_DOCUMENTATION_COMMENTS\=YES
+    export CLANG_WARN_EMPTY_BODY\=YES
+    export CLANG_WARN_ENUM_CONVERSION\=YES
+    export CLANG_WARN_INFINITE_RECURSION\=YES
+    export CLANG_WARN_INT_CONVERSION\=YES
+    export CLANG_WARN_NON_LITERAL_NULL_CONVERSION\=YES
+    export CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF\=YES
+    export CLANG_WARN_OBJC_LITERAL_CONVERSION\=YES
+    export CLANG_WARN_OBJC_ROOT_CLASS\=YES_ERROR
+    export CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER\=YES
+    export CLANG_WARN_RANGE_LOOP_ANALYSIS\=YES
+    export CLANG_WARN_STRICT_PROTOTYPES\=YES
+    export CLANG_WARN_SUSPICIOUS_MOVE\=YES
+    export CLANG_WARN_UNGUARDED_AVAILABILITY\=YES_AGGRESSIVE
+    export CLANG_WARN_UNREACHABLE_CODE\=YES
+    export CLANG_WARN__DUPLICATE_METHOD_MATCH\=YES
+    export CLASS_FILE_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/JavaClasses
+    export CLEAN_PRECOMPS\=YES
+    export CLONE_HEADERS\=NO
+    export CODESIGNING_FOLDER_PATH\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app
+    export CODE_SIGNING_ALLOWED\=YES
+    export CODE_SIGNING_REQUIRED\=YES
+    export CODE_SIGN_CONTEXT_CLASS\=XCiPhoneSimulatorCodeSignContext
+    export CODE_SIGN_IDENTITY\=iPhone\ Developer
+    export CODE_SIGN_INJECT_BASE_ENTITLEMENTS\=YES
+    export CODE_SIGN_STYLE\=Automatic
+    export COLOR_DIAGNOSTICS\=NO
+    export COMBINE_HIDPI_IMAGES\=NO
+    export COMPILATION_CACHE_CAS_PATH\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/CompilationCache.noindex
+    export COMPILATION_CACHE_KEEP_CAS_DIRECTORY\=YES
+    export COMPILER_INDEX_STORE_ENABLE\=Default
+    export COMPOSITE_SDK_DIRS\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/CompositeSDKs
+    export COMPRESS_PNG_FILES\=YES
+    export CONFIGURATION\=Debug
+    export CONFIGURATION_BUILD_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator
+    export CONFIGURATION_TEMP_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator
+    export CONTENTS_FOLDER_PATH\=SameQ.app
+    export CONTENTS_FOLDER_PATH_SHALLOW_BUNDLE_NO\=SameQ.app/Contents
+    export CONTENTS_FOLDER_PATH_SHALLOW_BUNDLE_YES\=SameQ.app
+    export COPYING_PRESERVES_HFS_DATA\=NO
+    export COPY_HEADERS_RUN_UNIFDEF\=NO
+    export COPY_PHASE_STRIP\=NO
+    export CORRESPONDING_DEVICE_PLATFORM_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform
+    export CORRESPONDING_DEVICE_PLATFORM_NAME\=iphoneos
+    export CORRESPONDING_DEVICE_SDK_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.5.sdk
+    export CORRESPONDING_DEVICE_SDK_NAME\=iphoneos26.5
+    export CP\=/bin/cp
+    export CREATE_INFOPLIST_SECTION_IN_BINARY\=NO
+    export CURRENT_ARCH\=undefined_arch
+    export CURRENT_VARIANT\=normal
+    export DEAD_CODE_STRIPPING\=YES
+    export DEBUGGING_SYMBOLS\=YES
+    export DEBUG_INFORMATION_FORMAT\=dwarf
+    export DEBUG_INFORMATION_VERSION\=compiler-default
+    export DEFAULT_COMPILER\=com.apple.compilers.llvm.clang.1_0
+    export DEFAULT_DEXT_INSTALL_PATH\=/System/Library/DriverExtensions
+    export DEFAULT_KEXT_INSTALL_PATH\=/System/Library/Extensions
+    export DEFINES_MODULE\=NO
+    export DEPLOYMENT_LOCATION\=NO
+    export DEPLOYMENT_POSTPROCESSING\=NO
+    export DEPLOYMENT_TARGET_SETTING_NAME\=IPHONEOS_DEPLOYMENT_TARGET
+    export DEPLOYMENT_TARGET_SUGGESTED_VALUES\=12.0\ 12.1\ 12.2\ 12.3\ 12.4\ 13.0\ 13.1\ 13.2\ 13.3\ 13.4\ 13.5\ 13.6\ 14.0\ 14.1\ 14.2\ 14.3\ 14.4\ 14.5\ 14.6\ 14.7\ 15.0\ 15.1\ 15.2\ 15.3\ 15.4\ 15.5\ 15.6\ 16.0\ 16.1\ 16.2\ 16.3\ 16.4\ 16.5\ 16.6\ 17.0\ 17.1\ 17.2\ 17.3\ 17.4\ 17.5\ 17.6\ 18.0\ 18.1\ 18.2\ 18.3\ 18.4\ 18.5\ 18.6\ 26.0\ 26.2\ 26.3\ 26.4\ 26.5
+    export DERIVED_FILES_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/DerivedSources
+    export DERIVED_FILE_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/DerivedSources
+    export DERIVED_SOURCES_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/DerivedSources
+    export DEVELOPER_APPLICATIONS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications
+    export DEVELOPER_BIN_DIR\=/Applications/Xcode.app/Contents/Developer/usr/bin
+    export DEVELOPER_DIR\=/Applications/Xcode.app/Contents/Developer
+    export DEVELOPER_FRAMEWORKS_DIR\=/Applications/Xcode.app/Contents/Developer/Library/Frameworks
+    export DEVELOPER_FRAMEWORKS_DIR_QUOTED\=/Applications/Xcode.app/Contents/Developer/Library/Frameworks
+    export DEVELOPER_LIBRARY_DIR\=/Applications/Xcode.app/Contents/Developer/Library
+    export DEVELOPER_SDK_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs
+    export DEVELOPER_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Tools
+    export DEVELOPER_USR_DIR\=/Applications/Xcode.app/Contents/Developer/usr
+    export DEVELOPMENT_LANGUAGE\=en
+    export DEVELOPMENT_TEAM\=7PTQ6W4R3T
+    export DIAGNOSE_MISSING_TARGET_DEPENDENCIES\=YES
+    export DIFF\=/usr/bin/diff
+    export DOCUMENTATION_FOLDER_PATH\=SameQ.app/en.lproj/Documentation
+    export DONT_GENERATE_INFOPLIST_FILE\=NO
+    export DSTROOT\=/tmp/SameQ.dst
+    export DT_TOOLCHAIN_DIR\=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain
+    export DUMP_DEPENDENCIES\=NO
+    export DUMP_DEPENDENCIES_OUTPUT_PATH\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ-BuildDependencyInfo.json
+    export DWARF_DSYM_FILE_NAME\=SameQ.app.dSYM
+    export DWARF_DSYM_FILE_SHOULD_ACCOMPANY_PRODUCT\=NO
+    export DWARF_DSYM_FOLDER_PATH\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator
+    export DYNAMIC_LIBRARY_EXTENSION\=dylib
+    export EAGER_COMPILATION_ALLOW_SCRIPTS\=NO
+    export EAGER_LINKING\=NO
+    export EFFECTIVE_PLATFORM_NAME\=-iphonesimulator
+    export EFFECTIVE_SWIFT_VERSION\=5
+    export EMBEDDED_CONTENT_CONTAINS_SWIFT\=NO
+    export EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE\=NO
+    export EMBED_PACKAGE_RESOURCE_BUNDLE_NAMES\=\ RevenueCat_RevenueCat
+    export ENABLE_APP_SANDBOX\=NO
+    export ENABLE_CODE_COVERAGE\=YES
+    export ENABLE_COHORT_ARCHS\=NO
+    export ENABLE_CPLUSPLUS_BOUNDS_SAFE_BUFFERS\=NO
+    export ENABLE_C_BOUNDS_SAFETY\=NO
+    export ENABLE_DEBUG_DYLIB\=YES
+    export ENABLE_DEFAULT_HEADER_SEARCH_PATHS\=YES
+    export ENABLE_DEFAULT_SEARCH_PATHS\=YES
+    export ENABLE_ENHANCED_SECURITY\=NO
+    export ENABLE_HARDENED_RUNTIME\=NO
+    export ENABLE_HEADER_DEPENDENCIES\=YES
+    export ENABLE_INCOMING_NETWORK_CONNECTIONS\=NO
+    export ENABLE_ON_DEMAND_RESOURCES\=YES
+    export ENABLE_OUTGOING_NETWORK_CONNECTIONS\=NO
+    export ENABLE_POINTER_AUTHENTICATION\=NO
+    export ENABLE_PREVIEWS\=NO
+    export ENABLE_RESOURCE_ACCESS_AUDIO_INPUT\=NO
+    export ENABLE_RESOURCE_ACCESS_BLUETOOTH\=NO
+    export ENABLE_RESOURCE_ACCESS_CALENDARS\=NO
+    export ENABLE_RESOURCE_ACCESS_CAMERA\=NO
+    export ENABLE_RESOURCE_ACCESS_CONTACTS\=NO
+    export ENABLE_RESOURCE_ACCESS_LOCATION\=NO
+    export ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY\=NO
+    export ENABLE_RESOURCE_ACCESS_PRINTING\=NO
+    export ENABLE_RESOURCE_ACCESS_USB\=NO
+    export ENABLE_SDK_IMPORTS\=NO
+    export ENABLE_SECURITY_COMPILER_WARNINGS\=NO
+    export ENABLE_STRICT_OBJC_MSGSEND\=YES
+    export ENABLE_TESTABILITY\=YES
+    export ENABLE_TESTING_SEARCH_PATHS\=NO
+    export ENABLE_USER_SCRIPT_SANDBOXING\=NO
+    export ENABLE_XOJIT_PREVIEWS\=YES
+    export ENFORCE_VALID_ARCHS\=YES
+    export ENTITLEMENTS_ALLOWED\=NO
+    export ENTITLEMENTS_DESTINATION\=__entitlements
+    export ENTITLEMENTS_REQUIRED\=NO
+    export EXCLUDED_INSTALLSRC_SUBDIRECTORY_PATTERNS\=.DS_Store\ .svn\ .git\ .hg\ CVS
+    export EXCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES\=\*.nib\ \*.lproj\ \*.framework\ \*.gch\ \*.xcode\*\ \*.xcassets\ \*.icon\ \(\*\)\ .DS_Store\ CVS\ .svn\ .git\ .hg\ \*.pbproj\ \*.pbxproj
+    export EXECUTABLES_FOLDER_PATH\=SameQ.app/Executables
+    export EXECUTABLE_BLANK_INJECTION_DYLIB_PATH\=SameQ.app/__preview.dylib
+    export EXECUTABLE_DEBUG_DYLIB_INSTALL_NAME\=@rpath/SameQ.debug.dylib
+    export EXECUTABLE_DEBUG_DYLIB_PATH\=SameQ.app/SameQ.debug.dylib
+    export EXECUTABLE_FOLDER_PATH\=SameQ.app
+    export EXECUTABLE_FOLDER_PATH_SHALLOW_BUNDLE_NO\=SameQ.app/MacOS
+    export EXECUTABLE_FOLDER_PATH_SHALLOW_BUNDLE_YES\=SameQ.app
+    export EXECUTABLE_NAME\=SameQ
+    export EXECUTABLE_PATH\=SameQ.app/SameQ
+    export EXPANDED_CODE_SIGN_IDENTITY\=-
+    export EXPANDED_CODE_SIGN_IDENTITY_NAME\=Sign\ to\ Run\ Locally
+    export EXTENSIONS_FOLDER_PATH\=SameQ.app/Extensions
+    export FILE_LIST\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects/LinkFileList
+    export FIXED_FILES_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/FixedFiles
+    export FRAMEWORKS_FOLDER_PATH\=SameQ.app/Frameworks
+    export FRAMEWORK_FLAG_PREFIX\=-framework
+    export FRAMEWORK_SEARCH_PATHS\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/PackageFrameworks\ /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator\ 
+    export FRAMEWORK_VERSION\=A
+    export FULL_PRODUCT_NAME\=SameQ.app
+    export FUSE_BUILD_PHASES\=YES
+    export FUSE_BUILD_SCRIPT_PHASES\=NO
+    export GCC3_VERSION\=3.3
+    export GCC_C_LANGUAGE_STANDARD\=gnu11
+    export GCC_DYNAMIC_NO_PIC\=NO
+    export GCC_INLINES_ARE_PRIVATE_EXTERN\=YES
+    export GCC_NO_COMMON_BLOCKS\=YES
+    export GCC_OBJC_LEGACY_DISPATCH\=YES
+    export GCC_OPTIMIZATION_LEVEL\=0
+    export GCC_PFE_FILE_C_DIALECTS\=c\ objective-c\ c++\ objective-c++
+    export GCC_PREPROCESSOR_DEFINITIONS\=\ DEBUG\=1
+    export GCC_SYMBOLS_PRIVATE_EXTERN\=NO
+    export GCC_TREAT_WARNINGS_AS_ERRORS\=NO
+    export GCC_VERSION\=com.apple.compilers.llvm.clang.1_0
+    export GCC_VERSION_IDENTIFIER\=com_apple_compilers_llvm_clang_1_0
+    export GCC_WARN_64_TO_32_BIT_CONVERSION\=YES
+    export GCC_WARN_ABOUT_RETURN_TYPE\=YES_ERROR
+    export GCC_WARN_UNDECLARED_SELECTOR\=YES
+    export GCC_WARN_UNINITIALIZED_AUTOS\=YES_AGGRESSIVE
+    export GCC_WARN_UNUSED_FUNCTION\=YES
+    export GCC_WARN_UNUSED_VARIABLE\=YES
+    export GENERATED_MODULEMAP_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator
+    export GENERATE_INFOPLIST_FILE\=NO
+    export GENERATE_INTERMEDIATE_TEXT_BASED_STUBS\=YES
+    export GENERATE_PKGINFO_FILE\=YES
+    export GENERATE_PRELINK_OBJECT_FILE\=NO
+    export GENERATE_PROFILING_CODE\=NO
+    export GENERATE_TEXT_BASED_STUBS\=NO
+    export GID\=20
+    export GROUP\=staff
+    export HEADERMAP_INCLUDES_FLAT_ENTRIES_FOR_TARGET_BEING_BUILT\=YES
+    export HEADERMAP_INCLUDES_FRAMEWORK_ENTRIES_FOR_ALL_PRODUCT_TYPES\=YES
+    export HEADERMAP_INCLUDES_FRAMEWORK_ENTRIES_FOR_TARGETS_NOT_BEING_BUILT\=YES
+    export HEADERMAP_INCLUDES_NONPUBLIC_NONPRIVATE_HEADERS\=YES
+    export HEADERMAP_INCLUDES_PROJECT_HEADERS\=YES
+    export HEADERMAP_USES_FRAMEWORK_PREFIX_ENTRIES\=YES
+    export HEADERMAP_USES_VFS\=NO
+    export HEADER_SEARCH_PATHS\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/include\ 
+    export HOME\=/Users/nakagawakeita
+    export HOST_ARCH\=arm64
+    export HOST_PLATFORM\=macosx
+    export ICONV\=/usr/bin/iconv
+    export IMPLICIT_DEPENDENCY_DOMAIN\=default
+    export INDEX_STORE_COMPRESS\=NO
+    export INDEX_STORE_ONLY_PROJECT_FILES\=NO
+    export INFOPLIST_ENABLE_CFBUNDLEICONS_MERGE\=YES
+    export INFOPLIST_EXPAND_BUILD_SETTINGS\=YES
+    export INFOPLIST_FILE\=SameQ/Info.plist
+    export INFOPLIST_OUTPUT_FORMAT\=binary
+    export INFOPLIST_PATH\=SameQ.app/Info.plist
+    export INFOPLIST_PREPROCESS\=NO
+    export INFOSTRINGS_PATH\=SameQ.app/en.lproj/InfoPlist.strings
+    export INLINE_PRIVATE_FRAMEWORKS\=NO
+    export INSTALLAPI_IGNORE_SKIP_INSTALL\=YES
+    export INSTALLHDRS_COPY_PHASE\=NO
+    export INSTALLHDRS_SCRIPT_PHASE\=NO
+    export INSTALL_DIR\=/tmp/SameQ.dst/Applications
+    export INSTALL_GROUP\=staff
+    export INSTALL_MODE_FLAG\=u+w,go-w,a+rX
+    export INSTALL_OWNER\=nakagawakeita
+    export INSTALL_PATH\=/Applications
+    export INSTALL_ROOT\=/tmp/SameQ.dst
+    export IPHONEOS_DEPLOYMENT_TARGET\=18.0
+    export IS_UNOPTIMIZED_BUILD\=YES
+    export JAVAC_DEFAULT_FLAGS\=-J-Xms64m\ -J-XX:NewSize\=4M\ -J-Dfile.encoding\=UTF8
+    export JAVA_APP_STUB\=/System/Library/Frameworks/JavaVM.framework/Resources/MacOS/JavaApplicationStub
+    export JAVA_ARCHIVE_CLASSES\=YES
+    export JAVA_ARCHIVE_TYPE\=JAR
+    export JAVA_COMPILER\=/usr/bin/javac
+    export JAVA_FOLDER_PATH\=SameQ.app/Java
+    export JAVA_FRAMEWORK_RESOURCES_DIRS\=Resources
+    export JAVA_JAR_FLAGS\=cv
+    export JAVA_SOURCE_SUBDIR\=.
+    export JAVA_USE_DEPENDENCIES\=YES
+    export JAVA_ZIP_FLAGS\=-urg
+    export JIKES_DEFAULT_FLAGS\=+E\ +OLDCSO
+    export KEEP_PRIVATE_EXTERNS\=NO
+    export LD_DEPENDENCY_INFO_FILE\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/undefined_arch/SameQ_dependency_info.dat
+    export LD_ENTITLEMENTS_SECTION\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ.app-Simulated.xcent
+    export LD_ENTITLEMENTS_SECTION_DER\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ.app-Simulated.xcent.der
+    export LD_EXPORT_SYMBOLS\=YES
+    export LD_GENERATE_MAP_FILE\=NO
+    export LD_MAP_FILE_PATH\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ-LinkMap-normal-undefined_arch.txt
+    export LD_NO_PIE\=NO
+    export LD_QUOTE_LINKER_ARGUMENTS_FOR_COMPILER_DRIVER\=YES
+    export LD_RUNPATH_SEARCH_PATHS\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/PackageFrameworks\ \ @executable_path/Frameworks
+    export LD_RUNPATH_SEARCH_PATHS_YES\=@loader_path/../Frameworks
+    export LD_SHARED_CACHE_ELIGIBLE\=Automatic
+    export LD_WARN_DUPLICATE_LIBRARIES\=NO
+    export LD_WARN_UNUSED_DYLIBS\=NO
+    export LEGACY_DEVELOPER_DIR\=/Applications/Xcode.app/Contents/PlugIns/Xcode3Core.ideplugin/Contents/SharedSupport/Developer
+    export LEX\=lex
+    export LIBRARY_DEXT_INSTALL_PATH\=/Library/DriverExtensions
+    export LIBRARY_FLAG_NOSPACE\=YES
+    export LIBRARY_FLAG_PREFIX\=-l
+    export LIBRARY_KEXT_INSTALL_PATH\=/Library/Extensions
+    export LIBRARY_SEARCH_PATHS\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator\ 
+    export LINKER_DISPLAYS_MANGLED_NAMES\=NO
+    export LINK_FILE_LIST_normal_arm64\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ.LinkFileList
+    export LINK_OBJC_RUNTIME\=YES
+    export LINK_WITH_STANDARD_LIBRARIES\=YES
+    export LLVM_TARGET_TRIPLE_OS_VERSION\=ios18.0
+    export LLVM_TARGET_TRIPLE_SUFFIX\=-simulator
+    export LLVM_TARGET_TRIPLE_VENDOR\=apple
+    export LM_AUX_CONST_METADATA_LIST_PATH_normal_arm64\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ.SwiftConstValuesFileList
+    export LOCALIZATION_EXPORT_SUPPORTED\=YES
+    export LOCALIZATION_PREFERS_STRING_CATALOGS\=NO
+    export LOCALIZED_RESOURCES_FOLDER_PATH\=SameQ.app/en.lproj
+    export LOCALIZED_STRING_CODE_COMMENTS\=NO
+    export LOCALIZED_STRING_MACRO_NAMES\=NSLocalizedString\ CFCopyLocalizedString
+    export LOCALIZED_STRING_SWIFTUI_SUPPORT\=YES
+    export LOCAL_ADMIN_APPS_DIR\=/Applications/Utilities
+    export LOCAL_APPS_DIR\=/Applications
+    export LOCAL_DEVELOPER_DIR\=/Library/Developer
+    export LOCAL_LIBRARY_DIR\=/Library
+    export LOCROOT\=/Users/nakagawakeita/Products/iOSApp/SameQ
+    export LOCSYMROOT\=/Users/nakagawakeita/Products/iOSApp/SameQ
+    export MACH_O_TYPE\=mh_execute
+    export MAC_OS_X_PRODUCT_BUILD_VERSION\=25F84
+    export MAC_OS_X_VERSION_ACTUAL\=260502
+    export MAC_OS_X_VERSION_MAJOR\=260000
+    export MAC_OS_X_VERSION_MINOR\=260500
+    export MAKE_MERGEABLE\=NO
+    export MERGEABLE_LIBRARY\=NO
+    export MERGED_BINARY_TYPE\=none
+    export MERGE_LINKED_LIBRARIES\=NO
+    export METAL_LIBRARY_FILE_BASE\=default
+    export METAL_LIBRARY_OUTPUT_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app
+    export MODULES_FOLDER_PATH\=SameQ.app/Modules
+    export MODULE_CACHE_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex
+    export MTL_ENABLE_DEBUG_INFO\=INCLUDE_SOURCE
+    export MTL_FAST_MATH\=YES
+    export NATIVE_ARCH\=arm64
+    export NATIVE_ARCH_32_BIT\=arm
+    export NATIVE_ARCH_64_BIT\=arm64
+    export NATIVE_ARCH_ACTUAL\=arm64
+    export NO_COMMON\=YES
+    export OBJC_ABI_VERSION\=2
+    export OBJECT_FILE_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects
+    export OBJECT_FILE_DIR_normal\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal
+    export OBJROOT\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex
+    export ONLY_ACTIVE_ARCH\=YES
+    export OS\=MACOS
+    export OSAC\=/usr/bin/osacompile
+    export OTHER_CFLAGS\=-fmodule-map-file\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/RevenueCat.modulemap\ 
+    export OTHER_CPLUSPLUSFLAGS\=-fmodule-map-file\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/RevenueCat.modulemap\ 
+    export OTHER_LDFLAGS\=-Wl,-no_warn_duplicate_libraries\ 
+    export PACKAGE_TYPE\=com.apple.package-type.wrapper.application
+    export PASCAL_STRINGS\=YES
+    export PATH\=/Applications/Xcode.app/Contents/SharedFrameworks/SwiftBuild.framework/Versions/A/PlugIns/SWBBuildService.bundle/Contents/PlugIns/SWBUniversalPlatformPlugin.bundle/Contents/Frameworks/SWBUniversalPlatform.framework/Resources:/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin:/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/local/bin:/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/libexec:/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/usr/bin:/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/usr/local/bin:/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/bin:/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/local/bin:/Applications/Xcode.app/Contents/Developer/usr/bin:/Applications/Xcode.app/Contents/Developer/usr/local/bin:/var/folders/3f/gknrcjbj7wj3hgmk0q9_tfcr0000gn/T/cmux-cli-shims/D92075A3-1362-4A8F-9EFD-94B132A5E33C:/Users/nakagawakeita/.antigravity/antigravity/bin:/Users/nakagawakeita/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/nakagawakeita/development/flutter/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/Applications/cmux.app/Contents/Resources/bin:/Users/nakagawakeita/.maestro/bin:/Users/nakagawakeita/.claude/plugins/cache/claude-plugins-official/swift-lsp/1.0.0/bin:/Users/nakagawakeita/.claude/plugins/cache/claude-plugins-official/vercel/0.45.1/bin
+    export PATH_PREFIXES_EXCLUDED_FROM_HEADER_DEPENDENCIES\=/usr/include\ /usr/local/include\ /System/Library/Frameworks\ /System/Library/PrivateFrameworks\ /Applications/Xcode.app/Contents/Developer/Headers\ /Applications/Xcode.app/Contents/Developer/SDKs\ /Applications/Xcode.app/Contents/Developer/Platforms
+    export PBDEVELOPMENTPLIST_PATH\=SameQ.app/pbdevelopment.plist
+    export PER_ARCH_MODULE_FILE_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/undefined_arch
+    export PER_ARCH_OBJECT_FILE_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/undefined_arch
+    export PER_VARIANT_OBJECT_FILE_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal
+    export PKGINFO_FILE_PATH\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/PkgInfo
+    export PKGINFO_PATH\=SameQ.app/PkgInfo
+    export PLATFORM_DEVELOPER_APPLICATIONS_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Applications
+    export PLATFORM_DEVELOPER_BIN_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/bin
+    export PLATFORM_DEVELOPER_LIBRARY_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library
+    export PLATFORM_DEVELOPER_SDK_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs
+    export PLATFORM_DEVELOPER_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Tools
+    export PLATFORM_DEVELOPER_USR_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr
+    export PLATFORM_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform
+    export PLATFORM_DISPLAY_NAME\=iOS\ Simulator
+    export PLATFORM_FAMILY_NAME\=iOS
+    export PLATFORM_NAME\=iphonesimulator
+    export PLATFORM_PREFERRED_ARCH\=x86_64
+    export PLATFORM_PRODUCT_BUILD_VERSION\=23F81a
+    export PLATFORM_REQUIRES_SWIFT_AUTOLINK_EXTRACT\=NO
+    export PLATFORM_REQUIRES_SWIFT_MODULEWRAP\=NO
+    export PLATFORM_USES_DSYMS\=YES
+    export PLIST_FILE_OUTPUT_FORMAT\=binary
+    export PLUGINS_FOLDER_PATH\=SameQ.app/PlugIns
+    export PRECOMPS_INCLUDE_HEADERS_FROM_BUILT_PRODUCTS_DIR\=YES
+    export PRECOMP_DESTINATION_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/PrefixHeaders
+    export PRIVATE_HEADERS_FOLDER_PATH\=SameQ.app/PrivateHeaders
+    export PROCESSED_INFOPLIST_PATH\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/undefined_arch/Processed-Info.plist
+    export PRODUCT_BUNDLE_IDENTIFIER\=com.nakakei6439.SameQ
+    export PRODUCT_BUNDLE_PACKAGE_TYPE\=APPL
+    export PRODUCT_MODULE_NAME\=SameQ
+    export PRODUCT_NAME\=SameQ
+    export PRODUCT_SETTINGS_PATH\=/Users/nakagawakeita/Products/iOSApp/SameQ/SameQ/Info.plist
+    export PRODUCT_TYPE\=com.apple.product-type.application
+    export PROFILING_CODE\=NO
+    export PROJECT\=SameQ
+    export PROJECT_DERIVED_FILE_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/DerivedSources
+    export PROJECT_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ
+    export PROJECT_FILE_PATH\=/Users/nakagawakeita/Products/iOSApp/SameQ/SameQ.xcodeproj
+    export PROJECT_GUID\=450dcbc9c43480670e4debf3debe6960
+    export PROJECT_NAME\=SameQ
+    export PROJECT_TEMP_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build
+    export PROJECT_TEMP_ROOT\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex
+    export PROVISIONING_PROFILE_REQUIRED\=NO
+    export PROVISIONING_PROFILE_REQUIRED_YES_YES\=YES
+    export PROVISIONING_PROFILE_SUPPORTED\=YES
+    export PUBLIC_HEADERS_FOLDER_PATH\=SameQ.app/Headers
+    export RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET\=15.0
+    export RECURSIVE_SEARCH_PATHS_FOLLOW_SYMLINKS\=YES
+    export REMOVE_CVS_FROM_RESOURCES\=YES
+    export REMOVE_GIT_FROM_RESOURCES\=YES
+    export REMOVE_HEADERS_FROM_EMBEDDED_BUNDLES\=YES
+    export REMOVE_HG_FROM_RESOURCES\=YES
+    export REMOVE_STATIC_EXECUTABLES_FROM_EMBEDDED_BUNDLES\=YES
+    export REMOVE_SVN_FROM_RESOURCES\=YES
+    export RESCHEDULE_INDEPENDENT_HEADERS_PHASES\=YES
+    export REZ_COLLECTOR_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/ResourceManagerResources
+    export REZ_OBJECTS_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/ResourceManagerResources/Objects
+    export REZ_SEARCH_PATHS\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator\ 
+    export RPATH_ORIGIN\=@loader_path
+    export RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES\=NO
+    export RUNTIME_EXCEPTION_ALLOW_JIT\=NO
+    export RUNTIME_EXCEPTION_ALLOW_UNSIGNED_EXECUTABLE_MEMORY\=NO
+    export RUNTIME_EXCEPTION_DEBUGGING_TOOL\=NO
+    export RUNTIME_EXCEPTION_DISABLE_EXECUTABLE_PAGE_PROTECTION\=NO
+    export RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION\=NO
+    export SCANNING_PCM_KEEP_CACHE_DIRECTORY\=YES
+    export SCAN_ALL_SOURCE_FILES_FOR_INCLUDES\=NO
+    export SCRIPTS_FOLDER_PATH\=SameQ.app/Scripts
+    export SCRIPT_INPUT_FILE_COUNT\=0
+    export SCRIPT_INPUT_FILE_LIST_COUNT\=0
+    export SCRIPT_OUTPUT_FILE_0\=/Users/nakagawakeita/Products/iOSApp/SameQ/SameQ/Secrets.swift
+    export SCRIPT_OUTPUT_FILE_COUNT\=1
+    export SCRIPT_OUTPUT_FILE_LIST_COUNT\=0
+    export SDKROOT\=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk
+    export SDK_DIR\=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk
+    export SDK_DIR_iphonesimulator\=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk
+    export SDK_DIR_iphonesimulator26_5\=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk
+    export SDK_NAME\=iphonesimulator26.5
+    export SDK_NAMES\=iphonesimulator26.5
+    export SDK_PRODUCT_BUILD_VERSION\=23F81a
+    export SDK_STAT_CACHE_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived
+    export SDK_STAT_CACHE_ENABLE\=YES
+    export SDK_STAT_CACHE_PATH\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache
+    export SDK_VERSION\=26.5
+    export SDK_VERSION_ACTUAL\=260500
+    export SDK_VERSION_MAJOR\=260000
+    export SDK_VERSION_MINOR\=260500
+    export SED\=/usr/bin/sed
+    export SEPARATE_STRIP\=NO
+    export SEPARATE_SYMBOL_EDIT\=NO
+    export SET_DIR_MODE_OWNER_GROUP\=YES
+    export SET_FILE_MODE_OWNER_GROUP\=NO
+    export SHALLOW_BUNDLE\=YES
+    export SHALLOW_BUNDLE_TRIPLE\=ios-simulator
+    export SHALLOW_BUNDLE_ios_macabi\=NO
+    export SHALLOW_BUNDLE_macos\=NO
+    export SHARED_DERIVED_FILE_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/DerivedSources
+    export SHARED_FRAMEWORKS_FOLDER_PATH\=SameQ.app/SharedFrameworks
+    export SHARED_PRECOMPS_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/PrecompiledHeaders
+    export SHARED_SUPPORT_FOLDER_PATH\=SameQ.app/SharedSupport
+    export SKIP_INSTALL\=NO
+    export SKIP_MERGEABLE_LIBRARY_BUNDLE_HOOK\=NO
+    export SOURCE_ROOT\=/Users/nakagawakeita/Products/iOSApp/SameQ
+    export SRCROOT\=/Users/nakagawakeita/Products/iOSApp/SameQ
+    export STRINGSDATA_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/undefined_arch
+    export STRINGSDATA_ROOT\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build
+    export STRINGS_FILE_INFOPLIST_RENAME\=YES
+    export STRINGS_FILE_OUTPUT_ENCODING\=binary
+    export STRING_CATALOG_GENERATE_SYMBOLS\=NO
+    export STRIP_BITCODE_FROM_COPIED_FILES\=NO
+    export STRIP_INSTALLED_PRODUCT\=NO
+    export STRIP_STYLE\=all
+    export STRIP_SWIFT_SYMBOLS\=YES
+    export SUPPORTED_DEVICE_FAMILIES\=1,2
+    export SUPPORTED_PLATFORMS\=iphoneos\ iphonesimulator
+    export SUPPORTS_MACCATALYST\=NO
+    export SUPPORTS_ON_DEMAND_RESOURCES\=YES
+    export SUPPORTS_TEXT_BASED_API\=NO
+    export SUPPRESS_WARNINGS\=NO
+    export SWIFT_ACTIVE_COMPILATION_CONDITIONS\=DEBUG
+    export SWIFT_EMIT_CONST_VALUE_PROTOCOLS\=AnyResolverProviding\ AppEntity\ AppEnum\ AppExtension\ AppIntent\ AppIntentsPackage\ AppShortcutProviding\ AppShortcutsProvider\ AppUnionValue\ AppUnionValueCasesProviding\ DynamicOptionsProvider\ EntityQuery\ ExtensionPointDefining\ IntentValueQuery\ Resolver\ TransientEntity\ _AssistantIntentsProvider\ _GenerativeFunctionExtractable\ _IntentValueRepresentable
+    export SWIFT_EMIT_LOC_STRINGS\=NO
+    export SWIFT_ENABLE_EXPLICIT_MODULES\=YES
+    export SWIFT_OPTIMIZATION_LEVEL\=-Onone
+    export SWIFT_PLATFORM_TARGET_PREFIX\=ios
+    export SWIFT_RESPONSE_FILE_PATH_normal_arm64\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ.SwiftFileList
+    export SWIFT_VERSION\=5.0
+    export SYMROOT\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products
+    export SYSTEM_ADMIN_APPS_DIR\=/Applications/Utilities
+    export SYSTEM_APPS_DIR\=/Applications
+    export SYSTEM_CORE_SERVICES_DIR\=/System/Library/CoreServices
+    export SYSTEM_DEMOS_DIR\=/Applications/Extras
+    export SYSTEM_DEVELOPER_APPS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications
+    export SYSTEM_DEVELOPER_BIN_DIR\=/Applications/Xcode.app/Contents/Developer/usr/bin
+    export SYSTEM_DEVELOPER_DEMOS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Utilities/Built\ Examples
+    export SYSTEM_DEVELOPER_DIR\=/Applications/Xcode.app/Contents/Developer
+    export SYSTEM_DEVELOPER_DOC_DIR\=/Applications/Xcode.app/Contents/Developer/ADC\ Reference\ Library
+    export SYSTEM_DEVELOPER_GRAPHICS_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Graphics\ Tools
+    export SYSTEM_DEVELOPER_JAVA_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Java\ Tools
+    export SYSTEM_DEVELOPER_PERFORMANCE_TOOLS_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Performance\ Tools
+    export SYSTEM_DEVELOPER_RELEASENOTES_DIR\=/Applications/Xcode.app/Contents/Developer/ADC\ Reference\ Library/releasenotes
+    export SYSTEM_DEVELOPER_TOOLS\=/Applications/Xcode.app/Contents/Developer/Tools
+    export SYSTEM_DEVELOPER_TOOLS_DOC_DIR\=/Applications/Xcode.app/Contents/Developer/ADC\ Reference\ Library/documentation/DeveloperTools
+    export SYSTEM_DEVELOPER_TOOLS_RELEASENOTES_DIR\=/Applications/Xcode.app/Contents/Developer/ADC\ Reference\ Library/releasenotes/DeveloperTools
+    export SYSTEM_DEVELOPER_USR_DIR\=/Applications/Xcode.app/Contents/Developer/usr
+    export SYSTEM_DEVELOPER_UTILITIES_DIR\=/Applications/Xcode.app/Contents/Developer/Applications/Utilities
+    export SYSTEM_DEXT_INSTALL_PATH\=/System/Library/DriverExtensions
+    export SYSTEM_DOCUMENTATION_DIR\=/Library/Documentation
+    export SYSTEM_EXTENSIONS_FOLDER_PATH\=SameQ.app/SystemExtensions
+    export SYSTEM_EXTENSIONS_FOLDER_PATH_SHALLOW_BUNDLE_NO\=SameQ.app/Library/SystemExtensions
+    export SYSTEM_EXTENSIONS_FOLDER_PATH_SHALLOW_BUNDLE_YES\=SameQ.app/SystemExtensions
+    export SYSTEM_KEXT_INSTALL_PATH\=/System/Library/Extensions
+    export SYSTEM_LIBRARY_DIR\=/System/Library
+    export TAPI_DEMANGLE\=YES
+    export TAPI_ENABLE_PROJECT_HEADERS\=NO
+    export TAPI_LANGUAGE\=objective-c
+    export TAPI_LANGUAGE_STANDARD\=compiler-default
+    export TAPI_USE_SRCROOT\=YES
+    export TAPI_VERIFY_MODE\=Pedantic
+    export TARGETED_DEVICE_FAMILY\=1
+    export TARGETNAME\=SameQ
+    export TARGET_BUILD_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator
+    export TARGET_DEVICE_IDENTIFIER\=35AAC789-1DF1-4C51-B14D-94A5084F6B26
+    export TARGET_DEVICE_MODEL\=iPhone18,3
+    export TARGET_DEVICE_OS_VERSION\=26.5
+    export TARGET_DEVICE_PLATFORM_NAME\=iphonesimulator
+    export TARGET_NAME\=SameQ
+    export TARGET_TEMP_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build
+    export TEMP_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build
+    export TEMP_FILES_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build
+    export TEMP_FILE_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build
+    export TEMP_ROOT\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex
+    export TEMP_SANDBOX_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/TemporaryTaskSandboxes
+    export TEST_FRAMEWORK_SEARCH_PATHS\=\ /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks\ /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk/Developer/Library/Frameworks
+    export TEST_LIBRARY_SEARCH_PATHS\=\ /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib
+    export TOOLCHAINS\=com.apple.dt.toolchain.XcodeDefault
+    export TOOLCHAIN_DIR\=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain
+    export TREAT_MISSING_BASELINES_AS_TEST_FAILURES\=NO
+    export TREAT_MISSING_SCRIPT_PHASE_OUTPUTS_AS_ERRORS\=NO
+    export TeamIdentifierPrefix\=7PTQ6W4R3T.
+    export UID\=501
+    export UNINSTALLED_PRODUCTS_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/UninstalledProducts
+    export UNLOCALIZED_RESOURCES_FOLDER_PATH\=SameQ.app
+    export UNLOCALIZED_RESOURCES_FOLDER_PATH_SHALLOW_BUNDLE_NO\=SameQ.app/Resources
+    export UNLOCALIZED_RESOURCES_FOLDER_PATH_SHALLOW_BUNDLE_YES\=SameQ.app
+    export UNSTRIPPED_PRODUCT\=NO
+    export USER\=nakagawakeita
+    export USER_APPS_DIR\=/Users/nakagawakeita/Applications
+    export USER_LIBRARY_DIR\=/Users/nakagawakeita/Library
+    export USE_DYNAMIC_NO_PIC\=YES
+    export USE_HEADERMAP\=YES
+    export USE_HEADER_SYMLINKS\=NO
+    export VALIDATE_DEVELOPMENT_ASSET_PATHS\=YES_ERROR
+    export VALIDATE_PRODUCT\=NO
+    export VALID_ARCHS\=arm64\ x86_64
+    export VERBOSE_PBXCP\=NO
+    export VERSIONPLIST_PATH\=SameQ.app/version.plist
+    export VERSION_INFO_BUILDER\=nakagawakeita
+    export VERSION_INFO_FILE\=SameQ_vers.c
+    export VERSION_INFO_STRING\=\"@\(\#\)PROGRAM:SameQ\ \ PROJECT:SameQ-\"
+    export WORKSPACE_DIR\=/Users/nakagawakeita/Products/iOSApp/SameQ/SameQ.xcodeproj
+    export WRAPPER_EXTENSION\=app
+    export WRAPPER_NAME\=SameQ.app
+    export WRAPPER_SUFFIX\=.app
+    export WRAP_ASSET_PACKS_IN_SEPARATE_DIRECTORIES\=NO
+    export XCODE_APP_SUPPORT_DIR\=/Applications/Xcode.app/Contents/Developer/Library/Xcode
+    export XCODE_PRODUCT_BUILD_VERSION\=17F113
+    export XCODE_VERSION_ACTUAL\=2660
+    export XCODE_VERSION_MAJOR\=2600
+    export XCODE_VERSION_MINOR\=2660
+    export XPCSERVICES_FOLDER_PATH\=SameQ.app/XPCServices
+    export YACC\=yacc
+    export _DISCOVER_COMMAND_LINE_LINKER_INPUTS\=YES
+    export _DISCOVER_COMMAND_LINE_LINKER_INPUTS_INCLUDE_WL\=YES
+    export _LD_MULTIARCH\=YES
+    export _WRAPPER_CONTENTS_DIR_SHALLOW_BUNDLE_NO\=/Contents
+    export _WRAPPER_PARENT_PATH_SHALLOW_BUNDLE_NO\=/..
+    export _WRAPPER_RESOURCES_DIR_SHALLOW_BUNDLE_NO\=/Resources
+    export __DIAGNOSE_DEPRECATED_ARCHS\=YES
+    export __IS_NOT_MACOS\=YES
+    export __IS_NOT_MACOS_macosx\=NO
+    export __IS_NOT_SIMULATOR\=NO
+    export __IS_NOT_SIMULATOR_simulator\=NO
+    export __ORIGINAL_SDK_DEFINED_LLVM_TARGET_TRIPLE_SYS\=ios
+    export arch\=undefined_arch
+    export variant\=normal
+    /bin/sh -c /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Script-7364118A3F9579303F3156CF.sh
+[generate-secrets] wrote /Users/nakagawakeita/Products/iOSApp/SameQ/SameQ/Secrets.swift (revenueCatAPIKey=appl_iPR...)
+
+SwiftDriver SameQ normal arm64 com.apple.xcode.tools.swift.compiler (in target 'SameQ' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name SameQ -Onone @/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios18.0-simulator -g -module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator -F /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -sdk-module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ_const_extract_protocols.json -Xcc -iquote -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ-generated-files.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ-own-target-headers.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ-450dcbc9c43480670e4debf3debe6960-VFS-iphonesimulator/all-product-headers.yaml -Xcc -iquote -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ-project-headers.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/DerivedSources-normal/arm64 -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/DerivedSources/arm64 -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ-Swift.h -working-directory /Users/nakagawakeita/Products/iOSApp/SameQ -experimental-emit-module-separately -disable-cmo
+
+ProcessInfoPlistFile /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/Info.plist /Users/nakagawakeita/Products/iOSApp/SameQ/SameQ/Info.plist (in target 'SameQ' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-infoPlistUtility /Users/nakagawakeita/Products/iOSApp/SameQ/SameQ/Info.plist -producttype com.apple.product-type.application -genpkginfo /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/PkgInfo -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/assetcatalog_generated_info.plist -scanforprivacyfile /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/RevenueCat_RevenueCat.bundle -o /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/Info.plist
+
+SwiftCompile normal arm64 Compiling\ Secrets.swift /Users/nakagawakeita/Products/iOSApp/SameQ/SameQ/Secrets.swift (in target 'SameQ' from project 'SameQ')
+
+SwiftCompile normal arm64 /Users/nakagawakeita/Products/iOSApp/SameQ/SameQ/Secrets.swift (in target 'SameQ' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ SameQ (in target 'SameQ' from project 'SameQ')
+EmitSwiftModule normal arm64 (in target 'SameQ' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    
+/Users/nakagawakeita/Products/iOSApp/SameQ/SameQ/Backend/SupabaseBackend.swift:94:24: warning: cannot access property 'state' here in nonisolated initializer; this is an error in the Swift 6 language mode
+            self.state = .empty
+            ~~~~~~~~~~~^~~~~~~~
+/Users/nakagawakeita/Products/iOSApp/SameQ/SameQ/Backend/SupabaseBackend.swift:85:50: note: after making a copy of 'self', only nonisolated properties of 'self' can be accessed from this init
+        self.monitor.pathUpdateHandler = { [weak self] path in
+                                                 ^~~~
+/Users/nakagawakeita/Products/iOSApp/SameQ/SameQ/Backend/SupabaseBackend.swift:100:23: warning: cannot access property 'state' here in nonisolated initializer; this is an error in the Swift 6 language mode
+        if self.state.supabaseAuth != nil, options.resetsState {
+           ~~~~~~~~~~~^~~~~~~~~~~~
+/Users/nakagawakeita/Products/iOSApp/SameQ/SameQ/Backend/SupabaseBackend.swift:85:50: note: after making a copy of 'self', only nonisolated properties of 'self' can be accessed from this init
+        self.monitor.pathUpdateHandler = { [weak self] path in
+                                                 ^~~~
+/Users/nakagawakeita/Products/iOSApp/SameQ/SameQ/Backend/SupabaseBackend.swift:102:34: warning: cannot access property 'state' here in nonisolated initializer; this is an error in the Swift 6 language mode
+            try? store.save(self.state)
+                            ~~~~~^~~~~
+/Users/nakagawakeita/Products/iOSApp/SameQ/SameQ/Backend/SupabaseBackend.swift:85:50: note: after making a copy of 'self', only nonisolated properties of 'self' can be accessed from this init
+        self.monitor.pathUpdateHandler = { [weak self] path in
+                                                 ^~~~
+/Users/nakagawakeita/Products/iOSApp/SameQ/SameQ/Backend/SupabaseBackend.swift:101:37: warning: cannot access property 'state' here in nonisolated initializer; this is an error in the Swift 6 language mode
+            self.state.supabaseAuth = nil
+            ~~~~~~~~~~~~~~~~~~~~~~~~^~~~~
+/Users/nakagawakeita/Products/iOSApp/SameQ/SameQ/Backend/SupabaseBackend.swift:85:50: note: after making a copy of 'self', only nonisolated properties of 'self' can be accessed from this init
+        self.monitor.pathUpdateHandler = { [weak self] path in
+                                                 ^~~~
+
+SwiftDriverJobDiscovery normal arm64 Compiling Secrets.swift (in target 'SameQ' from project 'SameQ')
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for SameQ (in target 'SameQ' from project 'SameQ')
+
+SwiftDriver\ Compilation\ Requirements SameQ normal arm64 com.apple.xcode.tools.swift.compiler (in target 'SameQ' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name SameQ -Onone @/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios18.0-simulator -g -module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator -F /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -sdk-module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ_const_extract_protocols.json -Xcc -iquote -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ-generated-files.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ-own-target-headers.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ-450dcbc9c43480670e4debf3debe6960-VFS-iphonesimulator/all-product-headers.yaml -Xcc -iquote -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ-project-headers.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/DerivedSources-normal/arm64 -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/DerivedSources/arm64 -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ-Swift.h -working-directory /Users/nakagawakeita/Products/iOSApp/SameQ -experimental-emit-module-separately -disable-cmo
+
+SwiftDriver\ Compilation SameQ normal arm64 com.apple.xcode.tools.swift.compiler (in target 'SameQ' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name SameQ -Onone @/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios18.0-simulator -g -module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator -F /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/PackageFrameworks -F /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -sdk-module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ_const_extract_protocols.json -Xcc -iquote -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ-generated-files.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ-own-target-headers.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ-450dcbc9c43480670e4debf3debe6960-VFS-iphonesimulator/all-product-headers.yaml -Xcc -iquote -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ-project-headers.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/DerivedSources-normal/arm64 -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/DerivedSources/arm64 -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ-Swift.h -working-directory /Users/nakagawakeita/Products/iOSApp/SameQ -experimental-emit-module-separately -disable-cmo
+
+Copy /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ.swiftsourceinfo (in target 'SameQ' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ.swiftsourceinfo /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo
+
+Copy /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.swiftmodule/arm64-apple-ios-simulator.abi.json /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ.abi.json (in target 'SameQ' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ.abi.json /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+SwiftDriver SameQUITests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name SameQUITests -Onone @/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.SwiftFileList -DDEBUG -module-alias Testing\=_Testing_Unavailable -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios18.0-simulator -g -module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk/Developer/Library/Frameworks -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -sdk-module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests_const_extract_protocols.json -Xcc -iquote -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SameQUITests-generated-files.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SameQUITests-own-target-headers.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SameQUITests-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ-450dcbc9c43480670e4debf3debe6960-VFS-iphonesimulator/all-product-headers.yaml -Xcc -iquote -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SameQUITests-project-headers.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/DerivedSources-normal/arm64 -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/DerivedSources/arm64 -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests-Swift.h -working-directory /Users/nakagawakeita/Products/iOSApp/SameQ -experimental-emit-module-separately -disable-cmo
+
+ExtractAppIntentsMetadata (in target 'SameQ' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name SameQ --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk --xcode-version 17F113 --platform-family iOS --deployment-target 18.0 --bundle-identifier com.nakakei6439.SameQ --output /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app --target-triple arm64-apple-ios18.0-simulator --binary-file /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/SameQ --dependency-file /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ_dependency_info.dat --stringsdata-file /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ.SwiftFileList --metadata-file-list /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ.DependencyMetadataFileList --static-metadata-file-list /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SameQ.DependencyStaticMetadataFileList --swift-const-vals-list /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/Objects-normal/arm64/SameQ.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-08-28 09:20:23.143 appintentsmetadataprocessor[32943:36384091] Starting appintentsmetadataprocessor export
+2026-08-28 09:20:23.145 appintentsmetadataprocessor[32943:36384091] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+CopySwiftLibs /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app (in target 'SameQ' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/SameQ.debug.dylib --scan-folder /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/Frameworks --scan-folder /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/PlugIns --scan-folder /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/SystemExtensions --scan-folder /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+CopySwiftLibs /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/PlugIns/SameQTests.xctest (in target 'SameQTests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/PlugIns/SameQTests.xctest/SameQTests --scan-folder /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/PlugIns/SameQTests.xctest/Frameworks --scan-folder /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/PlugIns/SameQTests.xctest/PlugIns --scan-folder /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/PlugIns/SameQTests.xctest/SystemExtensions --scan-folder /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/PlugIns/SameQTests.xctest/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/PlugIns/SameQTests.xctest/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQTests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ProcessInfoPlistFile /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/PlugIns/SameQTests.xctest/Info.plist /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQTests.build/empty-SameQTests.plist (in target 'SameQTests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-infoPlistUtility /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQTests.build/empty-SameQTests.plist -producttype com.apple.product-type.bundle.unit-test -expandbuildsettings -format binary -platform iphonesimulator -scanforprivacyfile /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/PlugIns/SameQTests.xctest/RevenueCat_RevenueCat.bundle -o /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/PlugIns/SameQTests.xctest/Info.plist
+
+CodeSign /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/SameQ.debug.dylib (in target 'SameQ' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/SameQ.debug.dylib
+/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/SameQ.debug.dylib: replacing existing signature
+
+CodeSign /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/__preview.dylib (in target 'SameQ' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/__preview.dylib
+/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app/__preview.dylib: replacing existing signature
+
+CodeSign /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app (in target 'SameQ' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app
+/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app: replacing existing signature
+
+Validate /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app (in target 'SameQ' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-validationUtility /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQ.app -shallow-bundle -infoplist-subpath Info.plist
+
+ProcessInfoPlistFile /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app/PlugIns/SameQUITests.xctest/Info.plist /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/empty-SameQUITests.plist (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-infoPlistUtility /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/empty-SameQUITests.plist -producttype com.apple.product-type.bundle.ui-testing -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/ProductTypeInfoPlistAdditions.plist -o /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app/PlugIns/SameQUITests.xctest/Info.plist
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ SameQUITests (in target 'SameQUITests' from project 'SameQ')
+
+EmitSwiftModule normal arm64 (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    
+
+SwiftCompile normal arm64 Compiling\ EvalSeventeenTests.swift /Users/nakagawakeita/Products/iOSApp/SameQ/SameQUITests/EvalSeventeenTests.swift (in target 'SameQUITests' from project 'SameQ')
+SwiftCompile normal arm64 /Users/nakagawakeita/Products/iOSApp/SameQ/SameQUITests/EvalSeventeenTests.swift (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for SameQUITests (in target 'SameQUITests' from project 'SameQ')
+
+SwiftDriver\ Compilation\ Requirements SameQUITests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name SameQUITests -Onone @/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.SwiftFileList -DDEBUG -module-alias Testing\=_Testing_Unavailable -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios18.0-simulator -g -module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk/Developer/Library/Frameworks -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -sdk-module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests_const_extract_protocols.json -Xcc -iquote -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SameQUITests-generated-files.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SameQUITests-own-target-headers.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SameQUITests-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ-450dcbc9c43480670e4debf3debe6960-VFS-iphonesimulator/all-product-headers.yaml -Xcc -iquote -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SameQUITests-project-headers.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/DerivedSources-normal/arm64 -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/DerivedSources/arm64 -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests-Swift.h -working-directory /Users/nakagawakeita/Products/iOSApp/SameQ -experimental-emit-module-separately -disable-cmo
+
+Copy /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests.swiftmodule/arm64-apple-ios-simulator.swiftmodule /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.swiftmodule (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.swiftmodule /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests.swiftmodule/arm64-apple-ios-simulator.swiftmodule
+
+Copy /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests.swiftmodule/arm64-apple-ios-simulator.swiftdoc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.swiftdoc (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.swiftdoc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests.swiftmodule/arm64-apple-ios-simulator.swiftdoc
+
+Copy /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests.swiftmodule/arm64-apple-ios-simulator.abi.json /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.abi.json (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.abi.json /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+Copy /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.swiftsourceinfo (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.swiftsourceinfo /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo
+
+SwiftDriverJobDiscovery normal arm64 Compiling EvalSeventeenTests.swift (in target 'SameQUITests' from project 'SameQ')
+
+SwiftDriver\ Compilation SameQUITests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name SameQUITests -Onone @/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.SwiftFileList -DDEBUG -module-alias Testing\=_Testing_Unavailable -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios18.0-simulator -g -module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk/Developer/Library/Frameworks -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -sdk-module-cache-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests_const_extract_protocols.json -Xcc -iquote -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SameQUITests-generated-files.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SameQUITests-own-target-headers.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SameQUITests-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQ-450dcbc9c43480670e4debf3debe6960-VFS-iphonesimulator/all-product-headers.yaml -Xcc -iquote -Xcc /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SameQUITests-project-headers.hmap -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/DerivedSources-normal/arm64 -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/DerivedSources/arm64 -Xcc -I/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests-Swift.h -working-directory /Users/nakagawakeita/Products/iOSApp/SameQ -experimental-emit-module-separately -disable-cmo
+
+Ld /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app/PlugIns/SameQUITests.xctest/SameQUITests normal (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios18.0-simulator -bundle -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -O0 -L/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator -L/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk/Developer/Library/Frameworks -filelist /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.LinkFileList -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @loader_path/Frameworks -Xlinker -rpath -Xlinker @executable_path/Frameworks -Xlinker -dead_strip -Xlinker -object_path_lto -Xlinker /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.swiftmodule @/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests-linker-args.resp -Xlinker -needed_framework -Xlinker XCTest -framework XCTest -Xlinker -needed-lXCTestSwiftSupport -lXCTestSwiftSupport -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __entitlements -Xlinker /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SameQUITests.xctest-Simulated.xcent -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __ents_der -Xlinker /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SameQUITests.xctest-Simulated.xcent.der -Xlinker -no_adhoc_codesign -o /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app/PlugIns/SameQUITests.xctest/SameQUITests
+
+CopySwiftLibs /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app/PlugIns/SameQUITests.xctest (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app/PlugIns/SameQUITests.xctest/SameQUITests --scan-folder /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app/PlugIns/SameQUITests.xctest/Frameworks --scan-folder /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app/PlugIns/SameQUITests.xctest/PlugIns --scan-folder /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app/PlugIns/SameQUITests.xctest/SystemExtensions --scan-folder /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app/PlugIns/SameQUITests.xctest/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app/PlugIns/SameQUITests.xctest/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name SameQUITests --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk --xcode-version 17F113 --platform-family iOS --deployment-target 18.0 --bundle-identifier com.nakakei6439.SameQUITests --output /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app/PlugIns/SameQUITests.xctest --target-triple arm64-apple-ios18.0-simulator --binary-file /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app/PlugIns/SameQUITests.xctest/SameQUITests --dependency-file /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests_dependency_info.dat --stringsdata-file /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.SwiftFileList --metadata-file-list /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SameQUITests.DependencyMetadataFileList --static-metadata-file-list /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/SameQUITests.DependencyStaticMetadataFileList --swift-const-vals-list /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Intermediates.noindex/SameQ.build/Debug-iphonesimulator/SameQUITests.build/Objects-normal/arm64/SameQUITests.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-08-28 09:20:23.610 appintentsmetadataprocessor[32971:36384231] Starting appintentsmetadataprocessor export
+2026-08-28 09:20:23.611 appintentsmetadataprocessor[32971:36384231] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+CodeSign /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app/PlugIns/SameQUITests.xctest (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app/PlugIns/SameQUITests.xctest
+
+CodeSign /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app (in target 'SameQUITests' from project 'SameQ')
+    cd /Users/nakagawakeita/Products/iOSApp/SameQ
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app
+/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Build/Products/Debug-iphonesimulator/SameQUITests-Runner.app: replacing existing signature
+
+Testing started
+2026-08-28 09:20:24.542926+0900 SameQUITests-Runner[32987:36384490] [Default] Running tests...
+    t =      nans Interface orientation changed to Portrait
+Test Suite 'Selected tests' started at 2026-08-28 09:20:24.953.
+Test Suite 'SameQUITests.xctest' started at 2026-08-28 09:20:24.953.
+Test Suite 'EvalSeventeenTests' started at 2026-08-28 09:20:24.953.
+Test Case '-[SameQUITests.EvalSeventeenTests test_readManyThenBackgroundForeground]' started.
+    t =     0.00s Start Test at 2026-08-28 09:20:24.953
+    t =     0.02s Set Up
+    t =     0.02s Open com.nakakei6439.SameQ
+    t =     0.02s     Launch com.nakakei6439.SameQ
+    t =     0.02s         Terminate com.nakakei6439.SameQ:31855
+objc[32987]: Class UIAccessibilityLoaderWebShared is implemented in both /Library/Developer/CoreSimulator/Volumes/iOS_23F77/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 26.5.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebCore.axbundle/WebCore (0x10a510310) and /Library/Developer/CoreSimulator/Volumes/iOS_23F77/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 26.5.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebKit.axbundle/WebKit (0x109dd0398). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+2026-08-28 09:20:26.056 xcodebuild[32847:36383425] [MT] IDELaunchParametersSnapshot: The operation couldn’t be completed. (DebuggerLLDB.DebuggerVersionStore.StoreError error 0.)
+2026-08-28 09:20:26.056 xcodebuild[32847:36383425] [MT] IDELaunchParametersSnapshot: no debugger version
+    t =     1.53s         Setting up automation session
+    t =     2.03s         Wait for com.nakakei6439.SameQ to idle
+    t =     3.22s Waiting 20.0s for "onboarding.next" Button to exist
+    t =     4.27s     Checking `Expect predicate `existsNoRetry == 1` for object "onboarding.next" Button`
+    t =     4.27s         Checking existence of `"onboarding.next" Button`
+    t =     4.33s Tap "onboarding.next" Button
+    t =     4.33s     Wait for com.nakakei6439.SameQ to idle
+    t =     4.33s     Find the "onboarding.next" Button
+    t =     4.34s     Check for interrupting elements affecting "onboarding.next" Button
+    t =     4.35s     Synthesize event
+    t =     4.64s     Wait for com.nakakei6439.SameQ to idle
+    t =     4.64s Tap "onboarding.terms.agree" Button
+    t =     4.64s     Wait for com.nakakei6439.SameQ to idle
+    t =     4.64s     Find the "onboarding.terms.agree" Button
+    t =     4.66s     Check for interrupting elements affecting "onboarding.terms.agree" Button
+    t =     4.67s     Synthesize event
+    t =     4.95s     Wait for com.nakakei6439.SameQ to idle
+    t =     4.95s Tap "onboarding.next" Button
+    t =     4.95s     Wait for com.nakakei6439.SameQ to idle
+    t =     4.96s     Find the "onboarding.next" Button
+    t =     4.98s     Check for interrupting elements affecting "onboarding.next" Button
+    t =     4.99s     Synthesize event
+    t =     5.27s     Wait for com.nakakei6439.SameQ to idle
+    t =     5.28s Tap "onboarding.emoji.🌙" Button
+    t =     5.28s     Wait for com.nakakei6439.SameQ to idle
+    t =     5.28s     Find the "onboarding.emoji.🌙" Button
+    t =     5.31s     Check for interrupting elements affecting "onboarding.emoji.🌙" Button
+    t =     5.33s     Synthesize event
+    t =     5.62s     Wait for com.nakakei6439.SameQ to idle
+    t =     5.62s Tap "onboarding.next" Button
+    t =     5.62s     Wait for com.nakakei6439.SameQ to idle
+    t =     5.62s     Find the "onboarding.next" Button
+    t =     5.64s     Check for interrupting elements affecting "onboarding.next" Button
+    t =     5.66s     Synthesize event
+    t =     5.95s     Wait for com.nakakei6439.SameQ to idle
+    t =     5.95s Tap "onboarding.nickname" TextField
+    t =     5.95s     Wait for com.nakakei6439.SameQ to idle
+    t =     5.96s     Find the "onboarding.nickname" TextField
+    t =     5.97s     Check for interrupting elements affecting "onboarding.nickname" TextField
+    t =     5.99s     Synthesize event
+    t =     6.27s     Wait for com.nakakei6439.SameQ to idle
+    t =     6.28s Type 'Keita' into "onboarding.nickname" TextField
+    t =     6.28s     Wait for com.nakakei6439.SameQ to idle
+    t =     6.28s     Find the "onboarding.nickname" TextField
+    t =     6.30s     Check for interrupting elements affecting "onboarding.nickname" TextField
+    t =     6.31s     Synthesize event
+    t =     6.60s     Wait for com.nakakei6439.SameQ to idle
+    t =     6.74s Tap "onboarding.next" Button
+    t =     6.74s     Wait for com.nakakei6439.SameQ to idle
+    t =     6.75s     Find the "onboarding.next" Button
+    t =     6.78s     Check for interrupting elements affecting "onboarding.next" Button
+    t =     6.80s     Synthesize event
+    t =     7.08s     Wait for com.nakakei6439.SameQ to idle
+    t =     7.31s Waiting 5.0s for Keyboard (Descendants matching type Keyboard) to not exist
+    t =     8.37s     Checking `Expect predicate `existsNoRetry == 0` for object Keyboard (Descendants matching type Keyboard)`
+    t =     8.37s         Checking existence of `Keyboard (Descendants matching type Keyboard)`
+    t =     8.38s Tap "onboarding.notification.later" Button
+    t =     8.38s     Wait for com.nakakei6439.SameQ to idle
+    t =     8.39s     Find the "onboarding.notification.later" Button
+    t =     8.40s     Check for interrupting elements affecting "onboarding.notification.later" Button
+    t =     8.41s     Synthesize event
+    t =     8.70s     Wait for com.nakakei6439.SameQ to idle
+    t =     8.70s Waiting 15.0s for "today.input" TextView to exist
+    t =     9.76s     Checking `Expect predicate `existsNoRetry == 1` for object "today.input" TextView`
+    t =     9.76s         Checking existence of `"today.input" TextView`
+    t =     9.78s Tap "today.input" TextView
+    t =     9.78s     Wait for com.nakakei6439.SameQ to idle
+    t =     9.79s     Find the "today.input" TextView
+    t =     9.80s     Check for interrupting elements affecting "today.input" TextView
+    t =     9.81s     Synthesize event
+    t =    10.10s     Wait for com.nakakei6439.SameQ to idle
+    t =    10.38s Type 'My honest answer f...' into "today.input" TextView
+    t =    10.38s     Wait for com.nakakei6439.SameQ to idle
+    t =    10.38s     Find the "today.input" TextView
+    t =    10.42s     Check for interrupting elements affecting "today.input" TextView
+    t =    10.44s     Synthesize event
+    t =    11.24s     Wait for com.nakakei6439.SameQ to idle
+    t =    11.25s Checking existence of `"today.doneEditing" Button`
+    t =    11.28s Tap "today.doneEditing" Button
+    t =    11.28s     Wait for com.nakakei6439.SameQ to idle
+    t =    11.29s     Find the "today.doneEditing" Button
+    t =    11.31s     Check for interrupting elements affecting "today.doneEditing" Button
+    t =    11.33s     Synthesize event
+    t =    11.62s     Wait for com.nakakei6439.SameQ to idle
+    t =    12.42s Waiting 5.0s for Keyboard (Descendants matching type Keyboard) to not exist
+    t =    13.47s     Checking `Expect predicate `existsNoRetry == 0` for object Keyboard (Descendants matching type Keyboard)`
+    t =    13.48s         Checking existence of `Keyboard (Descendants matching type Keyboard)`
+    t =    13.50s Tap "today.submit" Button
+    t =    13.50s     Wait for com.nakakei6439.SameQ to idle
+    t =    13.50s     Find the "today.submit" Button
+    t =    13.52s     Check for interrupting elements affecting "today.submit" Button
+    t =    13.53s     Synthesize event
+    t =    13.82s     Wait for com.nakakei6439.SameQ to idle
+    t =    14.18s Waiting 20.0s for "timeline.card.body" StaticText to exist
+    t =    15.25s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    15.25s         Checking existence of `"timeline.card.body" StaticText`
+    t =    15.28s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    15.28s     Wait for com.nakakei6439.SameQ to idle
+    t =    15.28s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    15.29s     Check for interrupting elements affecting "SameQ" Application
+    t =    15.30s     Synthesize event
+    t =    15.72s     Wait for com.nakakei6439.SameQ to idle
+    t =    15.73s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    16.78s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    16.78s         Checking existence of `"timeline.card.body" StaticText`
+    t =    16.81s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    16.82s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:20:41.783266+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#0 appeared=true dt=1.53s alert=false
+    t =    16.83s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    16.83s     Wait for com.nakakei6439.SameQ to idle
+    t =    16.83s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    16.84s     Check for interrupting elements affecting "SameQ" Application
+    t =    16.85s     Synthesize event
+    t =    17.27s     Wait for com.nakakei6439.SameQ to idle
+    t =    17.27s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    18.32s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    18.32s         Checking existence of `"timeline.card.body" StaticText`
+    t =    18.35s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    18.36s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:20:43.326538+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#1 appeared=true dt=1.52s alert=false
+    t =    18.37s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    18.37s     Wait for com.nakakei6439.SameQ to idle
+    t =    18.38s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    18.39s     Check for interrupting elements affecting "SameQ" Application
+    t =    18.40s     Synthesize event
+    t =    18.81s     Wait for com.nakakei6439.SameQ to idle
+    t =    18.82s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    19.87s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    19.87s         Checking existence of `"timeline.card.body" StaticText`
+    t =    19.90s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    19.91s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:20:44.876933+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#2 appeared=true dt=1.53s alert=false
+    t =    19.92s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    19.92s     Wait for com.nakakei6439.SameQ to idle
+    t =    19.93s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    19.94s     Check for interrupting elements affecting "SameQ" Application
+    t =    19.95s     Synthesize event
+    t =    20.37s     Wait for com.nakakei6439.SameQ to idle
+    t =    20.37s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    21.43s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    21.43s         Checking existence of `"timeline.card.body" StaticText`
+    t =    21.45s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    21.47s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:20:46.431630+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#3 appeared=true dt=1.53s alert=false
+    t =    21.48s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    21.48s     Wait for com.nakakei6439.SameQ to idle
+    t =    21.48s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    21.49s     Check for interrupting elements affecting "SameQ" Application
+    t =    21.50s     Synthesize event
+    t =    21.92s     Wait for com.nakakei6439.SameQ to idle
+    t =    21.94s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    22.98s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    22.98s         Checking existence of `"timeline.card.body" StaticText`
+    t =    23.01s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    23.02s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:20:47.984989+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#4 appeared=true dt=1.53s alert=false
+    t =    23.03s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    23.03s     Wait for com.nakakei6439.SameQ to idle
+    t =    23.03s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    23.04s     Check for interrupting elements affecting "SameQ" Application
+    t =    23.05s     Synthesize event
+    t =    23.48s     Wait for com.nakakei6439.SameQ to idle
+    t =    23.49s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    24.51s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    24.51s         Checking existence of `"timeline.card.body" StaticText`
+    t =    24.54s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    24.55s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:20:49.515487+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#5 appeared=true dt=1.50s alert=false
+    t =    24.56s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    24.56s     Wait for com.nakakei6439.SameQ to idle
+    t =    24.56s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    24.57s     Check for interrupting elements affecting "SameQ" Application
+    t =    24.59s     Synthesize event
+    t =    25.00s     Wait for com.nakakei6439.SameQ to idle
+    t =    25.02s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    26.09s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    26.09s         Checking existence of `"timeline.card.body" StaticText`
+    t =    26.12s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    26.13s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:20:51.095019+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#6 appeared=true dt=1.55s alert=false
+    t =    26.14s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    26.14s     Wait for com.nakakei6439.SameQ to idle
+    t =    26.14s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    26.15s     Check for interrupting elements affecting "SameQ" Application
+    t =    26.16s     Synthesize event
+    t =    26.58s     Wait for com.nakakei6439.SameQ to idle
+    t =    26.58s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    27.64s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    27.64s         Checking existence of `"timeline.card.body" StaticText`
+    t =    27.66s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    27.67s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:20:52.628858+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#7 appeared=true dt=1.52s alert=false
+    t =    27.68s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    27.68s     Wait for com.nakakei6439.SameQ to idle
+    t =    27.68s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    27.69s     Check for interrupting elements affecting "SameQ" Application
+    t =    27.70s     Synthesize event
+    t =    28.11s     Wait for com.nakakei6439.SameQ to idle
+    t =    28.12s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    29.18s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    29.18s         Checking existence of `"timeline.card.body" StaticText`
+    t =    29.21s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    29.22s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:20:54.184779+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#8 appeared=true dt=1.53s alert=false
+    t =    29.23s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    29.23s     Wait for com.nakakei6439.SameQ to idle
+    t =    29.23s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    29.24s     Check for interrupting elements affecting "SameQ" Application
+    t =    29.25s     Synthesize event
+    t =    29.67s     Wait for com.nakakei6439.SameQ to idle
+    t =    29.67s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    30.72s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    30.73s         Checking existence of `"timeline.card.body" StaticText`
+    t =    30.75s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    30.77s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:20:55.730539+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#9 appeared=true dt=1.52s alert=false
+    t =    30.78s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    30.78s     Wait for com.nakakei6439.SameQ to idle
+    t =    30.78s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    30.79s     Check for interrupting elements affecting "SameQ" Application
+    t =    30.80s     Synthesize event
+    t =    31.22s     Wait for com.nakakei6439.SameQ to idle
+    t =    31.22s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    32.27s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    32.28s         Checking existence of `"timeline.card.body" StaticText`
+    t =    32.30s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    32.32s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:20:57.279912+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#10 appeared=true dt=1.52s alert=false
+    t =    32.33s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    32.33s     Wait for com.nakakei6439.SameQ to idle
+    t =    32.33s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    32.34s     Check for interrupting elements affecting "SameQ" Application
+    t =    32.35s     Synthesize event
+    t =    32.77s     Wait for com.nakakei6439.SameQ to idle
+    t =    32.78s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    33.85s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    33.85s         Checking existence of `"timeline.card.body" StaticText`
+    t =    33.88s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    33.89s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:20:58.856931+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#11 appeared=true dt=1.55s alert=false
+    t =    33.90s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    33.90s     Wait for com.nakakei6439.SameQ to idle
+    t =    33.91s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    33.92s     Check for interrupting elements affecting "SameQ" Application
+    t =    33.93s     Synthesize event
+    t =    34.35s     Wait for com.nakakei6439.SameQ to idle
+    t =    34.35s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    35.39s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    35.39s         Checking existence of `"timeline.card.body" StaticText`
+    t =    35.42s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    35.43s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:21:00.399237+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#12 appeared=true dt=1.52s alert=false
+    t =    35.45s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    35.45s     Wait for com.nakakei6439.SameQ to idle
+    t =    35.45s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    35.46s     Check for interrupting elements affecting "SameQ" Application
+    t =    35.47s     Synthesize event
+    t =    35.89s     Wait for com.nakakei6439.SameQ to idle
+    t =    35.89s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    36.94s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    36.94s         Checking existence of `"timeline.card.body" StaticText`
+    t =    36.97s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    36.98s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:21:01.948237+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#13 appeared=true dt=1.52s alert=false
+    t =    37.00s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    37.00s     Wait for com.nakakei6439.SameQ to idle
+    t =    37.00s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    37.01s     Check for interrupting elements affecting "SameQ" Application
+    t =    37.02s     Synthesize event
+    t =    37.44s     Wait for com.nakakei6439.SameQ to idle
+    t =    37.45s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    38.49s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    38.50s         Checking existence of `"timeline.card.body" StaticText`
+    t =    38.52s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    38.54s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:21:03.499431+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#14 appeared=true dt=1.53s alert=false
+    t =    38.55s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    38.55s     Wait for com.nakakei6439.SameQ to idle
+    t =    38.55s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    38.56s     Check for interrupting elements affecting "SameQ" Application
+    t =    38.57s     Synthesize event
+    t =    38.99s     Wait for com.nakakei6439.SameQ to idle
+    t =    38.99s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    40.05s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    40.05s         Checking existence of `"timeline.card.body" StaticText`
+    t =    40.07s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    40.09s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:21:05.052320+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#15 appeared=true dt=1.53s alert=false
+    t =    40.10s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    40.10s     Wait for com.nakakei6439.SameQ to idle
+    t =    40.10s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    40.11s     Check for interrupting elements affecting "SameQ" Application
+    t =    40.12s     Synthesize event
+    t =    40.54s     Wait for com.nakakei6439.SameQ to idle
+    t =    40.55s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    41.59s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    41.59s         Checking existence of `"timeline.card.body" StaticText`
+    t =    41.61s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    41.63s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:21:06.592919+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#16 appeared=true dt=1.52s alert=false
+    t =    41.64s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    41.64s     Wait for com.nakakei6439.SameQ to idle
+    t =    41.64s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    41.65s     Check for interrupting elements affecting "SameQ" Application
+    t =    41.66s     Synthesize event
+    t =    42.08s     Wait for com.nakakei6439.SameQ to idle
+    t =    42.09s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    43.15s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    43.16s         Checking existence of `"timeline.card.body" StaticText`
+    t =    43.18s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    43.20s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:21:08.159974+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#17 appeared=true dt=1.54s alert=false
+    t =    43.21s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    43.21s     Wait for com.nakakei6439.SameQ to idle
+    t =    43.21s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    43.22s     Check for interrupting elements affecting "SameQ" Application
+    t =    43.23s     Synthesize event
+    t =    43.65s     Wait for com.nakakei6439.SameQ to idle
+    t =    43.65s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    44.69s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    44.69s         Checking existence of `"timeline.card.body" StaticText`
+    t =    44.72s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    44.73s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:21:09.697212+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#18 appeared=true dt=1.51s alert=false
+    t =    44.74s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    44.74s     Wait for com.nakakei6439.SameQ to idle
+    t =    44.75s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    44.76s     Check for interrupting elements affecting "SameQ" Application
+    t =    44.77s     Synthesize event
+    t =    45.19s     Wait for com.nakakei6439.SameQ to idle
+    t =    45.20s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    46.22s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    46.22s         Checking existence of `"timeline.card.body" StaticText`
+    t =    46.24s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    46.26s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:21:11.221241+0900 SameQUITests-Runner[32987:36384490] EVAL17 swipe#19 appeared=true dt=1.50s alert=false
+2026-08-28 09:21:11.222655+0900 SameQUITests-Runner[32987:36384490] EVAL17 latencies=["1.53", "1.52", "1.53", "1.53", "1.53", "1.50", "1.55", "1.52", "1.53", "1.52", "1.52", "1.55", "1.52", "1.52", "1.53", "1.53", "1.52", "1.54", "1.51", "1.50"] maxAlerts=0
+    t =    46.27s Pressing Home button
+    t =    58.75s Open com.nakakei6439.SameQ
+    t =    58.75s     Activate com.nakakei6439.SameQ
+    t =    58.79s         Wait for com.nakakei6439.SameQ to idle
+    t =    58.79s Waiting 10.0s for "timeline.card.body" StaticText to exist
+    t =    59.86s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    59.86s         Checking existence of `"timeline.card.body" StaticText`
+    t =    59.88s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:21:24.852724+0900 SameQUITests-Runner[32987:36384490] EVAL17 afterForeground backOK=true alert=false
+    t =    59.90s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    59.91s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    59.91s     Wait for com.nakakei6439.SameQ to idle
+    t =    59.91s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    59.92s     Check for interrupting elements affecting "SameQ" Application
+    t =    59.93s     Synthesize event
+    t =    60.35s     Wait for com.nakakei6439.SameQ to idle
+    t =    60.36s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    61.40s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    61.40s         Checking existence of `"timeline.card.body" StaticText`
+    t =    61.43s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:21:26.395453+0900 SameQUITests-Runner[32987:36384490] EVAL17 post-fg swipe#0 appeared=true alert=false
+    t =    61.44s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    61.45s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    61.45s     Wait for com.nakakei6439.SameQ to idle
+    t =    61.46s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    61.47s     Check for interrupting elements affecting "SameQ" Application
+    t =    61.48s     Synthesize event
+    t =    61.89s     Wait for com.nakakei6439.SameQ to idle
+    t =    61.90s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    62.94s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    62.94s         Checking existence of `"timeline.card.body" StaticText`
+    t =    62.97s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:21:27.936099+0900 SameQUITests-Runner[32987:36384490] EVAL17 post-fg swipe#1 appeared=true alert=false
+    t =    62.98s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    62.99s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    62.99s     Wait for com.nakakei6439.SameQ to idle
+    t =    63.00s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    63.01s     Check for interrupting elements affecting "SameQ" Application
+    t =    63.02s     Synthesize event
+    t =    63.44s     Wait for com.nakakei6439.SameQ to idle
+    t =    63.44s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    64.49s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    64.49s         Checking existence of `"timeline.card.body" StaticText`
+    t =    64.52s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:21:29.487559+0900 SameQUITests-Runner[32987:36384490] EVAL17 post-fg swipe#2 appeared=true alert=false
+    t =    64.53s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    64.55s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    64.55s     Wait for com.nakakei6439.SameQ to idle
+    t =    64.55s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    64.56s     Check for interrupting elements affecting "SameQ" Application
+    t =    64.57s     Synthesize event
+    t =    64.99s     Wait for com.nakakei6439.SameQ to idle
+    t =    64.99s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    66.00s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    66.00s         Checking existence of `"timeline.card.body" StaticText`
+    t =    66.03s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:21:30.997115+0900 SameQUITests-Runner[32987:36384490] EVAL17 post-fg swipe#3 appeared=true alert=false
+    t =    66.04s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    66.06s Swipe left Target Application 'com.nakakei6439.SameQ'
+    t =    66.06s     Wait for com.nakakei6439.SameQ to idle
+    t =    66.06s     Find the Target Application 'com.nakakei6439.SameQ'
+    t =    66.07s     Check for interrupting elements affecting "SameQ" Application
+    t =    66.08s     Synthesize event
+    t =    66.49s     Wait for com.nakakei6439.SameQ to idle
+    t =    66.50s Waiting 12.0s for "timeline.card.body" StaticText to exist
+    t =    67.51s     Checking `Expect predicate `existsNoRetry == 1` for object "timeline.card.body" StaticText`
+    t =    67.51s         Checking existence of `"timeline.card.body" StaticText`
+    t =    67.53s Checking existence of `Alert (Descendants matching type Alert)`
+2026-08-28 09:21:32.499820+0900 SameQUITests-Runner[32987:36384490] EVAL17 post-fg swipe#4 appeared=true alert=false
+    t =    67.55s Checking existence of `Alert (Descendants matching type Alert)`
+    t =    67.56s Checking existence of `"timeline.like" Button`
+    t =    67.57s Find the "timeline.like" Button
+    t =    67.59s Tap "timeline.like" Button
+    t =    67.59s     Wait for com.nakakei6439.SameQ to idle
+    t =    67.59s     Find the "timeline.like" Button
+    t =    67.60s     Check for interrupting elements affecting "timeline.like" Button
+    t =    67.61s     Synthesize event
+    t =    67.90s     Wait for com.nakakei6439.SameQ to idle
+    t =    67.90s Find the "timeline.like" Button
+2026-08-28 09:21:32.879675+0900 SameQUITests-Runner[32987:36384490] EVAL17 likeSelected=true
+2026-08-28 09:21:32.879770+0900 SameQUITests-Runner[32987:36384490] EVAL17 DONE
+    t =    67.93s Tear Down
+Test Case '-[SameQUITests.EvalSeventeenTests test_readManyThenBackgroundForeground]' passed (68.262 seconds).
+Test Suite 'EvalSeventeenTests' passed at 2026-08-28 09:21:33.216.
+	 Executed 1 test, with 0 failures (0 unexpected) in 68.262 (68.263) seconds
+Test Suite 'SameQUITests.xctest' passed at 2026-08-28 09:21:33.216.
+	 Executed 1 test, with 0 failures (0 unexpected) in 68.262 (68.263) seconds
+Test Suite 'Selected tests' passed at 2026-08-28 09:21:33.216.
+	 Executed 1 test, with 0 failures (0 unexpected) in 68.262 (68.264) seconds
+2026-08-28 09:21:43.326 xcodebuild[32847:36383425] [MT] IDETestOperationsObserverDebug: 79.634 elapsed -- Testing started completed.
+2026-08-28 09:21:43.326 xcodebuild[32847:36383425] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-08-28 09:21:43.326 xcodebuild[32847:36383425] [MT] IDETestOperationsObserverDebug: 79.634 sec, +79.634 sec -- end
+
+Test session results, code coverage, and logs:
+	/Users/nakagawakeita/Products/iOSApp/SameQ/build/derived/Logs/Test/Test-SameQ-2026.08.28_09-20-20-+0900.xcresult
+
+** TEST SUCCEEDED **
+
