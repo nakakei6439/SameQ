@@ -1,27 +1,12 @@
 import SwiftUI
 
-/// 設定への入り口。今日のお題とお題待ちの右上に置く。
-/// 履歴（過去のお題・自分の投稿・いいね一覧）への導線はここにも作らない。
-struct SettingsEntryButton: View {
-    @Environment(AppSession.self) private var session
-
-    var body: some View {
-        Button {
-            session.isSettingsPresented = true
-        } label: {
-            Image(systemName: "gearshape")
-                .font(.system(size: 19, weight: .medium))
-                .foregroundStyle(Theme.inkSecondary)
-                .frame(width: 40, height: 40, alignment: .trailing)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("settings.open")
-        .accessibilityLabel(Text(L10n.Common.settings))
-    }
-}
-
 /// 設定（F15 ブロック管理 / F25 通知設定 / F28-F31 Plus / F32 プロフィール・規約・削除）。
+///
+/// **新機能（ハンバーガーメニュー導入）**: 従来 Today / Waiting の右上に置いていた
+/// `SettingsEntryButton`（歯車アイコン）は廃止し、`MenuView` の「設定」行から
+/// `session.isSettingsPresented = true` を直接立てて開く方式に変わった
+/// （`"settings.open"` 識別子は `MenuView` 側の行ボタンが引き継ぐ）。この画面自体の
+/// 実装・受け入れ条件は変更していない。
 ///
 /// スプリント04で必要なのは「ブロック中の一覧と解除」だけだったので、
 /// ブロック管理セクションだけを置いた。スプリント08で「通知」セクションを

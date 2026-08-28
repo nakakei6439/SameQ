@@ -223,6 +223,16 @@ protocol Backend: Sendable, TranslationAttemptPersisting {
     ///   `NWPathMonitor` が `.satisfied` 以外を返している間は false。
     /// 失敗はしない（false を返すことで呼び出し側が安全にスキップできるようにする）。
     func isOnline() async -> Bool
+
+    // MARK: 運営お知らせ（新機能）
+
+    /// 運営からのお知らせ一覧を新しい順で返す。読み取り専用
+    ///（`announcements` テーブルは insert/update/delete の RLS ポリシーを持たない。
+    /// 管理者が直接 SQL / Supabase dashboard から投入する運用。アプリ内投稿・編集
+    /// UI は作らない、`Prompt` の運用と同じ方針）。
+    /// - `LocalBackend`: 固定のサンプル配列を返す（オフライン開発用）。
+    /// - `SupabaseBackend`: `announcements` テーブルへ GET するだけ。
+    func announcements() async throws -> [Announcement]
 }
 
 extension Backend {

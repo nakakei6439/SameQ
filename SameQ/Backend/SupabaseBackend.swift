@@ -885,6 +885,26 @@ actor SupabaseBackend: Backend {
         if forceOffline { return false }
         return lastPathStatus == .satisfied
     }
+
+    // MARK: - 運営お知らせ（新機能）
+
+    func announcements() async throws -> [Announcement] {
+        try checkConnectivity()
+        struct AnnouncementRow: Decodable {
+            let id: UUID
+            let title: String
+            let body: String
+            let published_at: Date
+        }
+        let rows: [AnnouncementRow] = try await client.get(
+            table: "announcements",
+            select: "id,title,body,published_at",
+            order: "published_at.desc"
+        )
+        return rows.map {
+            Announcement(id: $0.id, title: $0.title, body: $0.body, publishedAt: $0.published_at)
+        }
+    }
 }
 
 /// `consume_rate_limit` 等の引数なし RPC 用。空の構造体。

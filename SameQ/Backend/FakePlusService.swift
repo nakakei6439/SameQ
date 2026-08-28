@@ -74,11 +74,15 @@ final class FakePlusService: PlusService, ObservableObject {
     }
 
     func availableProducts() async -> [PlusProduct] {
+        // 新機能: シミュレータ・Debug 経路でも無料トライアル表示をプレビューできるよう
+        // 固定で「1ヶ月無料」を返す（実際の App Store Connect Introductory Offer 設定とは
+        // 独立。UI 確認用のプレースホルダー）。
         [PlusProduct(
             id: monthlyProductID,
             displayName: "Plus （月額）",
             displayPrice: "¥480",
-            periodDescription: "月額 / いつでも解約できます"
+            periodDescription: "月額 / いつでも解約できます",
+            introductoryOfferDescription: L10n.Plus.freeTrialBadge(value: 1, unit: .month)
         )]
     }
 

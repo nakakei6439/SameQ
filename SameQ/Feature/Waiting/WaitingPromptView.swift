@@ -13,14 +13,10 @@ struct WaitingPromptView: View {
             Theme.canvas
 
             VStack(spacing: 0) {
-                // 設定ボタンは `waiting.identity` の外に置く（中に入れると識別子が上書きされる）。
-                HStack(spacing: 0) {
-                    identityRow
-                    SettingsEntryButton()
-                    PlusEntryButton()
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 16)
+                // 統合ヘッダー（新機能）。`AppHeaderBar` 参照。
+                AppHeaderBar(identityIdentifier: "waiting.identity")
+                    .padding(.horizontal, 24)
+                    .padding(.top, 16)
 
                 Spacer()
 
@@ -55,18 +51,5 @@ struct WaitingPromptView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("waiting.root")
-    }
-
-    private var identityRow: some View {
-        HStack(spacing: 10) {
-            Text(session.user?.emoji ?? "🙂").font(.system(size: 24))
-            if let nickname = session.user?.displayNickname {
-                Text(nickname)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(Theme.inkSecondary)
-            }
-            Spacer()
-        }
-        .accessibilityIdentifier("waiting.identity")
     }
 }

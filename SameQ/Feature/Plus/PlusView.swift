@@ -147,6 +147,17 @@ struct PlusView: View {
 
             VStack(spacing: 14) {
                 if let product = session.plusProducts.first {
+                    // 無料トライアル案内（新機能）。App Store Connect の Introductory Offer
+                    // （Free Trial）を検知したときだけ表示する。
+                    if let trialBadge = product.introductoryOfferDescription {
+                        HStack(spacing: 6) {
+                            Text("✨").font(.system(size: 14))
+                            Text(trialBadge)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Theme.accent)
+                        }
+                        .accessibilityIdentifier("plus.trialBadge")
+                    }
                     HStack(alignment: .firstTextBaseline) {
                         Text(product.displayPrice)
                             .font(.system(size: 32, weight: .bold, design: .rounded))
@@ -156,10 +167,14 @@ struct PlusView: View {
                             .foregroundStyle(Theme.inkSecondary)
                         Spacer()
                     }
-                    Text(L10n.Plus.priceMonthlyNote)
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.inkTertiary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(
+                        product.introductoryOfferDescription != nil
+                            ? L10n.Plus.freeTrialThenPrice(product.displayPrice)
+                            : L10n.Plus.priceMonthlyNote
+                    )
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.inkTertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
                     // 商品情報を読み込み中の表示。`-SameQFakePlus` で
                     // `FakePlusService` を使うときは常に出る（実機なしでも値が分かる）。
@@ -188,6 +203,9 @@ struct PlusView: View {
 
     private var purchaseButtonLabel: String {
         if session.isPlus { return L10n.Plus.purchaseActive }
+        if session.plusProducts.first?.introductoryOfferDescription != nil {
+            return L10n.Plus.purchaseTrialCta
+        }
         return L10n.Plus.purchaseInactive
     }
 

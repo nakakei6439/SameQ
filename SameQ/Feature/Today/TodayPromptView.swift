@@ -73,27 +73,10 @@ struct TodayPromptView: View {
 
     // MARK: パーツ
 
-    private var identityRow: some View {
-        HStack(spacing: 10) {
-            Text(session.user?.emoji ?? "🙂").font(.system(size: 24))
-            if let nickname = session.user?.displayNickname {
-                Text(nickname)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(Theme.inkSecondary)
-            }
-            Spacer()
-        }
-        .accessibilityIdentifier("today.identity")
-    }
-
-    /// 自分の絵文字・ニックネームと、設定への入り口（F15 のブロック管理はここから）。
-    /// 設定ボタンは `today.identity` の外に置く。中に入れると識別子が上書きされてしまう。
+    /// 統合ヘッダー（新機能）。ハンバーガーメニュー・アプリ名・通知ベル・Plus・
+    /// 自分の絵文字アバターをまとめて表示する（`AppHeaderBar` 参照）。
     private var headerRow: some View {
-        HStack(spacing: 0) {
-            identityRow
-            SettingsEntryButton()
-            PlusEntryButton()
-        }
+        AppHeaderBar(identityIdentifier: "today.identity")
     }
 
     /// お題本文は端末言語への翻訳が終わるまで表示しない（F22）。

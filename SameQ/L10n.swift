@@ -55,6 +55,44 @@ enum L10n {
         static let loading: String = useEnglish ? "Loading…" : "準備中…"
         static let loadingPrices: String = useEnglish ? "Loading price…" : "料金を読み込み中です…"
         static let readMore: String = useEnglish ? "…more" : "…続き"
+
+        /// アプリ名。ヘッダーに常時表示する（新機能）。翻訳不要の固有名詞。
+        static let appName: String = "SameQ"
+    }
+
+    // MARK: Menu（ハンバーガーメニュー、新機能）
+
+    enum Menu {
+        static let title: String = useEnglish ? "Menu" : "メニュー"
+        static let notifications: String = useEnglish ? "Notifications" : "通知"
+        static let plus: String = "Plus"
+        static let settings: String = useEnglish ? "Settings" : "設定"
+
+        // 隠し開発者モード
+        static let devGateTitle: String = useEnglish ? "Developer Mode" : "開発者モード"
+        static let devGateMessage: String = useEnglish
+            ? "Enter your date of birth to unlock."
+            : "生年月日を入力すると解除されます。"
+        static let devGatePlaceholder: String = useEnglish ? "YYYYMMDD" : "YYYYMMDD"
+        static let devGateSubmit: String = useEnglish ? "Unlock" : "解除する"
+        static let devSectionTitle: String = useEnglish ? "DEVELOPER MODE" : "開発者モード"
+        static let devPlusOverrideLabel: String = useEnglish ? "Plus status" : "Plus状態"
+        static let devPlusOverrideActual: String = useEnglish ? "Actual" : "実際の状態"
+        static let devPlusOverrideAlwaysOn: String = useEnglish ? "Always Plus" : "常にPlus"
+        static let devPlusOverrideAlwaysOff: String = useEnglish ? "Always Free" : "常に無料"
+    }
+
+    // MARK: Notifications（お知らせ、新機能）
+
+    enum Notifications {
+        static let title: String = useEnglish ? "Notifications" : "通知"
+        static let tabApp: String = useEnglish ? "App" : "アプリ通知"
+        static let tabOperator: String = useEnglish ? "Announcements" : "運営お知らせ"
+        static let appEmptyTitle: String = useEnglish ? "No notifications yet" : "通知はまだありません"
+        static let appEmptyBody: String = useEnglish
+            ? "This app doesn't keep a history of push notifications."
+            : "このアプリはプッシュ通知の履歴を保存しません。"
+        static let operatorEmptyTitle: String = useEnglish ? "No announcements yet" : "お知らせはまだありません"
     }
 
     // MARK: Onboarding
@@ -450,6 +488,35 @@ enum L10n {
 
         static let purchaseActive: String = useEnglish ? "Plus is active" : "Plus に登録済み"
         static let purchaseInactive: String = useEnglish ? "Subscribe to Plus" : "Plus に登録する"
+        /// 無料トライアルがあるときの購入ボタンのラベル（新機能）。
+        static let purchaseTrialCta: String = useEnglish ? "Start free trial" : "無料で試す"
+
+        /// 無料トライアルの案内バッジ（新機能）。例: "1ヶ月無料" / "1-month free trial"。
+        /// App Store Connect の Introductory Offer（Free Trial）設定を検知したときだけ表示する。
+        static func freeTrialBadge(value: Int, unit: PlusTrialPeriodUnit) -> String {
+            switch unit {
+            case .day:
+                return useEnglish
+                    ? "\(value)-day\(value == 1 ? "" : "") free trial"
+                    : "\(value)日間無料"
+            case .week:
+                return useEnglish
+                    ? "\(value)-week\(value == 1 ? "" : "s") free trial"
+                    : "\(value)週間無料"
+            case .month:
+                return useEnglish
+                    ? "\(value)-month\(value == 1 ? "" : "s") free trial"
+                    : "\(value)ヶ月無料"
+            case .year:
+                return useEnglish
+                    ? "\(value)-year\(value == 1 ? "" : "s") free trial"
+                    : "\(value)年間無料"
+            }
+        }
+        /// トライアル終了後の価格を伝える補足文。
+        static func freeTrialThenPrice(_ price: String) -> String {
+            useEnglish ? "Then \(price) / month" : "その後 \(price) / 月額"
+        }
 
         static let restoreTitle: String = useEnglish ? "RESTORE PURCHASE" : "購入の復元"
         static let restoreBody: String = useEnglish

@@ -88,6 +88,10 @@ final class AppSession {
     private(set) var isPreparingTimeline = false
     /// 設定（今回はブロック管理のみ）。タイムラインの裏側にある画面から開く。
     var isSettingsPresented = false
+    /// ハンバーガーメニュー（新機能）。今日のお題・お題待ちのどちらからも開ける。
+    var isMenuPresented = false
+    /// 通知（アプリ通知 / 運営お知らせ）画面（新機能）。
+    var isNotificationsPresented = false
     /// アプリが認識している「今」。1秒ごとの `refresh()` で更新する。
     private(set) var now: Date
     /// サーバ時計と `clock.now` の差（秒）。`start()` で1回だけ取得し、
@@ -154,6 +158,15 @@ final class AppSession {
     /// 投稿フォームに現在入っている装飾（F30）。投稿完了または画面離脱でクリア。
     /// `@Observable` で追跡される View 側の状態として公開する。
     var pendingDecorations: [PostDecoration] = []
+
+    /// 隠し開発者モード（新機能）で Plus 状態を強制的に上書きする値。
+    /// `nil` のときは実際のエンタイトルメント（`plusEntitlement`）に従う。
+    /// `true`/`false` のときは `isPlus` がそれを優先して返す。
+    /// **セッション限定・永続化しない**（アプリを再起動すれば必ず解除される）。
+    /// アカウント削除（`resetToOnboarding()`）でもリセットしない
+    /// （アカウントとは独立した端末上の開発者用フラグとして扱うため）。
+    /// `MenuView` のバージョン表示を8回タップ→生年月日入力で解錠したときだけ変更できる。
+    var debugPlusOverride: Bool?
 
     /// 投稿失敗などの一時的なメッセージ。表示したら nil に戻す。
     var alertMessage: String?
@@ -234,8 +247,19 @@ final class AppSession {
     }
 
     /// Plus 状態が現在有効かどうか（F28）。`plusService` が `nil` のときも `false`。
+    ///
+    /// **新機能**: 隠し開発者モードで `debugPlusOverride` が設定されているときは、
+    /// 実際のエンタイトルメントより優先してそちらを返す（実機・シミュレータでの
+    /// Plus 表示切り替えデバッグを容易にするため）。
     var isPlus: Bool {
-        plusEntitlement?.isActive(at: clock.now) ?? false
+        if let debugPlusOverride { return debugPlusOverride }
+        return plusEntitlement?.isActive(at: clock.now) ?? false
+    }
+
+    /// 運営お知らせ一覧を取得する（新機能）。取得できなければ空配列を返し、
+    /// 補助的な機能のため `alertMessage` は立てない（空状態表示に委ねる）。
+    func loadAnnouncements() async -> [Announcement] {
+        (try? await backend.announcements()) ?? []
     }
 
     #if DEBUG
@@ -679,6 +703,8 @@ final class AppSession {
         isTimelinePresented = false
         isSettingsPresented = false
         isPlusViewPresented = false
+        isMenuPresented = false
+        isNotificationsPresented = false
         pendingDeepLinkTarget = nil
         alertMessage = nil
         promptTranslationTask?.cancel()

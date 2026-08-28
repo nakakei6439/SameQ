@@ -160,6 +160,28 @@ struct RootView: View {
                 .fontDesign(.rounded)
                 .environment(session)
         }
+        // ハンバーガーメニュー（新機能）。Today / Waiting どちらからも開ける。
+        .sheet(
+            isPresented: Binding(
+                get: { session.isMenuPresented },
+                set: { session.isMenuPresented = $0 }
+            )
+        ) {
+            MenuView()
+                .fontDesign(.rounded)
+                .environment(session)
+        }
+        // 通知（アプリ通知 / 運営お知らせ、新機能）。Today / Waiting のベルから開ける。
+        .sheet(
+            isPresented: Binding(
+                get: { session.isNotificationsPresented },
+                set: { session.isNotificationsPresented = $0 }
+            )
+        ) {
+            NotificationsView()
+                .fontDesign(.rounded)
+                .environment(session)
+        }
     }
 
     private var loadingView: some View {

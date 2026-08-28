@@ -64,7 +64,8 @@ final class RevenueCatPlusService: PlusService {
                 id: product.productIdentifier,
                 displayName: "Plus （月額）",
                 displayPrice: product.localizedPriceString,
-                periodDescription: "月額 / いつでも解約できます"
+                periodDescription: "月額 / いつでも解約できます",
+                introductoryOfferDescription: Self.introductoryOfferDescription(for: product)
             )
         }
     }
@@ -139,6 +140,23 @@ final class RevenueCatPlusService: PlusService {
             }
             throw PlusPurchaseError.other(error.localizedDescription)
         }
+    }
+
+    /// App Store Connect の Introductory Offer（Free Trial）を検知し、`L10n` の
+    /// 定型文言へ変換する（新機能）。導入価格が「無料」以外（割引価格など）のときは
+    /// 表示しない（本アプリでは「無料トライアル」のみを対象とする）。
+    private static func introductoryOfferDescription(for product: StoreProduct) -> String? {
+        guard let discount = product.introductoryDiscount, discount.paymentMode == .freeTrial else {
+            return nil
+        }
+        let unit: PlusTrialPeriodUnit
+        switch discount.subscriptionPeriod.unit {
+        case .day: unit = .day
+        case .week: unit = .week
+        case .month: unit = .month
+        case .year: unit = .year
+        }
+        return L10n.Plus.freeTrialBadge(value: discount.subscriptionPeriod.value, unit: unit)
     }
 
     // MARK: - 内部ヘルパー

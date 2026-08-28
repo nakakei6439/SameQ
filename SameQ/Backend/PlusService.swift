@@ -35,6 +35,34 @@ struct PlusProduct: Identifiable, Equatable, Sendable {
     /// 月額の表示用。1ヶ月あたりの金額（`displayPrice` は StoreKit が返す月額料金で、
     /// 毎年更新の場合は年額のまま返す）。本スプリントでは月額の表示のみを使う。
     let periodDescription: String
+    /// 無料トライアル（Introductory Offer）の表示用文言（新機能）。
+    /// App Store Connect 側で導入期間（Free Trial）を設定していない商品では `nil`。
+    /// `nil` のときは `PlusView` に通常の価格のみを表示する。
+    let introductoryOfferDescription: String?
+
+    init(
+        id: String,
+        displayName: String,
+        displayPrice: String,
+        periodDescription: String,
+        introductoryOfferDescription: String? = nil
+    ) {
+        self.id = id
+        self.displayName = displayName
+        self.displayPrice = displayPrice
+        self.periodDescription = periodDescription
+        self.introductoryOfferDescription = introductoryOfferDescription
+    }
+}
+
+/// 無料トライアル期間の単位（新機能）。RevenueCat/StoreKit の `SubscriptionPeriod.Unit`
+/// に依存せず、`PlusService` プロトコルの境界を越えて `L10n` 側でも参照できるように
+/// この層に独立して定義する。
+enum PlusTrialPeriodUnit: Sendable {
+    case day
+    case week
+    case month
+    case year
 }
 
 /// Plus のエンタイトルメント（F28）。期限が切れると `isActive == false` に戻る。

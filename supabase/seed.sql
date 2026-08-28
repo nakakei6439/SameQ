@@ -86,3 +86,9 @@ insert into public.posts (id, prompt_id, author_id, body, body_language, created
     ('9F718213-537A-44DD-8187-601223344556', 'prompt_001', '14362839-A4B2-4034-9162-738495A6B7C8', '엘리베이터에서 혼자인 줄 알고 노래를 불렀는데 거울 뒤에 사람이 있었다.', 'ko', now() - interval '2 hours' + interval '421 minutes', now() + interval '26 hours'),
     ('A0829324-648B-45EE-9298-712334455667', 'prompt_001', '2547394A-B5C3-4145-8273-8495A6B7C8D9', '子どもが「パパの頭、月みたい」って言ってきた。悪気がないから何も言い返せへんかった。', 'ja', now() - interval '2 hours' + interval '439 minutes', now() + interval '26 hours')
 on conflict (id) do nothing;
+
+-- 運営お知らせ（新機能・ハンバーガーメニューのお知らせ画面用サンプル）。
+insert into public.announcements (id, title, body, published_at) values
+    ('B1C2D3E4-F506-4718-8293-A4B5C6D7E8F9', 'SameQ へようこそ', '毎日1つのお題に、世界のどこかの誰かと同時に答えます。答えるまでは、他の人の言葉は見えません。', now() - interval '2 days'),
+    ('C2D3E4F5-0617-4829-93A4-B5C6D7E8F9A0', 'Plus をはじめました', '長文投稿やスタンプ・装飾が使える Plus プランをはじめました。設定からいつでも購入・解約できます。', now() - interval '1 day')
+on conflict (id) do nothing;

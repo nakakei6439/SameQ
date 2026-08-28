@@ -103,7 +103,9 @@ final class SprintFourAcceptanceTests: XCTestCase {
         block(app)
         app.buttons["timeline.close"].tap()
 
-        // 設定 → ブロック一覧
+        // ハンバーガーメニュー → 設定 → ブロック一覧（新機能）
+        XCTAssertTrue(app.buttons["menu.open"].waitForExistence(timeout: 5), "メニューへの導線がある")
+        app.buttons["menu.open"].tap()
         XCTAssertTrue(app.buttons["settings.open"].waitForExistence(timeout: 5), "設定への導線がある")
         app.buttons["settings.open"].tap()
         XCTAssertTrue(app.otherElements["settings.blocked.row"].waitForExistence(timeout: 5), "一覧に1件出る")
@@ -213,10 +215,13 @@ final class SprintFourAcceptanceTests: XCTestCase {
         completeOnboarding(app)
         XCTAssertTrue(app.otherElements["waiting.root"].waitForExistence(timeout: 10), "お題待ち画面")
 
+        XCTAssertTrue(app.buttons["menu.open"].waitForExistence(timeout: 5), "メニューへの導線がある")
+        app.buttons["menu.open"].tap()
         XCTAssertTrue(app.buttons["settings.open"].waitForExistence(timeout: 5), "設定への導線がある")
         app.buttons["settings.open"].tap()
         XCTAssertTrue(app.staticTexts["settings.blocked.empty"].waitForExistence(timeout: 5), "ブロック一覧（空）")
         app.buttons["settings.close"].tap()
+        app.buttons["menu.close"].tap()
         XCTAssertTrue(app.otherElements["waiting.root"].waitForExistence(timeout: 5), "閉じるとお題待ちへ戻る")
     }
 

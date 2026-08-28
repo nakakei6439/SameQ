@@ -664,4 +664,18 @@ actor LocalBackend: Backend {
     /// 受け入れ条件5「通信できない状態で先読みしない」は満たす（オンライン相当の
     /// 経路しか取らないので「通信できない」は発生しない）。
     func isOnline() async -> Bool { true }
+
+    // MARK: - 運営お知らせ（新機能）
+
+    /// オフライン開発用の固定サンプル。管理者投入を模した最小限のダミーデータ。
+    func announcements() async throws -> [Announcement] {
+        [
+            Announcement(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+                title: "SameQ へようこそ",
+                body: "毎日1つのお題に、世界のどこかの誰かと同時に答えます。",
+                publishedAt: clock.now
+            )
+        ]
+    }
 }

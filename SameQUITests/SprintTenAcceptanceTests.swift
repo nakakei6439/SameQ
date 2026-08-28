@@ -147,7 +147,9 @@ final class SprintTenAcceptanceTests: XCTestCase {
     func test06_settingsShowsPlusSectionAndRestoreButton() {
         let app = launchFresh(free: true)
         completeOnboarding(app)
-        // 設定ボタン
+        // ハンバーガーメニュー→設定（新機能）
+        XCTAssertTrue(app.buttons["menu.open"].waitForExistence(timeout: 5))
+        app.buttons["menu.open"].tap()
         XCTAssertTrue(app.buttons["settings.open"].waitForExistence(timeout: 5))
         app.buttons["settings.open"].tap()
         XCTAssertTrue(app.otherElements["settings.root"].waitForExistence(timeout: 5))
@@ -218,7 +220,9 @@ final class SprintTenAcceptanceTests: XCTestCase {
             "再起動直後はまだ無料ユーザー（ラベルが『Plus を見る』）"
         )
 
-        // 設定を開いて Plus セクションの復元ボタンをタップ
+        // ハンバーガーメニュー→設定を開いて Plus セクションの復元ボタンをタップ（新機能）
+        XCTAssertTrue(relaunched.buttons["menu.open"].waitForExistence(timeout: 5))
+        relaunched.buttons["menu.open"].tap()
         XCTAssertTrue(relaunched.buttons["settings.open"].waitForExistence(timeout: 5))
         relaunched.buttons["settings.open"].tap()
         XCTAssertTrue(relaunched.otherElements["settings.root"].waitForExistence(timeout: 5))
