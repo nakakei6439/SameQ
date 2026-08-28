@@ -1,8 +1,14 @@
 {
   "currentSprint": "14",
   "attempt": 6,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
+    {
+      "sprint": "14",
+      "attempt": 6,
+      "result": "needs_fix",
+      "evalNote": "eval-6.md — 不合格。基準1未達（受け入れ条件4が5回連続未達）。今回は secret API key で RevenueCat REST API v2 (project e444c0e4) を直接照会し、customer 8件すべてで subscriptions/purchases/active_entitlements が空＝購入・復元の取引が1件も存在しないことを積極的に確認した。spec行361「この確認ができない実装は不合格とする」。attempt6の.storekit追加はビルド/起動に悪影響なしだがStoreKit TestingはRevenueCatサーバーに到達せず条件4に寄与しない。attempt5のユーザー作業の成果は確認: 毎起動出ていた ERROR:🍎‼️ Error fetching offerings が解消（GET /v1/subscribers/.../offerings 304 → 😻 Offerings updated from network）。基準2合格（起動→terminate→relaunch正常・新規クラッシュ0）。基準4合格（ユニット212/212、UI SprintTen7/7+SprintEleven4/4+SprintThirteen4/4=15/15すべてTEST SUCCEEDED）。基準5=3。基準3は出荷経路の実購入を発火できず評価不能。条件1(価格一致)・2・3も出荷経路で未観測（実機/SandboxAppleID/UI自動化手段なし）。要ユーザー作業: 実機+Sandbox Apple IDでサンドボックス購入・復元を実施し、ダッシュボード反映を目視 or 購入後に評価者がREST APIで取引照会できる状態にする。"
+    },
     {
       "sprint": "17",
       "attempt": 3,
