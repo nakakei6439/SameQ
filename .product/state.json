@@ -1,14 +1,14 @@
 {
   "currentSprint": "17",
   "attempt": 2,
-  "status": "awaiting_eval",
+  "status": "needs_fix",
   "history": [
     {
       "sprint": "17",
       "attempt": 2,
-      "result": "awaiting_eval",
+      "result": "needs_fix",
       "note": "eval-1.md [1]『先読みが実際に走った痕跡も準備中の待ちが消えた痕跡も観測不能』に対応。attempt 2 の変更点: (1) Translator.prepareIfNeeded を fake/real 分岐前に『attemptedAt を lastPrepareAttemptAt に書く + hydratedFromPersistenceSourceCodes に挿入 + attemptPersistence.recordModelPrepareAttempt を呼ぶ』共通記録を移動。fake 経路でも lastPrepareAttemptAt が残るようになり state.json で『準備を *試みた*』事実が観測可能。(2) AppSession.drawNextPost で .unavailable(permanent: false) のときも languageEncounters を +1。一時的失敗の言語が top-3 に入るようになり background 先読みの対象になり得る。(3) AppSession.lastPeekedLanguages を新設し peekTranslationsInBackground 内で最後に走った candidates を保存。debugStatusLine に『peeked [qtd]』形式で出すことで Debug オーバーレイから『先読みが走った』痕跡を end-to-end で観測可能化。(4) 検証用エスケープハッチ -SameQPeekTestQtdEncounter を LaunchOptions に追加。LocalBackend.init が resetsState 経路・通常経路のどちらでも state.languageEncounters の qtd を 5 に強制する。SAMEQ_PEEK_TEST_LOG_PATH 環境変数で recordModelPrepareAttempt の呼び出しを共有ファイルに書き出す経路も追加。(5) BackgroundPeekTests に testBackgroundPeekRecordsFakePrepareAttempt と testTemporaryUnavailableStillRecordsEncounter の2本追加。(6) SprintSeventeenAcceptanceTests.test04_backgroundPeekPersistsFakePrepareAttempt を追加（-SameQFakeTranslate -SameQPeekTestQtdEncounter -SameQDebugOverlay を付けて起動 → background → 復帰 → タイムラインを閉じて TodayPromptView に戻ると Debug オーバーレイに peeked [qtd] が出る ことを end-to-end で確認）。実行結果: BackgroundPeekTests 7/7 (0.737秒)、SprintSeventeenAcceptanceTests 4/4 (65.6秒)、回帰 SprintFifteenAcceptanceTests 8/8 + SprintSixteenAcceptanceTests 6/6 = 14/14 (189.9秒) すべて TEST SUCCEEDED。Debug/Release ビルドとも BUILD SUCCEEDED。クラッシュ0・未処理エラー0。受け入れ条件1〜6 すべて達成見込み。weakness #1〜#5 を self-review.md に明記。詳細: .product/sprints/17-translation-prefetch/self-review.md",
-      "evalNote": null
+      "evalNote": "eval-2.md — 不合格。基準1未達。eval-1 [1] のうち「先読みが実際に走った」半分は attempt 2 で観測可能化（Debug オーバーレイ peeked [en, es, ko]／lastPrepareAttemptAt[qtd] 永続化）。しかし「準備中の待ちが消えた」半分は依然として開発者向け手段で観測不能（疑似モードで先読み対象言語に準備中待ちが発生しない・qtd はインライン準備で先に解決・qtd シード1件・実機不可）。spec.md 評価者注記「両方を確認」「仕組みが用意されているだけでは合格にしない」に未達。基準2/3/4/5 は合格（ユニット210 + BackgroundPeek/LanguageEncounter、UI Sprint17 4本、回帰 Sprol06/15/16 = 18本すべて緑、手動走行3シナリオでクラッシュ0/alert0）。修正案: qtd 複数シードまたは -SameQForceQtdSeeds 相当、あるいは prepared [xx] を Debug オーバーレイに出して background 前後の差分を観測可能にする。別件: BackgroundPeekTests.swift の絵文字リテラル文字化け（🐢→U+FFFD）を戻すこと。"
     },
     {
       "sprint": "17",
