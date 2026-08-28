@@ -26,6 +26,8 @@ final class SprintElevenAcceptanceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["today.promptText"].waitForExistence(timeout: 8))
 
         // 設定を開く
+        XCTAssertTrue(app.buttons["menu.open"].waitForExistence(timeout: 5))
+        app.buttons["menu.open"].tap()
         XCTAssertTrue(app.buttons["settings.open"].waitForExistence(timeout: 5))
         app.buttons["settings.open"].tap()
         XCTAssertTrue(app.otherElements["settings.root"].waitForExistence(timeout: 5))
@@ -54,6 +56,8 @@ final class SprintElevenAcceptanceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["today.promptText"].waitForExistence(timeout: 8))
 
         // 設定を開く
+        XCTAssertTrue(app.buttons["menu.open"].waitForExistence(timeout: 5))
+        app.buttons["menu.open"].tap()
         XCTAssertTrue(app.buttons["settings.open"].waitForExistence(timeout: 5))
         app.buttons["settings.open"].tap()
         XCTAssertTrue(app.otherElements["settings.root"].waitForExistence(timeout: 5))
@@ -144,6 +148,8 @@ final class SprintElevenAcceptanceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["today.promptText"].waitForExistence(timeout: 8))
 
         // 設定を開く
+        XCTAssertTrue(app.buttons["menu.open"].waitForExistence(timeout: 5))
+        app.buttons["menu.open"].tap()
         XCTAssertTrue(app.buttons["settings.open"].waitForExistence(timeout: 5))
         app.buttons["settings.open"].tap()
         XCTAssertTrue(app.otherElements["settings.root"].waitForExistence(timeout: 5))
@@ -177,6 +183,8 @@ final class SprintElevenAcceptanceTests: XCTestCase {
         completeOnboarding(app)
         XCTAssertTrue(app.staticTexts["today.promptText"].waitForExistence(timeout: 8))
 
+        XCTAssertTrue(app.buttons["menu.open"].waitForExistence(timeout: 5))
+        app.buttons["menu.open"].tap()
         XCTAssertTrue(app.buttons["settings.open"].waitForExistence(timeout: 5))
         app.buttons["settings.open"].tap()
         XCTAssertTrue(app.otherElements["settings.root"].waitForExistence(timeout: 5))

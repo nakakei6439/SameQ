@@ -318,7 +318,11 @@ final class SprintSeventeenAcceptanceTests: XCTestCase {
 
     /// 設定シートを開く（受け入れ条件6 で設定画面に pre-fetch UI が無いことを確認するため）。
     private func openSettings(_ app: XCUIApplication) {
-        // TodayPromptView / WaitingPromptView の右上歯車ボタン = `settings.open`
+        // TodayPromptView / WaitingPromptView の右上ハンバーガーメニューを開く
+        let menuButton = app.buttons["menu.open"]
+        guard menuButton.waitForExistence(timeout: 5) else { return }
+        menuButton.tap()
+        // メニューシート内の設定行 = `settings.open`（新機能）
         let settingsButton = app.buttons["settings.open"]
         if settingsButton.waitForExistence(timeout: 5) {
             settingsButton.tap()

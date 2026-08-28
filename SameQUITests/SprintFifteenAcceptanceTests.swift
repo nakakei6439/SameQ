@@ -146,6 +146,8 @@ final class SprintFifteenAcceptanceTests: XCTestCase {
         completeOnboarding(app)
 
         // 設定を開く
+        XCTAssertTrue(app.buttons["menu.open"].waitForExistence(timeout: 8))
+        app.buttons["menu.open"].tap()
         XCTAssertTrue(app.buttons["settings.open"].waitForExistence(timeout: 8))
         app.buttons["settings.open"].tap()
 
@@ -238,6 +240,8 @@ final class SprintFifteenAcceptanceTests: XCTestCase {
         let app = launch(languages: ["fr"])
 
         completeOnboarding(app)
+        XCTAssertTrue(app.buttons["menu.open"].waitForExistence(timeout: 8))
+        app.buttons["menu.open"].tap()
         XCTAssertTrue(app.buttons["settings.open"].waitForExistence(timeout: 8))
         app.buttons["settings.open"].tap()
 

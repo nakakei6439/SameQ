@@ -39,6 +39,9 @@ final class SprintEightAcceptanceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["today.promptText"].waitForExistence(timeout: 8))
 
         // 設定画面で「次のお知らせ」が出ることを確認
+        XCTAssertTrue(app.buttons["menu.open"].waitForExistence(timeout: 5))
+        app.buttons["menu.open"].tap()
+        XCTAssertTrue(app.buttons["settings.open"].waitForExistence(timeout: 5))
         app.buttons["settings.open"].tap()
         XCTAssertTrue(app.staticTexts["settings.notification.nextAt"].waitForExistence(timeout: 5),
                       "設定画面に『次のお知らせ』が表示される = 予約が成立している")
@@ -65,6 +68,9 @@ final class SprintEightAcceptanceTests: XCTestCase {
             XCTAssertTrue(app.staticTexts["today.promptText"].waitForExistence(timeout: 8),
                           "iter \(iteration): お題画面に到達")
 
+            XCTAssertTrue(app.buttons["menu.open"].waitForExistence(timeout: 5))
+            app.buttons["menu.open"].tap()
+            XCTAssertTrue(app.buttons["settings.open"].waitForExistence(timeout: 5))
             app.buttons["settings.open"].tap()
             XCTAssertTrue(app.staticTexts["settings.notification.nextAt"].waitForExistence(timeout: 5),
                           "iter \(iteration): 『次のお知らせ』が出る")
@@ -91,6 +97,9 @@ final class SprintEightAcceptanceTests: XCTestCase {
         let app = launchFresh(forceDenied: true)
         completeOnboarding(app, allowNotifications: true)
         // 拒否強制なので「次のお知らせ」は表示されない（予約しないため）
+        XCTAssertTrue(app.buttons["menu.open"].waitForExistence(timeout: 5))
+        app.buttons["menu.open"].tap()
+        XCTAssertTrue(app.buttons["settings.open"].waitForExistence(timeout: 5))
         app.buttons["settings.open"].tap()
         let status = app.staticTexts["settings.notification.status"]
         XCTAssertTrue(status.waitForExistence(timeout: 5))
@@ -114,6 +123,9 @@ final class SprintEightAcceptanceTests: XCTestCase {
         completeOnboarding(app, allowNotifications: true)
         XCTAssertTrue(app.staticTexts["today.promptText"].waitForExistence(timeout: 8))
 
+        XCTAssertTrue(app.buttons["menu.open"].waitForExistence(timeout: 5))
+        app.buttons["menu.open"].tap()
+        XCTAssertTrue(app.buttons["settings.open"].waitForExistence(timeout: 5))
         app.buttons["settings.open"].tap()
         let status = app.staticTexts["settings.notification.status"]
         XCTAssertTrue(status.waitForExistence(timeout: 5))
