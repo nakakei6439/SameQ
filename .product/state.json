@@ -1,8 +1,15 @@
 {
   "currentSprint": "17",
   "attempt": 1,
-  "status": "in_progress",
+  "status": "awaiting_eval",
   "history": [
+    {
+      "sprint": "17",
+      "attempt": 1,
+      "result": "awaiting_eval",
+      "note": "F41 翻訳準備の先読み実装。PersistedState に languageEncounters: [String: Int] を追加 (schemaVersion 7→8)。Backend プロトコルに recordLanguageEncounter / topEncounteredLanguages(limit:) / isOnline() を追加、LocalBackend / SupabaseBackend 双方で実装。AppSession.drawNextPost の翻訳確定時 (恒久失敗含む) に出会いカウンタを +1。AppSession.peekTranslationsInBackground() を新設 (online 判定 → top-3 取得 → 直列・予算30秒で Translator.peekPrepareIfNeeded 呼ぶ、UI 状態は一切触らない)。RootView の scenePhase == .background で起動。Translator.peekPrepareIfNeeded は薄いラッパ。F19/受け入れ条件6 厳守: pre-fetch 用の UI 識別子は一切追加せず。ユニット 208/208 (LanguageEncounterTests 11本 + BackgroundPeekTests 5本 新規、PersistedStateMigrationTests に schema7→8 テスト追加、SafetyLogRetentionTests の schema テストを Eight に更新)、UI SprintSeventeenAcceptanceTests 3/3、回帰 SprintSixteenAcceptanceTests 6/6 すべて TEST SUCCEEDED。Debug/Release ビルドとも SUCCEEDED。クラッシュ0・未処理エラー0。受け入れ条件1〜6 達成見込み（実機の .supported 状態で『先読み済み言語の回答が待ちなしで読める』は実機 e2e が必要だが、ロジックは TranslatorFakeModeTests.testPrepareIfNeededMakesMarkerLanguageTranslatableAfterward の延長で検証）。weakness #1〜#6 を self-review.md に明記。詳細: .product/sprints/17-translation-prefetch/self-review.md",
+      "evalNote": null
+    },
     {
       "sprint": "16",
       "attempt": 1,

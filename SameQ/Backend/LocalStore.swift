@@ -44,6 +44,14 @@ struct PersistedState: Codable, Sendable {
     /// 既存ファイルにはこのキーが無いので、`decodeIfPresent` でフォールバックする。
     var supabaseAuth: SupabaseAuthState?
 
+    /// 言語コード（小文字）ごとに「タイムラインで実際に表示した回数」
+    /// （スプリント17・F41）。先読み対象の「直近よく出会う言語」を選ぶ材料で、
+    /// 表示が確定した瞬間にインクリメントする（受け入れ条件1「直近よく出会う言語の
+    /// 上位3件まで」）。`TopLevelEncoder` は JSON なのでキーは文字列、
+    /// 値は Int（表示回数）。端末内のみ（F19「翻訳を意識させない」のため、
+    /// サーバーには送らず、再インストールで消えても問題ない）。
+    var languageEncounters: [String: Int]
+
     /// 2 で `viewedPostIDs`、3 で `reports` / `blockedAuthors`、4 で `lastPostBody`、
     /// 5 で `lastPrepareAttemptAt` を追加した。
     /// `discardedCandidatesCount` は 6 で追加したが、スキーマバージョンは据え置き
@@ -52,7 +60,9 @@ struct PersistedState: Codable, Sendable {
     /// `createdAt + 28h` でフォールバックするので、ユーザーデータの消失は無い
     /// （F34 安全ログの 30 日保持用）。
     /// 7 で `supabaseAuth` を追加（スプリント12・F35）。
-    static let currentSchemaVersion = 7
+    /// 8 で `languageEncounters` を追加（スプリント17・F41）。既存ファイルには
+    /// キーが無いので `decodeIfPresent` でフォールバック（空辞書）。
+    static let currentSchemaVersion = 8
 
     static let empty = PersistedState(
         schemaVersion: currentSchemaVersion,
@@ -65,7 +75,8 @@ struct PersistedState: Codable, Sendable {
         lastPostBody: nil,
         lastPrepareAttemptAt: [:],
         discardedCandidatesCount: 0,
-        supabaseAuth: nil
+        supabaseAuth: nil,
+        languageEncounters: [:]
     )
 
     init(
@@ -79,7 +90,8 @@ struct PersistedState: Codable, Sendable {
         lastPostBody: String? = nil,
         lastPrepareAttemptAt: [String: Date] = [:],
         discardedCandidatesCount: Int = 0,
-        supabaseAuth: SupabaseAuthState? = nil
+        supabaseAuth: SupabaseAuthState? = nil,
+        languageEncounters: [String: Int] = [:]
     ) {
         self.schemaVersion = schemaVersion
         self.user = user
@@ -92,9 +104,10 @@ struct PersistedState: Codable, Sendable {
         self.lastPrepareAttemptAt = lastPrepareAttemptAt
         self.discardedCandidatesCount = discardedCandidatesCount
         self.supabaseAuth = supabaseAuth
+        self.languageEncounters = languageEncounters
     }
 
-    /// 旧バージョン（schemaVersion 1〜6）の保存ファイルにはキーが無いので、
+    /// 旧バージョン（schemaVersion 1〜7）の保存ファイルにはキーが無いので、
     /// 欠けている項目は空として読む。アカウントを消さずに移行するため。
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -109,6 +122,7 @@ struct PersistedState: Codable, Sendable {
         lastPrepareAttemptAt = try container.decodeIfPresent([String: Date].self, forKey: .lastPrepareAttemptAt) ?? [:]
         discardedCandidatesCount = try container.decodeIfPresent(Int.self, forKey: .discardedCandidatesCount) ?? 0
         supabaseAuth = try container.decodeIfPresent(SupabaseAuthState.self, forKey: .supabaseAuth)
+        languageEncounters = try container.decodeIfPresent([String: Int].self, forKey: .languageEncounters) ?? [:]
     }
 }
 

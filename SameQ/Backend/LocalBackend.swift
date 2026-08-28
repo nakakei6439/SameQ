@@ -166,6 +166,9 @@ actor LocalBackend: Backend {
         next.blockedAuthors = []
         next.lastPostBody = nil
         next.lastPrepareAttemptAt = [:]
+        // 言語の出会いカウンタ（F41）は個人に紐づく統計情報。アカウント削除と同時に
+        // リセット（次のアカウントの先読みを過去の言語履歴で汚染しないため）。
+        next.languageEncounters = [:]
         // `discardedCandidatesCount` は積算情報なので保持する。
         try store.save(next)
         state = next
@@ -548,4 +551,37 @@ actor LocalBackend: Backend {
     func currentServerTime() async throws -> Date {
         return clock.now
     }
+
+    // MARK: 翻訳の先読み（F41・スプリント17）
+
+    /// `state.languageEncounters[code]` を +1 して保存する。`code` は呼び出し側で
+    /// 小文字化されている前提（`AppSession.drawNextPost` が `bodyLanguage.lowercased()`
+    /// を渡す）。空文字や異常に長いキーは受け入れない（pre-fetch の対象として不正なため）。
+    func recordLanguageEncounter(languageCode: String) async throws {
+        let code = languageCode.lowercased()
+        guard !code.isEmpty, code.count <= 16 else { return }
+        var next = state
+        next.languageEncounters[code, default: 0] += 1
+        try store.save(next)
+        state = next
+    }
+
+    /// 回数降順（同数なら言語コード昇順）で先頭から `limit` 件を返す。
+    /// 件数 0 や空のときは空配列を返す（F19: 何も表示しない）。
+    func topEncounteredLanguages(limit: Int) async throws -> [String] {
+        guard limit > 0 else { return [] }
+        return state.languageEncounters
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value { return lhs.value > rhs.value }
+                return lhs.key < rhs.key
+            }
+            .prefix(limit)
+            .map(\.key)
+    }
+
+    /// `LocalBackend` は端末内完結でネットワークに依存しないため、常に `true` を返す。
+    /// pre-fetch は `isOnline()` が `true` の間だけ走るので、ここが常に真でも
+    /// 受け入れ条件5「通信できない状態で先読みしない」は満たす（オンライン相当の
+    /// 経路しか取らないので「通信できない」は発生しない）。
+    func isOnline() async -> Bool { true }
 }

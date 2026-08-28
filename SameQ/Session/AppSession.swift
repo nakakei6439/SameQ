@@ -792,6 +792,46 @@ final class AppSession {
     /// 合計でこれを超えたら残りは諦めて世界タイムラインを開く（画面を固まらせないため）。
     private static let timelinePreparationBudgetSeconds: TimeInterval = 90
 
+    /// F41 先読みの1起動あたり予算。`openTimeline()` の90秒よりずっと短く、
+    /// アプリが background に戻った直後に短時間で済ませるための値。
+    /// 3言語直列・各20秒 = 60秒まで許容するが、各言語の `modelPrepareJobTimeoutSeconds`
+    /// （既定60秒）が個別の時間制限なので、通常はもっと早く終わる。
+    private static let backgroundPeekBudgetSeconds: TimeInterval = 30
+
+    /// F41 先読みで対象とする言語の最大数（受け入れ条件1「最大3件まで」）。
+    private static let backgroundPeekLimit: Int = 3
+
+    /// アプリが background へ移ったタイミングで、翻訳の先読みを**画面操作と無関係に**
+    /// 実行する（受け入れ条件4「アプリを使ってない間に済ませる」）。
+    ///
+    /// フローチャート:
+    ///   1. `user != nil`（初回設定完了）か。完了前は出会いの記録がゼロなので何もしない。
+    ///   2. `await backend.isOnline()` か。`false` なら即 return（受け入れ条件5前半）。
+    ///   3. `await backend.topEncounteredLanguages(limit: backgroundPeekLimit)` で
+    ///      対象言語を最大3件取得（受け入れ条件1）。
+    ///   4. 各言語について `Translator.peekPrepareIfNeeded` を直列に呼ぶ。
+    ///      `Translator.prepareIfNeeded` の内部で `.supported` / `.unsupported` /
+    ///      クールダウンを判定し、不要なら即 return / 必要なら短時間だけ試す。
+    ///   5. 合計予算（30秒）超過で打ち切り。
+    ///
+    /// このメソッドは UI を一切変更しない（F19: pre-fetch の存在を意識させない、
+    /// 受け入れ条件6）。`alertMessage` も `isPreparingTimeline` も触らない。
+    /// 失敗（個別の `prepareIfNeeded` の throw / 通信失敗）は握り潰す：
+    ///   * 個別の throw は `Translator.prepareIfNeeded` 自身が内部で握るので、
+    ///     ここに到達するのは言語配列が空のときだけ。
+    func peekTranslationsInBackground() async {
+        guard user != nil else { return }
+        guard await backend.isOnline() else { return }
+        let candidates = (try? await backend.topEncounteredLanguages(limit: Self.backgroundPeekLimit)) ?? []
+        guard !candidates.isEmpty else { return }
+
+        let deadline = Date().addingTimeInterval(Self.backgroundPeekBudgetSeconds)
+        for language in candidates {
+            guard Date() < deadline else { break }
+            await translator.peekPrepareIfNeeded(sourceLanguageCode: language)
+        }
+    }
+
     /// 次の1件へ進む。前へ戻る操作は用意しない（置いた前提5）。
     func advanceTimeline() async {
         guard isTimelinePresented else { return }
@@ -827,9 +867,25 @@ final class AppSession {
                     case .text(let translatedBody):
                         try await backend.markPostViewed(post.id)
                         timelineContent = .post(post.displaying(translatedBody: translatedBody))
+                        // スプリント17（F41）: 翻訳が確定して「表示できた」と確定した瞬間に、
+                        // その回答の言語コードをバックエンドへ記録する。
+                        // 次回以降 background へ移ったタイミングで、このカウンタを元に
+                        // 上位3言語の翻訳モデル先読み（`peekTranslationsInBackground`）が走る。
+                        // 端末言語と同じ言語（翻訳スキップ）はここでは絶対に到達しない
+                        // （`Translator.translate` が先に `.text(text)` で返している）が、
+                        // 念のため同じコードなら重み付けしない。
+                        if post.bodyLanguage.lowercased() != translator.targetLanguageCode {
+                            try? await backend.recordLanguageEncounter(languageCode: post.bodyLanguage)
+                        }
                     case .unavailable(let permanent):
                         if permanent {
                             try await backend.markPostViewed(post.id)
+                            // 恒久的に翻訳できない言語も「出会った」事実として記録する
+                            // （=その言語の翻訳モデルが今後インストールされる見込みは
+                            // ほぼ無いが、pre-fetch の判定材料としては記録しておく方が
+                            // 確実にオフになる。クールダウン判定が活きて結果的に
+                            // 再試行しないので害もない）。
+                            try? await backend.recordLanguageEncounter(languageCode: post.bodyLanguage)
                         } else {
                             skippedThisDraw.insert(post.id)
                         }

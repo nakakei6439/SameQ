@@ -428,6 +428,23 @@ final class Translator {
         await shouldAttemptPreparation(sourceCode: sourceLanguageCode.lowercased())
     }
 
+    /// アプリがバックグラウンドへ移ったタイミングで、ユーザー操作と無関係に
+    /// 翻訳モデルのダウンロードを試みる（F41・スプリント17）。
+    ///
+    /// 既存の `prepareIfNeeded(_:)` をそのまま呼んでいる（UI 状態を変更しない・
+    /// throw しない・個別クールダウンを尊重する点も同じ）。この薄いラッパを別途
+    /// 用意しているのは、`openTimeline()` 経路の事前準備とは**目的が異なる**ことを
+    /// コード上で明確にするため（先行きの source position の目印にもなる）。
+    ///
+    /// 呼び出し側（`AppSession.peekTranslationsInBackground`）が事前に
+    /// `isOnline()` を確認しているので、ここではネットワーク自体の可否は
+    /// チェックしない（既に `forceOffline` 経路は呼ばれない前提）。
+    /// `modelPrepareJobTimeoutSeconds` を超えるダウンロードは内部で打ち切られ、
+    /// 次回 background 時にクールダウン経過後リトライする（F41 受け入れ条件4）。
+    func peekPrepareIfNeeded(sourceLanguageCode: String) async {
+        await prepareIfNeeded(sourceLanguageCode: sourceLanguageCode)
+    }
+
     private func shouldAttemptPreparation(sourceCode: String) async -> Bool {
         guard sourceCode != targetLanguageCode else { return false }
         guard !unsupportedSourceCodes.contains(sourceCode) else { return false }

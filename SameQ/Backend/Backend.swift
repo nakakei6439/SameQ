@@ -188,6 +188,41 @@ protocol Backend: Sendable, TranslationAttemptPersisting {
     /// - `SupabaseBackend`: サーバ RPC `current_server_time()` を呼ぶ。
     /// 通信失敗時は実装側で `clock.now` へフォールバックして UI を止めない。
     func currentServerTime() async throws -> Date
+
+    // MARK: 翻訳の先読み（F41・スプリント17）
+
+    /// タイムラインで実際に表示した回答の言語コードを1件分カウントアップする
+    /// （受け入れ条件1「直近よく出会う言語」の素データ）。
+    ///
+    /// 呼び出しタイミングは「翻訳が確定して画面に出せると確定した瞬間」
+    ///（`AppSession.drawNextPost` の `case .text` 内）だけ。スキップ
+    ///（`.unavailable(permanent: true)`）も含むが、それ以外（モデル未DLなど
+    /// 一時的な失敗）は含めない。バックエンド実装は `PersistedState.languageEncounters`
+    /// を増分して保存する。
+    /// - Parameters:
+    ///   - languageCode: 表示した回答の `bodyLanguage`（小文字化は実装側の責務）。
+    func recordLanguageEncounter(languageCode: String) async throws
+
+    /// よく出会う言語の上位 `limit` 件を、回数降順（タイは言語コード昇順）で返す
+    ///（受け入れ条件1「最大3件まで」）。
+    ///
+    /// 戻り値は pre-fetch の対象として `Translator.prepareIfNeeded(_:)` に渡す
+    /// ための言語コード列。件数が `limit` 未満なら全件、`limit == 0` なら空配列、
+    /// 1件も記録が無ければ空配列。F19 の方針に従い UI には出さない（値の検証は
+    /// ユニットテストと Debug オーバーレイのみで使う）。
+    /// - Parameters:
+    ///   - limit: 上限。F41 では常に 3 を渡す。
+    func topEncounteredLanguages(limit: Int) async throws -> [String]
+
+    /// その瞬間にネットワーク接続があるかどうか（F41 受け入れ条件5）。
+    /// pre-fetch は true の間だけ走らせる（false の間に走らせても
+    /// `Translator.prepareIfNeeded` の中で個別にタイムアウトを待つだけで
+    /// ユーザー体験を損なうだけなので、起動側で一括スキップする）。
+    /// - `LocalBackend`: 常に true（端末内完結で外部通信が無い）。
+    /// - `SupabaseBackend`: `forceOffline == true` の間、または
+    ///   `NWPathMonitor` が `.satisfied` 以外を返している間は false。
+    /// 失敗はしない（false を返すことで呼び出し側が安全にスキップできるようにする）。
+    func isOnline() async -> Bool
 }
 
 extension Backend {

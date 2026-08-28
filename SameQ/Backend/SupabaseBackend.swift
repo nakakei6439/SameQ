@@ -242,6 +242,9 @@ actor SupabaseBackend: Backend {
         next.lastPostBody = nil
         next.lastPrepareAttemptAt = [:]
         next.supabaseAuth = nil
+        // 言語の出会いカウンタ（F41）は個人に紐づく統計情報。アカウント削除と同時に
+        // リセット（次のアカウントの先読みを過去の言語履歴で汚染しないため）。
+        next.languageEncounters = [:]
         try store.save(next)
         state = next
     }
@@ -845,6 +848,42 @@ actor SupabaseBackend: Backend {
             #endif
             return 0
         }
+    }
+
+    // MARK: 翻訳の先読み（F41・スプリント17）
+
+    /// `state.languageEncounters[code]` を +1 して保存する。サーバーには送らない
+    ///（F19「翻訳を意識させない」方針。個人統計なので端末内だけで完結）。
+    /// `LocalBackend` と同じ実装（永続化先は端末の `state.json`）。
+    func recordLanguageEncounter(languageCode: String) async throws {
+        let code = languageCode.lowercased()
+        guard !code.isEmpty, code.count <= 16 else { return }
+        var next = state
+        next.languageEncounters[code, default: 0] += 1
+        try store.save(next)
+        state = next
+    }
+
+    /// 回数降順（同数なら言語コード昇順）で先頭から `limit` 件を返す。
+    /// `LocalBackend` と同じ実装（端末内 `state.languageEncounters` を参照）。
+    func topEncounteredLanguages(limit: Int) async throws -> [String] {
+        guard limit > 0 else { return [] }
+        return state.languageEncounters
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value { return lhs.value > rhs.value }
+                return lhs.key < rhs.key
+            }
+            .prefix(limit)
+            .map(\.key)
+    }
+
+    /// `forceOffline == true` または `NWPathMonitor` が `.satisfied` 以外を報告している
+    /// 間は `false` を返す。pre-fetch の起動条件（F41 受け入れ条件5）。
+    /// `checkConnectivity()` とは違って **throw しない**（呼び出し側が
+    /// `if await !backend.isOnline()` で簡単にガードできるようにするため）。
+    func isOnline() async -> Bool {
+        if forceOffline { return false }
+        return lastPathStatus == .satisfied
     }
 }
 

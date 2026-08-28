@@ -90,6 +90,14 @@ struct RootView: View {
                     await session.scheduleDailyReminderIfPossible()
                 }
                 Task { await session.refresh() }
+            } else if phase == .background {
+                // F41（スプリント17）: アプリがバックグラウンドへ移った瞬間に
+                // 翻訳の先読みを起動する。内部で `isOnline()` を確認し、
+                // オフライン時は即 return（受け入れ条件5前半）。
+                // タスクを `MainActor` から切り離すわけではないが、
+                // `peekTranslationsInBackground` 自体は UI 状態を一切変更しないので
+                // ユーザー操作への干渉は無い（受け入れ条件4後半）。
+                Task { await session.peekTranslationsInBackground() }
             }
         }
         .onChange(of: session.pendingDeepLinkTarget) { _, target in
