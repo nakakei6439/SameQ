@@ -1,7 +1,7 @@
 {
-  "currentSprint": "15",
-  "attempt": 1,
-  "status": "awaiting_eval",
+  "currentSprint": "17",
+  "attempt": 3,
+  "status": "passed",
   "history": [
     {
       "sprint": "14",
@@ -587,6 +587,12 @@
       "attempt": 7,
       "result": "user_action",
       "note": "ユーザーが実機（iPhone 17 Pro Max、iOS 26.6）でSandbox購入・削除→再インストール後の状態維持を検証済み。手順: (1) Sandboxテストアカウント nakakei6439+sandbox@gmail.com でPlusを購入 → [Environment: Sandbox]付きの購入完了ダイアログを確認。(2) RevenueCat REST API v2 (GET /customers/{id}/subscriptions) で該当customer(:35a3fc02c6ea441b805bb29cc62f1c6e)の実際の取引を確認: environment=sandbox, product_id=prod35f1b37ab1(com.nakakei6439.SameQ.plus.monthly), store=app_store, status=active, entitlements.plus.state=active, store_subscription_identifier=2000001228519951(実際のApple取引ID), total_revenue_in_usd記録あり。(3) RevenueCatダッシュボードのCustomer profile画面でも同じ内容を目視確認: Total Spent USD 3.14, Entitlements: plus(SameQ Plus Monthly, Active・renews in 3 minutes), Customer historyに「Started a subscription of SameQ Plus (Monthly)(com.nakakei6439.SameQ.plus.monthly) for JPY 500」の記録あり。これにより受け入れ条件4(ダッシュボードに取引実績が現れる)が実機で確認できた。(4) アプリを実機から削除→再インストール→起動したところ、明示的に「購入を復元」を押す前から画面右上に✨Plusバッジが表示され、Plus状態が維持されていることを確認(条件3に相当)。コード変更は無し。generatorはこれ以上対応不要、evaluatorへ正式な合否判定を委ねる。"
+    },
+    {
+      "sprint": "15",
+      "attempt": 1,
+      "result": "user_action",
+      "note": "ユーザー判断: sprint14合格後にautoloopがsprint15(既に本物のevaluatorで合格済み)を再検証し始めたため停止。sprint15の再検証は生成物の差分なし(self-review更新のみ)。sprint16・17の冗長な再検証も省略するため、currentSprintを17・attemptを3・statusをpassedに書き換える(sprint17は元々2026-08-28 11:39:21に本物のevaluatorで合格済み)。次のiterationで全スプリント完了として正常終了する想定。"
     }
   ]
 }
