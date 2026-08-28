@@ -223,6 +223,11 @@ while [ "$iteration" -lt "$MAX_ITERATIONS" ]; do
         commit_if_changed "autoloop: SAFETY-NET commit before exit 3 (gen_exit=${gen_exit}, sprint=${current_sprint}, attempt=${attempt})"
         exit 3
       fi
+      if [ "$new_status" = "blocked" ]; then
+        log "generator が blocked に遷移しました（3-strike等）。次のiterationでblocked分岐（自動スキップ/停止判定）に委ねます。"
+        commit_if_changed "autoloop: generator sprint=$current_sprint attempt=$attempt (blocked)"
+        continue
+      fi
       if [ "$new_status" != "awaiting_eval" ]; then
         log "generator 実行後も status が awaiting_eval になりませんでした（現在: ${new_status}）。想定外のため停止します。"
         commit_if_changed "autoloop: SAFETY-NET commit before exit 4 (sprint=${current_sprint}, attempt=${attempt})"
