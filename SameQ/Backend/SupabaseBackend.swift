@@ -298,17 +298,34 @@ actor SupabaseBackend: Backend {
             let starts_at: Date
             let ends_at: Date
         }
-        let rows: [PromptRow] = try await client.get(
-            table: "prompts",
-            select: "id,text,starts_at,ends_at",
-            filters: [
-                "starts_at": "lte.\(iso.string(from: now))",
-                "ends_at": "gt.\(iso.string(from: now))"
-            ],
-            order: "starts_at.desc",
-            limit: 1
-        )
-        guard let row = rows.first else {
+        func fetchActiveRow() async throws -> PromptRow? {
+            let rows: [PromptRow] = try await client.get(
+                table: "prompts",
+                select: "id,text,starts_at,ends_at",
+                filters: [
+                    "starts_at": "lte.\(iso.string(from: now))",
+                    "ends_at": "gt.\(iso.string(from: now))"
+                ],
+                order: "starts_at.desc",
+                limit: 1
+            )
+            return rows.first
+        }
+        var row = try await fetchActiveRow()
+        if row == nil {
+            // 自己修復（2026-08-29 緊急対応）: F26（Edge Functionでの自動生成）は
+            // 実装されておらず、`prompts` は誰も自動で埋めない構造だった
+            // （実際に本番が空になり「お題待ち」から復帰できなくなる不具合が発生）。
+            // ここで有効な行が1件も見つからなければ、サーバー側の自己修復RPC
+            // `ensure_todays_prompt()`（migration 20260829000013）を呼んでから
+            // 同じクエリを1回だけリトライする。RPC は決定的・冪等（`on conflict
+            // do nothing`）なので、複数端末が同時に呼んでも安全。RPC自体が失敗
+            // しても（オフライン等）致命的にはしない — 失敗時は従来どおり
+            // waiting 状態にフォールバックする。
+            try? await client.rpcVoid(function: "ensure_todays_prompt")
+            row = try? await fetchActiveRow()
+        }
+        guard let row else {
             // 次のお題の開始時刻を探して返す（あれば）
             let nextRows: [PromptRow] = try await client.get(
                 table: "prompts",
