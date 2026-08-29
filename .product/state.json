@@ -1,7 +1,7 @@
 {
   "currentSprint": "18",
-  "attempt": 1,
-  "status": "needs_fix",
+  "attempt": 2,
+  "status": "awaiting_eval",
   "history": [
     {
       "sprint": "14",
@@ -605,6 +605,12 @@
       "attempt": 1,
       "result": "needs_fix",
       "evalNote": "eval-1.md: 不合格（needs_fix）。基準2/3/5は閾値クリア（クラッシュ0・未処理0、本番announcementsテーブル実在＋匿名JWTで新しい順取得を実確認＋debugPlusOverride非永続、使用性3）。基準1・4が未達。基準1: 受け入れ条件5『運営お知らせに公開日時が読める』未達=NotificationsView行がtitle/bodyのみ描画しpublishedAtを出さない。受け入れ条件6の後半『無料トライアルが提供されない状態では旧表示に戻る』が検証不能=FakePlusServiceがintroductoryOfferを無条件返却、OFFにする起動オプション無し。基準4回帰: (a)SprintFour test03決定的失敗＝メニュー→設定→閉じるでホームに戻らずメニューが再前面化しtoday.openTimeline not hittable（MenuView.menuRowがisMenuPresentedを閉じずRootViewが独立sheetで子画面をスタック）。(b)SprintTen test02+test07決定的失敗＝FakePlus無条件トライアルで購入ボタンが常に『無料で試す』になり'Plus に登録'期待のテストが落ちる。(c)SprintEleven test03フレーク（単独PASS/フルランFAIL、三重シート同時dismissの不安定）。SprintSeven 6/6緑。合格側: F42統合ヘッダー(test01緑+目視)、F43メニュー内容/バージョンv1.0(1)一致/設定項目増減なし(test02-04緑)、F44二タブ+アプリ通知空状態説明(test05緑)+本番テーブルRLS select専用、F45トライアルあり表示(test06緑)、F15英語(test09緑)、隠し開発者モードのロジック(DeveloperModeTests4/4)と発見性は要件充足。未検証: 8回タップ→アラートのUIジェスチャ（タップ自動化手段なし・generatorもskip、ロジックは単体で担保）。要修正4点はeval-1.md [1][2][3][4]。"
+    },
+    {
+      "sprint": "18",
+      "attempt": 2,
+      "result": "awaiting_eval",
+      "note": "eval-1.md [1]〜[4] すべてに対応。[1] MenuView.openChildSheet でメニューを dismiss() してから 0.4 秒後に子シートを開くよう変更。SprintFour test03 がメニュー再前面化の回帰を解消し PASS。[2] は [1] の派生で同時 dismiss のスタックが浅くなり解消、SprintEleven test03 が単独・フルランとも PASS。[3] -SameQFakePlusTrial フラグを新設し FakePlusService.init に withIntroductoryOffer: Bool = false を追加。既定は trial 無しで Sprint10/14 と同じ「Plus に登録」表示に戻り、SprintTen test02/test07 PASS。test10 を新規追加し trial 無し状態の UI を再固定。[4] NotificationsView の行ビューに Text(item.publishedAt, format: .dateTime.year().month().day()) を追加し notifications.operator.publishedAt 識別子を付与。PlusIntroductoryOfferTests.test04 を既定 nil / withIntroductoryOffer: true の二段構成に書き換え。ユニット 12/12、Sprint18 acceptance 8 PASS + 2 XCTSkip、SprintFour test03 + SprintTen test02/07 + SprintEleven test03 + SprintSeven 6/6 すべて PASS（計 18/18 個別実行で TEST SUCCEEDED）。BUILD SUCCEEDED、クラッシュ0・未処理0。隠し開発者モードの UI ジェスチャ（8 回タップ）は evaluator 実機検証担当。"
     }
   ]
 }
