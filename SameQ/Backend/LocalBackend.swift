@@ -117,6 +117,9 @@ actor LocalBackend: Backend {
 
     // MARK: アカウント
 
+    /// `LocalBackend` は端末内完結で Supabase の認証概念を持たないため no-op。
+    func ensureFreshSession() async {}
+
     func currentUser() async throws -> AppUser? {
         state.user
     }

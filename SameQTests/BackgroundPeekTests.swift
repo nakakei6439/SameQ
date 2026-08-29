@@ -314,6 +314,7 @@ private final class ForceOfflineBackend: Backend, @unchecked Sendable {
     func isOnline() async -> Bool { false }
 
     // MARK: すべて `underlying` へ委譲（実装は LocalBackend なので問題なし）
+    func ensureFreshSession() async { await underlying.ensureFreshSession() }
     func currentUser() async throws -> AppUser? { try await underlying.currentUser() }
     func createAnonymousUser(emoji: String, nickname: String?) async throws -> AppUser {
         try await underlying.createAnonymousUser(emoji: emoji, nickname: nickname)

@@ -94,14 +94,12 @@ actor SupabaseBackend: Backend {
             self.state = .empty
             tokenBox.value = nil
         }
-        // 古いトークンが残っていてアクセストークンが切れている可能性があるため、
-        // 起動時にトークンをクリアする（安全策）。
-        // 本来は refresh_token で更新すべきだが、簡略化のため起動のたびに再認証する。
-        if self.state.supabaseAuth != nil, options.resetsState {
-            self.state.supabaseAuth = nil
-            try? store.save(self.state)
-            tokenBox.value = nil
-        }
+        // （2026-08-29 削除）以前ここに「起動のたびにトークンをクリアする安全策」と
+        // 書かれた分岐があったが、実際の条件は `options.resetsState` 前提になっており
+        // 常に false（直前のブロックで既に `state` を空にしているため）で、コメントが
+        // 主張する動作を一度も実行していなかった（デッドコード）。
+        // 正しい修正は `ensureFreshSession()`（`refreshToken` を実際に呼ぶ）で行った。
+        // 実機で「セッションが切れました」から復帰できない不具合として観測・特定。
     }
 
     /// ネットワーク経路が変化したことを記録する。
@@ -110,6 +108,28 @@ actor SupabaseBackend: Backend {
     }
 
     // MARK: - アカウント（F02 / F32 / F33）
+
+    /// `Backend.ensureFreshSession()` の実装。永続化済みの `refreshToken` があれば、
+    /// `SupabaseClient.refreshToken(refreshToken:)`（既存実装だが呼び出し元が無かった）で
+    /// access_token を更新し、`tokenBox` と `store` の両方へ反映する。
+    /// refresh_token はローテーションされる（レスポンスの新しい値を必ず保存し直す。
+    /// 古い値のまま次回使うと GoTrue に拒否される）。
+    func ensureFreshSession() async {
+        guard let auth = state.supabaseAuth, let refreshToken = auth.refreshToken else { return }
+        do {
+            let session = try await client.refreshToken(refreshToken: refreshToken)
+            tokenBox.value = session.accessToken
+            state.supabaseAuth = SupabaseAuthState(
+                accessToken: session.accessToken,
+                refreshToken: session.refreshToken ?? refreshToken,
+                userID: session.userID,
+                createdAt: clock.now
+            )
+            try? store.save(state)
+        } catch {
+            // 失敗しても何もしない（Backend プロトコルのコメント参照）。
+        }
+    }
 
     func currentUser() async throws -> AppUser? {
         state.user

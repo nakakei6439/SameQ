@@ -283,6 +283,14 @@ final class AppSession {
     /// あればお題の状態に応じてお題待ち／今日のお題／タイムラインへ。
     func start() async {
         screen = .loading
+        // 永続化された Supabase の refresh_token があれば、この直後の認証済み
+        // リクエスト（`currentServerSideStatus()` 等）より前に access_token を
+        // 更新しておく（2026-08-29 修正）。これが無いと、access_token の有効期限
+        // （既定1時間程度）が切れた状態で次に起動したときに最初の認証済み
+        // リクエストが 401 になり、「セッションが切れました」の失敗画面から
+        // 「もう一度試す」を押しても同じ古いトークンで再試行するだけで復帰できなかった
+        // （実機で観測。`ensureFreshSession()` のコメント参照）。
+        await backend.ensureFreshSession()
         // BAN状態のアカウントは、今日のお題にもタイムラインにも入れない（F16）。
         // 運営がサーバー側でBANを切り替える運用のため、アプリ内に解除UIは無い。
         // スプリント13:

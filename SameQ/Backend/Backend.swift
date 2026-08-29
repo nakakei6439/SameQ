@@ -29,6 +29,20 @@ protocol TranslationAttemptPersisting: Sendable {
 protocol Backend: Sendable, TranslationAttemptPersisting {
     // MARK: アカウント（F02）
 
+    /// アプリ起動のたびに一度呼ぶ。永続化された認証情報（Supabaseの refresh_token）が
+    /// あれば、それを使ってアクセストークンを更新しておく（実機で確認された不具合の修正、
+    /// 2026-08-29）。`SupabaseClient.refreshToken(refreshToken:)` は元々実装済みだったが、
+    /// どこからも呼ばれておらず、access_token の有効期限（既定1時間程度）が切れた状態で
+    /// 次に起動すると `promptState()` 等の最初の認証済みリクエストが 401 になり、
+    /// 「セッションが切れました」の失敗画面から一切復帰できなかった
+    /// （「もう一度試す」を押しても同じ古いトークンで再試行するだけのため）。
+    /// 失敗しても致命的にはしない（`throws` にしない）: リフレッシュ自体が一時的な
+    /// 通信不調で失敗しただけの可能性があり、ここでトークンやアカウント紐付けを
+    /// 消すと復旧不能になる。失敗時は何もせず、後続の実際のリクエストに委ねる
+    /// （そちらが本当に 401 なら従来どおり `SupabaseError.unauthorized` として扱われる）。
+    /// `LocalBackend` では認証の概念が無いため no-op。
+    func ensureFreshSession() async
+
     /// 保存済みの匿名アカウント。まだ初回設定が完了していなければ nil。
     func currentUser() async throws -> AppUser?
 
