@@ -33,6 +33,16 @@ enum Theme {
     static let promptStripSurface: Color = surface
     static let promptStripBorder: Color = hairline
 
+    /// 統合ヘッダー（`AppHeaderBar`）の帯の色。参考にしたアプリ（familist）に合わせて
+    /// 上部だけをアクセントカラーで塗る（2026-08-29追記）。familist 独自のティール等の
+    /// 新規ブランドカラーは持ち込まず、既存の `accent`（プライマリボタンと同じ緑）を
+    /// そのまま使うことで、SameQ 自身の配色のまま「上だけ色を変える」を実現する。
+    static let headerBackground: Color = accent
+    /// ヘッダー帯の上に乗る文字・アイコンの色。`headerBackground` に対して
+    /// 白（#FFFFFF）はコントラスト比 3:1 弱と 19pt bold のテキストとしては十分
+    /// （WCAG AA Large Text 基準 3:1 を満たす）。控えめにしたい要素は `.opacity(0.82)` 程度で使う。
+    static let headerForeground: Color = .white
+
 }
 
 /// 白い角丸カード。淡い影だけ落として、輪郭線は引かない。

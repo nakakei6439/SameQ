@@ -283,8 +283,9 @@ struct TodayPromptView: View {
 }
 
 /// Plus 画面の入り口（スプリント10 / F28）。
-/// 設定ボタン（F15）の右にそっと置く。「Plus」の文字を直接出さず、控えめな星マークで
-/// 察せる形にして、無料ユーザーの画面を圧迫しない。
+/// ヘッダー帯（`Theme.headerBackground`）の上に乗るため、地の緑と衝突しないよう
+/// Plus 未加入時は familist の「アップグレード」ピルを参考にした白背景の丸ピルにし、
+/// 加入済みのときは主張を弱めて白文字だけのシンプルな表示にする（2026-08-29追記）。
 struct PlusEntryButton: View {
     @Environment(AppSession.self) private var session
 
@@ -292,18 +293,20 @@ struct PlusEntryButton: View {
         Button {
             session.isPlusViewPresented = true
         } label: {
-            HStack(spacing: 2) {
+            HStack(spacing: 3) {
                 Image(systemName: "sparkles")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(session.isPlus ? Theme.accent : Theme.inkSecondary)
-                if session.isPlus {
-                    Text("Plus")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Theme.accent)
+                    .font(.system(size: 13, weight: .semibold))
+                Text("Plus")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundStyle(session.isPlus ? Theme.headerForeground : Theme.headerBackground)
+            .frame(minHeight: 32)
+            .padding(.horizontal, session.isPlus ? 4 : 10)
+            .background {
+                if !session.isPlus {
+                    Capsule().fill(Theme.headerForeground)
                 }
             }
-            .frame(minWidth: 32, minHeight: 32)
-            .padding(.horizontal, 4)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

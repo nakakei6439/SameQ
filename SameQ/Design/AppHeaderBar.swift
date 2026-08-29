@@ -18,6 +18,13 @@ import SwiftUI
 /// `.accessibilityIdentifier` を付けたビューの内側にボタンを置くと識別子が
 /// 上書きされる（`TodayPromptView` の旧 `identityRow` コメント参照）ため、
 /// この構造（アイデンティティ要素とボタン類が常に兄弟）を崩さないこと。
+///
+/// **帯の色（2026-08-29追記）**: 参考にしたアプリ（familist）と同じく、ヘッダーだけ
+/// `Theme.accent` で塗った帯にしている。中身の並び・機能は変えず「上だけ色を変える」
+/// という依頼どおりの範囲にとどめ、既存の丸カード基調のデザイン言語
+/// （`Theme.cardCornerRadius`）に合わせて角丸の帯として表現する（familist のような
+/// ステータスバーまで含む edge-to-edge のアプリバー化はしない＝構造変更を伴わない）。
+/// 背景が緑になった分、アイコン・文字は `Theme.headerForeground`（白）に切り替える。
 struct AppHeaderBar: View {
     @Environment(AppSession.self) private var session
 
@@ -31,7 +38,7 @@ struct AppHeaderBar: View {
 
             Text(L10n.Common.appName)
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(Theme.ink)
+                .foregroundStyle(Theme.headerForeground)
                 .accessibilityIdentifier("header.appName")
 
             Spacer(minLength: 8)
@@ -42,8 +49,18 @@ struct AppHeaderBar: View {
             Text(session.user?.emoji ?? "🙂")
                 .font(.system(size: 22))
                 .frame(width: 36, height: 36)
+                .background {
+                    Circle().fill(Theme.headerForeground.opacity(0.94))
+                }
                 .accessibilityIdentifier(identityIdentifier)
                 .accessibilityLabel(Text(session.user?.displayNickname ?? ""))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background {
+            RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous)
+                .fill(Theme.headerBackground)
+                .shadow(color: Theme.headerBackground.opacity(0.28), radius: 12, x: 0, y: 6)
         }
     }
 }
@@ -58,7 +75,7 @@ struct MenuEntryButton: View {
         } label: {
             Image(systemName: "line.3.horizontal")
                 .font(.system(size: 19, weight: .medium))
-                .foregroundStyle(Theme.inkSecondary)
+                .foregroundStyle(Theme.headerForeground)
                 .frame(width: 40, height: 40, alignment: .leading)
                 .contentShape(Rectangle())
         }
@@ -78,7 +95,7 @@ struct NotificationsEntryButton: View {
         } label: {
             Image(systemName: "bell")
                 .font(.system(size: 19, weight: .medium))
-                .foregroundStyle(Theme.inkSecondary)
+                .foregroundStyle(Theme.headerForeground)
                 .frame(width: 40, height: 40, alignment: .center)
                 .contentShape(Rectangle())
         }
