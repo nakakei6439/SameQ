@@ -11,7 +11,14 @@
 
 ## 現在の状態
 
-スプリント06（投稿本文とお題の自動翻訳）まで実装済み。
+全18スプリントの実装・評価が完了し、App Store審査に提出済み（TestFlightでの外部テスト受け入れも準備中）。
+
+匿名アカウント作成、1日1回世界共通で届くお題への回答、世界タイムライン、いいね・通報・ブロック、
+ランダム通知、投稿本文とお題の自動翻訳、ニックネームの音写表示、通報・BAN・投稿頻度制限・
+スパム対策のサーバー側判定、Plus（RevenueCatによる月額課金・1ヶ月無料トライアル・長文投稿と
+文字装飾）、統合ヘッダー・ハンバーガーメニュー・運営お知らせ（日本語・英語の言語別配信）まで、
+一通りの機能が本番のSupabaseバックエンドに接続した状態で動く。
+
 初回設定 → 今日のお題 → 回答投稿 → 世界タイムライン → いいね が動き、
 お題の有効期間（28時間・常に1つだけ有効）、有効なお題が無い時間帯の**お題待ち画面**、
 投稿の表示期限（お題の終了時刻に揃える）が効く。
@@ -38,14 +45,13 @@
 言語の回答はタイムラインに出さずスキップする。翻訳が確定するまでは「準備中…」を表示し、
 原文が一瞬見えてから翻訳に差し替わる「ちらつき」を防いでいる。端末の言語設定は起動時に一度だけ
 読むため、設定を変えたら**アプリを再起動**すると新しい言語で表示される。
-通知配信・お題の自動生成・課金は後続スプリント。
 
 ### 動かす
 
 ```bash
 open SameQ.xcodeproj      # 外部パッケージ依存なし。そのままビルド・実行できる
 
-# 受け入れ条件の自動確認（ユニット37本 + UIテスト31本）
+# 受け入れ条件の自動確認（ユニット200本超 + UIテスト100本超。スプリントが増えるたびに増加する）
 xcodebuild -project SameQ.xcodeproj -scheme SameQ \
   -destination 'platform=iOS Simulator,name=iPhone 17' test
 ```
@@ -126,32 +132,29 @@ BANは運営がサーバー側で切り替える運用のため、アプリ内�
 | `SameQ/Resources/SeedData.json` | お題2件と、それぞれへの世界の回答（23件 / 12件、18言語＋BANされた投稿者1件） |
 | `SameQTests/` | お題の有効期間・投稿の表示期限・タイムラインの取得ルールと既読・通報とブロック・BAN/連打制限/スパム対策のユニットテスト |
 | `SameQUITests/` | 受け入れ条件をなぞる UI テスト |
-| `supabase/migrations/` | users / prompts / posts / likes / viewed_posts / reports / blocks と RLS の定義 |
+| `supabase/migrations/` | users / prompts / posts / likes / viewed_posts / reports / blocks / announcements と RLS・自己修復RPC等の定義 |
+| `docs/HARNESS.md` | planner → generator → evaluator ハーネスとオートループの設計 |
 
-**注意**: Supabase のクラウドプロジェクトは作成済み・初期マイグレーション適用済みだが、
-アプリはまだ `LocalBackend`（端末内）で動いており、サーバーには接続していない。
-詳細は [`PROGRESS.md`](PROGRESS.md) のブロッカー B01 を参照。
+アプリは本番の Supabase（`SupabaseBackend`）に接続して動く。`LocalBackend`（端末内完結の実装）は
+Debug ビルドの起動引数 `-SameQUseLocalBackend` を付けたときだけ使われる、オフライン開発用の
+経路として残している。
 
-## App Store 公開準備（進行中）
+## App Store 提出・配信状況
 
-仕様書の全12スプリント（`.product/spec.md`）は実装・評価とも完了。App Store 提出に向けて、
-コードから自動化できる範囲の準備を行った。
+仕様書の全18スプリント（`.product/spec.md`）は実装・評価とも完了。
 
-- **App アイコン**: `AppIcon.appiconset` に 1024×1024 の実画像を追加（未設定だと提出時に弾かれるため）
-- **プライバシーマニフェスト**: `SameQ/Resources/PrivacyInfo.xcprivacy` を追加（`UserDefaults` /
-  ファイルタイムスタンプ参照の Required Reason API 申告）
-- **利用規約・プライバシーポリシー**: 実装済みの挙動（匿名認証・端末内翻訳・投稿の寿命・
-  安全ログ30日保持・StoreKit課金等）に沿った本文へドラフトを差し替え（[`LegalText.swift`](SameQ/Feature/Onboarding/LegalText.swift)）。
-  ただし運営者名・問い合わせ先・準拠法上の管轄地は `[ ]` のプレースホルダーのままなので、
-  **公開前に必ず運営者が内容を確認し記入すること**。
-
-上記はいずれもアプリ内で完結する範囲の対応であり、以下は運営者側の手作業が必要（自動化対象外）。
-
-- Apple Developer Program でのアプリ登録・Bundle ID (`com.nakakei6439.SameQ`) の紐付け
-- App Store Connect での Plus 課金商品 (`com.nakakei6439.SameQ.plus.monthly`) の登録
-- プライバシーポリシーの外部公開URLの用意（App Store Connect の登録項目として必須）
-- App Store 用スクリーンショット・プロモーション文言の作成
-- TestFlight での実機配信・最終確認
+- **App Store 審査**: v1.0 を提出済み（審査待ち）。日本語・英語のメタデータ（サブタイトル・
+  説明文・キーワード・スクリーンショット）とプライバシーポリシーURL・価格設定（無料）を登録済み
+- **TestFlight**: 外部テストグループを作成済み。ビルドを追加し Beta App Review を提出すれば、
+  公開リンク経由で誰でも参加できる外部テストを開始できる
+- **課金（RevenueCat）**: SameQ Plus (Monthly) を実機のサンドボックス購入・復元で動作確認済み。
+  1ヶ月無料トライアルを設定済み
+- **利用規約・プライバシーポリシー**: 運営者名・問い合わせ先・準拠法上の管轄地まで実際の内容で
+  確定済み（[`LegalText.swift`](SameQ/Feature/Onboarding/LegalText.swift)）
+- **App アイコン・プライバシーマニフェスト**: `AppIcon.appiconset`（1024×1024）・
+  `SameQ/Resources/PrivacyInfo.xcprivacy` とも設定済み
+- **運営お知らせ**: `announcements` テーブルへ日本語・英語それぞれでバージョンごとのお知らせを
+  投入する運用（TestFlight/App Storeへの配信前の必須手順。詳細は [`CLAUDE.md`](CLAUDE.md)）
 
 ## ドキュメント
 
@@ -162,10 +165,13 @@ BANは運営がサーバー側で切り替える運用のため、アプリ内�
 
 - iOS ネイティブ / SwiftUI、iOS 18 以降
 - 翻訳: Apple Translation Framework のみ（外部翻訳APIは使用しない）
-- バックエンド: Supabase（Auth / PostgreSQL / RLS / Edge Functions / Scheduled Functions）
+- バックエンド: Supabase（匿名Auth / PostgreSQL / RLS / RPC関数〈`security definer`〉）。
+  Edge Functions・pg_cronは現状未使用
 - 認証: 匿名認証のみ
 - 課金: RevenueCat（Entitlement: `plus`）
-- お題生成: 生成AI APIをSupabase Edge Functionから1日1回呼び出し
+- お題生成: 決定的アルゴリズム（UTC暦日ベースで候補プールから1件選出）をSupabaseのRPC関数
+  として実装。誰かがアプリを開いたときに、その日のお題がまだ無ければ自動的に1件生成する
+  自己修復方式（日次バッチや生成AI呼び出しには依存しない）
 
 ## 開発フロー
 
@@ -174,5 +180,7 @@ BANは運営がサーバー側で切り替える運用のため、アプリ内�
 1. **planner**: 短いアイデアを製品仕様書（`.product/spec.md`）に展開
 2. **generator**: 仕様書のスプリントを1つずつ実装
 3. **evaluator**: 実装をシミュレータ/実機・ブラウザで実際に操作して検証。必須基準を1つでも満たさなければ不合格とし、generatorが修正して再評価
+
+詳しい設計は [`docs/HARNESS.md`](docs/HARNESS.md) を参照。
 
 進捗の詳細は [`PROGRESS.md`](PROGRESS.md) を参照。
