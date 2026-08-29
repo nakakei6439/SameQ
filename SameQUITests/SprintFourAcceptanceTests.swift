@@ -221,8 +221,14 @@ final class SprintFourAcceptanceTests: XCTestCase {
         app.buttons["settings.open"].tap()
         XCTAssertTrue(app.staticTexts["settings.blocked.empty"].waitForExistence(timeout: 5), "ブロック一覧（空）")
         app.buttons["settings.close"].tap()
-        app.buttons["menu.close"].tap()
-        XCTAssertTrue(app.otherElements["waiting.root"].waitForExistence(timeout: 5), "閉じるとお題待ちへ戻る")
+        // attempt 2（eval-1.md [1] の修正）: 設定を開いた時点でメニューは
+        // 既に閉じている（`openChildSheet` が dismiss → 0.4s 後に設定を開くため）。
+        // 従って menu.close をタップする工程は不要で、設定を閉じたら
+        // 直接お題待ち画面へ戻る。
+        XCTAssertTrue(
+            app.otherElements["waiting.root"].waitForExistence(timeout: 5),
+            "設定を閉じるとお題待ちへ戻る"
+        )
     }
 
     // MARK: ヘルパー

@@ -124,6 +124,14 @@ struct NotificationsView: View {
                             Text(item.title)
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(Theme.ink)
+                            // 公開日時（attempt 2: eval-1.md [4] の修正）。
+                            // spec 受け入れ条件5「見出し・本文・公開日時が読める」要求に
+                            // 対応するため、`publishedAt` を画面にも出す。端末ロケールの
+                            // 短い日付書式（日本語: 2026/08/29 / 英語: 8/29/2026）で表示する。
+                            Text(item.publishedAt, format: .dateTime.year().month().day())
+                                .font(.system(size: 11))
+                                .foregroundStyle(Theme.inkTertiary)
+                                .accessibilityIdentifier("notifications.operator.publishedAt")
                             Text(item.body)
                                 .font(.system(size: 13))
                                 .foregroundStyle(Theme.inkSecondary)

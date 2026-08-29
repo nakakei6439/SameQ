@@ -46,13 +46,24 @@ final class PlusIntroductoryOfferTests: XCTestCase {
     }
 
     @MainActor
-    func test04_fakePlusServiceExposesIntroductoryOffer() async {
-        let service = FakePlusService()
-        let products = await service.availableProducts()
-        XCTAssertFalse(products.isEmpty)
+    func test04_fakePlusServiceExposesIntroductoryOfferWhenEnabled() async {
+        // attempt 2（eval-1.md [3] の修正）: 既定の FakePlusService は trial 無しの
+        // 商品定義を返す（Sprint10 / Sprint14 と同じ「Plus に登録」購入表示）。
+        // `withIntroductoryOffer: true` を渡したときだけ trial 表記が現れる。
+        let defaultService = FakePlusService()
+        let defaultProducts = await defaultService.availableProducts()
+        XCTAssertFalse(defaultProducts.isEmpty)
+        XCTAssertNil(
+            defaultProducts.first?.introductoryOfferDescription,
+            "FakePlusService の既定は trial 無し（Sprint10/14 互換）"
+        )
+
+        let trialService = FakePlusService(withIntroductoryOffer: true)
+        let trialProducts = await trialService.availableProducts()
+        XCTAssertFalse(trialProducts.isEmpty)
         XCTAssertNotNil(
-            products.first?.introductoryOfferDescription,
-            "FakePlusService は trial 表記を必ず返す（シミュレータでの UI プレビュー用）"
+            trialProducts.first?.introductoryOfferDescription,
+            "withIntroductoryOffer: true のとき trial 表記を返す（UI プレビュー用）"
         )
     }
 

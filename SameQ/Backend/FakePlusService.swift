@@ -43,7 +43,18 @@ final class FakePlusService: PlusService, ObservableObject {
     /// 用意できるよう差し替え可能にしておく（attempt 2）。
     private let defaults: UserDefaults
 
-    init(active: Bool = false, defaults: UserDefaults = .standard) {
+    /// 無料トライアル（Introductory Offer）を有効として見せるか（attempt 2: eval-1.md [3]
+    /// の修正）。`true` のとき `availableProducts()` が `introductoryOfferDescription: "1ヶ月無料"`
+    /// を返し、`PlusView` の trial バッジ・`Start free trial` ボタンが現れる。
+    /// **`false`（既定）のときは `nil` を返し**、Sprint10 / Sprint14 と同じ
+    /// 「Plus に登録」購入表示に戻る。
+    private let withIntroductoryOffer: Bool
+
+    init(
+        active: Bool = false,
+        defaults: UserDefaults = .standard,
+        withIntroductoryOffer: Bool = false
+    ) {
         self.defaults = defaults
         // `FakePlusService` は StoreKit 2 の `Transaction.currentEntitlements` と
         // 同じ「購入を復元するまで永続化済みエンタイトルメントを露出しない」
@@ -60,6 +71,10 @@ final class FakePlusService: PlusService, ObservableObject {
         // ことの**確認**であり、`StoreKitPlusService` の `AppStore.sync()` 相当の
         // 「引き直し」を `FakePlusService.restore()` が担う。
         self.active = active
+        // attempt 2（eval-1.md [3] の修正）: デフォルトは trial 無し。
+        // `withIntroductoryOffer == true` のときだけ trial 表記を返し、
+        // Sprint10/14 と同じ「Plus に登録」購入表示へ戻る（spec 受け入れ条件6 後半）。
+        self.withIntroductoryOffer = withIntroductoryOffer
         if active {
             let now = Date()
             let expires = Calendar.current.date(byAdding: .day, value: 30, to: now)
@@ -74,15 +89,19 @@ final class FakePlusService: PlusService, ObservableObject {
     }
 
     func availableProducts() async -> [PlusProduct] {
-        // 新機能: シミュレータ・Debug 経路でも無料トライアル表示をプレビューできるよう
-        // 固定で「1ヶ月無料」を返す（実際の App Store Connect Introductory Offer 設定とは
-        // 独立。UI 確認用のプレースホルダー）。
+        // attempt 2（eval-1.md [3] の修正）:
+        // `-SameQFakePlusTrial` を付けたときだけ `introductoryOfferDescription` を返し、
+        // 付けない既定では `nil`（＝Sprint10 / Sprint14 と同じ「Plus に登録」購入表示）に
+        // 戻る。実機の App Store Connect Introductory Offer 設定とは独立した
+        // UI プレビュー用。両状態を UI テストで再現できる。
         [PlusProduct(
             id: monthlyProductID,
             displayName: "Plus （月額）",
             displayPrice: "¥480",
             periodDescription: "月額 / いつでも解約できます",
-            introductoryOfferDescription: L10n.Plus.freeTrialBadge(value: 1, unit: .month)
+            introductoryOfferDescription: withIntroductoryOffer
+                ? L10n.Plus.freeTrialBadge(value: 1, unit: .month)
+                : nil
         )]
     }
 

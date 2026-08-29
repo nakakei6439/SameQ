@@ -230,7 +230,13 @@ final class AppSession {
             self.plusService = plusService
         } else if LaunchOptions.current.fakePlus {
             // UI テストや Debug 経路でのみ FakePlusService を使う（スプリント10 で導入）。
-            self.plusService = FakePlusService(active: LaunchOptions.current.plusActiveAtLaunch)
+            // attempt 2（eval-1.md [3] の修正）: `-SameQFakePlusTrial` を付けたときだけ
+            // 無料トライアル有りの商品定義を返す。フラグ無しは Sprint10 / Sprint14 と
+            // 同じ「Plus に登録」購入表示。
+            self.plusService = FakePlusService(
+                active: LaunchOptions.current.plusActiveAtLaunch,
+                withIntroductoryOffer: LaunchOptions.current.fakePlusWithIntroductoryOffer
+            )
         } else {
             // スプリント14（F37）: Plus 課金基盤を RevenueCat に差し替え済み。
             // 既定の Release / Debug 経路は `RevenueCatPlusService`。

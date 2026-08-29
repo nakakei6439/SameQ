@@ -81,6 +81,15 @@ struct LaunchOptions: Sendable {
     /// `Purchase` などの挙動を UI テストで決定的に再現できるようにする。
     /// 既定（false）は App Store と接続する `RevenueCatPlusService`（スプリント14）。
     var fakePlus: Bool = false
+    /// `-SameQFakePlusTrial`（Debug 限定・スプリント18 attempt 2: eval-1.md [3] の修正）。
+    /// `fakePlus == true` のときにさらに指定すると、`FakePlusService.availableProducts()`
+    /// が `introductoryOfferDescription: "1ヶ月無料"` を返すようになる（App Store Connect の
+    /// Introductory Offer が提供されている状態のプレビュー用）。
+    /// **既定（フラグ無し）は trial 無しの表示**を返し、これは Sprint10 / Sprint14 と
+    /// 同じ『トライアル無し』購入表示（`Plus に登録` ボタン）に戻る。
+    /// UI テストで両状態を確認するには、trial 有りは `-SameQFakePlus -SameQFakePlusTrial`、
+    /// trial 無しは `-SameQFakePlus`（フラグ1つだけ）を付ければ良い。
+    var fakePlusWithIntroductoryOffer: Bool = false
     /// `-SameQUseStoreKitPlus`（Debug 限定・スプリント14 / escape hatch）。
     /// true の間は `PlusService` を `RevenueCatPlusService` ではなく
     /// `StoreKitPlusService`（旧 StoreKit 2 直接実装）で動かす。RevenueCat SDK の
@@ -155,6 +164,7 @@ struct LaunchOptions: Sendable {
         options.seedOnly = arguments.contains("-SameQSeedOnly")
         options.skipSeed = arguments.contains("-SameQSkipSeed")
         options.fakePlus = arguments.contains("-SameQFakePlus")
+        options.fakePlusWithIntroductoryOffer = arguments.contains("-SameQFakePlusTrial")
         options.useStoreKitPlus = arguments.contains("-SameQUseStoreKitPlus")
         options.plusActiveAtLaunch = arguments.contains("-SameQPlusActive")
         if let hour = value(after: "-SameQNotificationHour").flatMap(Int.init),

@@ -110,8 +110,28 @@ struct MenuView: View {
         .cardBackground(cornerRadius: 18)
     }
 
+    /// `menuRow` のタップハンドラをラップする。
+    ///
+    /// **attempt 2（eval-1.md [1] の修正）**: 従来は子画面を開くだけで
+    /// メニュー自身のシートが残ってしまい、子画面を閉じると再びメニューが
+    /// 前面に出る導線バグがあった。メニューを `dismiss()` で先に閉じてから
+    /// シートの dismissal アニメーションが落ち着くのを待ち、子の画面を開く
+    /// ようにした。これで「メニュー → 子画面 → 閉じる → ホーム」の動線が
+    /// 成立する（Sprint04 test03 の回帰も解消）。
+    private func openChildSheet(_ action: @escaping () -> Void) {
+        // まずメニュー自身を閉じる（`session.isMenuPresented` も false に戻る）
+        dismiss()
+        // シートが完全に消える前に次のシートを立てるとスタックして見えるので
+        // 少しだけ間を置いてから子画面を開く。
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            action()
+        }
+    }
+
     private func menuRow(title: String, identifier: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            openChildSheet(action)
+        } label: {
             HStack {
                 Text(title)
                     .font(.system(size: 15, weight: .medium))

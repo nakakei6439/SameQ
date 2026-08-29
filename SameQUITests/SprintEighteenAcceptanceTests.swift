@@ -127,12 +127,18 @@ final class SprintEighteenAcceptanceTests: XCTestCase {
         XCTAssertTrue(tappedMenuPlus, "メニュー内の plus.open をタップできた")
         XCTAssertTrue(app.staticTexts["plus.root.anchor"].waitForExistence(timeout: 5))
         app.buttons["plus.close"].tap()
-        XCTAssertTrue(
+        // attempt 2（eval-1.md [1] の修正）: メニューは子画面を開く前に閉じるので、
+        // Plus を閉じると**ホームに戻る**。メニューには戻らない（メニューが残ると
+        // 設定の解除後に戻れなくなるバグの是正）。`menu.root` が消えることで確認。
+        XCTAssertFalse(
             app.otherElements["menu.root"].waitForExistence(timeout: 5),
-            "Plus を閉じるとメニューに戻る"
+            "Plus を閉じるとメニューに戻らず、ホームへ戻る"
         )
 
-        // メニュー → 設定画面
+        // 再度メニューを開いて設定画面へ
+        XCTAssertTrue(app.buttons["menu.open"].waitForExistence(timeout: 5))
+        app.buttons["menu.open"].tap()
+        XCTAssertTrue(app.otherElements["menu.root"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["settings.open"].waitForExistence(timeout: 5))
         app.buttons["settings.open"].tap()
         XCTAssertTrue(app.otherElements["settings.root"].waitForExistence(timeout: 5))
@@ -193,11 +199,13 @@ final class SprintEighteenAcceptanceTests: XCTestCase {
 
     // MARK: F45 — 無料トライアル表示
 
-    /// `-SameQFakePlus` 経路（FakePlusService）では `introductoryOfferDescription` が
-    /// 必ず返るので、Plus 画面に「1ヶ月無料」の案内が出て、購入ボタンが
-    /// 「無料で試す」相当の文言に切り替わる。
+    /// `-SameQFakePlus -SameQFakePlusTrial` 経路（FakePlusService）では
+    /// `introductoryOfferDescription` が返るので、Plus 画面に「1ヶ月無料」の案内が出て、
+    /// 購入ボタンが「無料で試す」相当の文言に切り替わる。
+    /// attempt 2（eval-1.md [3] の修正）: フラグを分け、`-SameQFakePlus` だけでは
+    /// Sprint10/14 と同じ「Plus に登録」購入表示に落ちる（test10 で別途確認）。
     func test06_plusScreenShowsFreeTrialBadgeAndButton() {
-        let app = launchFresh(fakePlus: true)
+        let app = launchFresh(fakePlus: true, fakePlusTrial: true)
         completeOnboarding(app)
 
         // メニュー → Plus 画面
@@ -292,8 +300,9 @@ final class SprintEighteenAcceptanceTests: XCTestCase {
     /// en 端末で主要文言が英語に切り替わる。
     /// 統合ヘッダーのアプリ名 "SameQ"、お知らせ画面の "Notifications"、
     /// メニュー内の "Menu" 等が英語で出ていることを確認する。
+    /// トライアル文言も英語化されるため、`-SameQFakePlusTrial` も付ける。
     func test09_englishLocaleShowsEnglishStrings() {
-        let app = launchFresh(fakePlus: true, languages: ["en"])
+        let app = launchFresh(fakePlus: true, fakePlusTrial: true, languages: ["en"])
         completeOnboarding(app)
 
         // ヘッダー
@@ -380,10 +389,68 @@ final class SprintEighteenAcceptanceTests: XCTestCase {
         )
     }
 
+    // MARK: F45 — 無料トライアルが無い状態の表示
+
+    /// `-SameQFakePlus` 経路で **`-SameQFakePlusTrial` を付けない**ときは、
+    /// Sprint10 / Sprint14 と同じ「Plus に登録」購入表示に落ちる
+    ///（spec 受け入れ条件6 後半）。
+    /// メニュー → Plus を開いて、購入ボタンのラベルが「Plus に登録する」相当になり、
+    /// trial バッジ（`plus.trialBadge`）が**現れない**ことを確認する。
+    /// attempt 2（eval-1.md [3] の修正）で `-SameQFakePlusTrial` を分離したため、
+    /// ここで既定状態の UI を再固定する。Sprint10 test02 / test07 が
+    /// `label CONTAINS 'Plus に登録'` を期待するのと同じ条件。
+    func test10_plusScreenWithoutTrialFlagShowsLegacyPurchaseButton() {
+        let app = launchFresh(fakePlus: true, fakePlusTrial: false)
+        completeOnboarding(app)
+
+        // メニュー → Plus 画面
+        app.buttons["menu.open"].tap()
+        var tappedMenuPlus = false
+        let deadline = Date().addingTimeInterval(5)
+        while Date() < deadline && !tappedMenuPlus {
+            for el in app.descendants(matching: .button).allElementsBoundByIndex {
+                if el.identifier == "plus.open" && el.isHittable {
+                    el.tap()
+                    tappedMenuPlus = true
+                    break
+                }
+            }
+            if !tappedMenuPlus { usleep(200_000) }
+        }
+        XCTAssertTrue(tappedMenuPlus, "メニュー内の plus.open をタップできた")
+        XCTAssertTrue(app.staticTexts["plus.root.anchor"].waitForExistence(timeout: 5))
+
+        // trial バッジ（plus.trialBadge）は**出ない**こと
+        // PlusView.purchaseSection 内では trial 表記があれば `plus.trialBadge` の
+        // HStack が描画されるので、descendants に居ないことで判定する。
+        let allElements = app.descendants(matching: .any).allElementsBoundByIndex
+        var foundTrialBadge = false
+        for el in allElements {
+            if el.identifier == "plus.trialBadge" && el.exists {
+                foundTrialBadge = true
+                break
+            }
+        }
+        XCTAssertFalse(
+            foundTrialBadge,
+            "-SameQFakePlusTrial を付けない既定では plus.trialBadge は出ない"
+        )
+
+        // 購入ボタンのラベルが「Plus に登録」相当（Sprint10 と同じ文言）
+        let purchaseButton = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS 'Plus に登録'")
+        ).firstMatch
+        XCTAssertTrue(
+            purchaseButton.waitForExistence(timeout: 5),
+            "trial フラグ無しでは購入ボタンが『Plus に登録』のまま"
+        )
+    }
+
     // MARK: ヘルパ
 
     private func launchFresh(
         fakePlus: Bool = false,
+        fakePlusTrial: Bool = false,
         resetState: Bool = true,
         languages: [String] = []
     ) -> XCUIApplication {
@@ -394,6 +461,11 @@ final class SprintEighteenAcceptanceTests: XCTestCase {
         }
         if fakePlus {
             arguments.append("-SameQFakePlus")
+            // attempt 2（eval-1.md [3] の修正）: trial 有りは別フラグで opt-in。
+            // フラグ無し（既定）は Sprint10/14 と同じ「Plus に登録」購入表示。
+            if fakePlusTrial {
+                arguments.append("-SameQFakePlusTrial")
+            }
         }
         if !languages.isEmpty {
             for code in languages {
