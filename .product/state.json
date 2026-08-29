@@ -1,8 +1,14 @@
 {
   "currentSprint": "18",
   "attempt": 2,
-  "status": "awaiting_eval",
+  "status": "passed",
   "history": [
+    {
+      "sprint": "18",
+      "attempt": 2,
+      "result": "passed",
+      "evalNote": "eval-2.md — 合格。基準1〜5すべて閾値クリア。eval-1 の不合格原因 [1]〜[4] をすべて解消確認: [1] MenuView.openChildSheet(dismiss→0.4s→子画面) で SprintFourAcceptanceTests.test03 がフルラン一括で passed に復帰。[2] SprintElevenAcceptanceTests.test03(アカウント削除→オンボーディング復帰)passed。[3] -SameQFakePlusTrial 新設・既定は introductoryOfferDescription:nil で SprintTen test02/test07 passed、フラグ有り Plus 画面は実起動スクショで『1ヶ月無料』+『無料で試す』を目視。[4] NotificationsView 行に publishedAt 追加、実起動スクショで運営お知らせタブに 見出し/公開日時『Aug 29, 2026』/本文 を目視。検証: SprintEighteenAcceptanceTests 8/8(test07/08 は8連打 XCTSkip・既合意)、回帰 SprintFour 7/7 + SprintSeven 6/6 + SprintTen 7/7 + SprintEleven 4/4 すべて passed、ユニット SameQTests 210/210(RevenueCatPlusServiceTests のみ実ネット待ちで除外・sprint18 対象外)。本番 Supabase announcements: テーブル実在・RLS は SELECT のみ(認証JWTでの INSERT は 403)・evaluator が2件投入し新しい順取得をアプリ同一クエリで確認・後始末済み。基準2 クラッシュ0/未処理例外0。基準3 開発者モード非永続(DeveloperModeTests 4/4)・購入復元は再起動後保持(SprintTen test07)。基準5=4。未評価: 条件7の『8回連続タップ』UIジェスチャ(当環境にタップ手段なし・ロジックはユニット緑・eval-1 が発見性評価済み・attempt2 で無変更)。当シミュレータで全絵文字が『?』プレースホルダ描画(環境要因・attempt2 差分は絵文字描画に無関係)＝実機での目視をユーザーに推奨。改善提案: (中)openChildSheet の 0.4s マジックナンバー、(低)公開日時に時刻なし、(低)通知2タブでセグメント縦位置がずれる、(低)-SameQFakePlusTrial は -SameQFakePlus 併用必須の注記。"
+    },
     {
       "sprint": "14",
       "attempt": 8,
