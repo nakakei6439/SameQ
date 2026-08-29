@@ -92,6 +92,10 @@ final class AppSession {
     var isMenuPresented = false
     /// 通知（アプリ通知 / 運営お知らせ）画面（新機能）。
     var isNotificationsPresented = false
+    /// プロフィール編集シート（新機能・2026-08-29追記）。ヘッダーのアバターや
+    /// メニューのプロフィール行から、設定画面を経由せず直接開けるようにする入り口。
+    /// 画面自体（`ProfileEditView`）は既存のものをそのまま再利用する。
+    var isProfileEditPresented = false
     /// アプリが認識している「今」。1秒ごとの `refresh()` で更新する。
     private(set) var now: Date
     /// サーバ時計と `clock.now` の差（秒）。`start()` で1回だけ取得し、
@@ -265,7 +269,7 @@ final class AppSession {
     /// 運営お知らせ一覧を取得する（新機能）。取得できなければ空配列を返し、
     /// 補助的な機能のため `alertMessage` は立てない（空状態表示に委ねる）。
     func loadAnnouncements() async -> [Announcement] {
-        (try? await backend.announcements()) ?? []
+        (try? await backend.announcements(locale: L10n.isJapanese ? "ja" : "en")) ?? []
     }
 
     #if DEBUG
@@ -719,6 +723,7 @@ final class AppSession {
         isPlusViewPresented = false
         isMenuPresented = false
         isNotificationsPresented = false
+        isProfileEditPresented = false
         pendingDeepLinkTarget = nil
         alertMessage = nil
         promptTranslationTask?.cancel()

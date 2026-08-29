@@ -671,7 +671,8 @@ actor LocalBackend: Backend {
     // MARK: - 運営お知らせ（新機能）
 
     /// オフライン開発用の固定サンプル。管理者投入を模した最小限のダミーデータ。
-    func announcements() async throws -> [Announcement] {
+    /// `locale` は無視する（オフライン開発では言語の出し分けを検証しないため）。
+    func announcements(locale: String) async throws -> [Announcement] {
         [
             Announcement(
                 id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,

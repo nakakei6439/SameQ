@@ -204,7 +204,9 @@ final class SprintSevenAcceptanceTests: XCTestCase {
         submitAnswer(app, body: answerBody)
 
         // 今日のお題画面の identityRow（受け入れ条件5の主戦場）。
-        XCTAssertTrue(app.staticTexts["today.identity"].waitForExistence(timeout: 10))
+        // 2026-08-29: アバターがタップでプロフィール編集を開くボタンになったため
+        // staticText ではなく button として存在する。
+        XCTAssertTrue(app.buttons["today.identity"].waitForExistence(timeout: 10))
         XCTAssertTrue(
             app.staticTexts[myNickname].waitForExistence(timeout: 5),
             "ja 端末でも自分のニックネーム `\(myNickname)` は原文のまま表示されるべき"
@@ -226,7 +228,9 @@ final class SprintSevenAcceptanceTests: XCTestCase {
         completeOnboarding(app, nickname: myNickname)
         submitAnswer(app, body: answerBody)
 
-        XCTAssertTrue(app.staticTexts["today.identity"].waitForExistence(timeout: 10))
+        // 2026-08-29: アバターがタップでプロフィール編集を開くボタンになったため
+        // staticText ではなく button として存在する。
+        XCTAssertTrue(app.buttons["today.identity"].waitForExistence(timeout: 10))
         XCTAssertTrue(
             app.staticTexts[myNickname].waitForExistence(timeout: 5),
             "en 端末でも自分のニックネーム `\(myNickname)` は原文のまま表示されるべき"

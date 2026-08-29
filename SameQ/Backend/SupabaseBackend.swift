@@ -908,7 +908,9 @@ actor SupabaseBackend: Backend {
 
     // MARK: - 運営お知らせ（新機能）
 
-    func announcements() async throws -> [Announcement] {
+    /// `locale` は `"ja"` / `"en"` のいずれか。この言語の行だけを取得する
+    /// （2026-08-29追記: 言語別配信。マイグレーション 20260829000012 参照）。
+    func announcements(locale: String) async throws -> [Announcement] {
         try checkConnectivity()
         struct AnnouncementRow: Decodable {
             let id: UUID
@@ -919,6 +921,7 @@ actor SupabaseBackend: Backend {
         let rows: [AnnouncementRow] = try await client.get(
             table: "announcements",
             select: "id,title,body,published_at",
+            filters: ["locale": "eq.\(locale)"],
             order: "published_at.desc"
         )
         return rows.map {

@@ -362,5 +362,5 @@ private final class ForceOfflineBackend: Backend, @unchecked Sendable {
     func recordModelPrepareAttempt(sourceLanguageCode: String, at date: Date) async throws {
         try await underlying.recordModelPrepareAttempt(sourceLanguageCode: sourceLanguageCode, at: date)
     }
-    func announcements() async throws -> [Announcement] { try await underlying.announcements() }
+    func announcements(locale: String) async throws -> [Announcement] { try await underlying.announcements(locale: locale) }
 }

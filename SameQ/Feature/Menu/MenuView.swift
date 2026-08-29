@@ -71,24 +71,37 @@ struct MenuView: View {
         }
     }
 
+    /// タップするとプロフィール編集を開く（2026-08-29追記）。中の絵文字・ニックネームの
+    /// `Text` はそのまま残す（既存テストが `menu.profile.nickname` を staticText として
+    /// 参照するため、要素の種類を変えない）。タップ可能なのは外側の `Button` コンテナ。
     private var profileSummary: some View {
-        HStack(spacing: 14) {
-            Text(session.user?.emoji ?? "🙂")
-                .font(.system(size: 28))
-                .frame(width: 52, height: 52)
-                .background(Circle().fill(Theme.background))
-                .accessibilityIdentifier("menu.profile.emoji")
-            Text(session.user?.displayNickname ?? L10n.Settings.profilePlaceholder)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(
-                    session.user?.displayNickname == nil ? Theme.inkTertiary : Theme.ink
-                )
-                .accessibilityIdentifier("menu.profile.nickname")
-            Spacer()
+        Button {
+            openChildSheet { session.isProfileEditPresented = true }
+        } label: {
+            HStack(spacing: 14) {
+                Text(session.user?.emoji ?? "🙂")
+                    .font(.system(size: 28))
+                    .frame(width: 52, height: 52)
+                    .background(Circle().fill(Theme.background))
+                    .accessibilityIdentifier("menu.profile.emoji")
+                Text(session.user?.displayNickname ?? L10n.Settings.profilePlaceholder)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(
+                        session.user?.displayNickname == nil ? Theme.inkTertiary : Theme.ink
+                    )
+                    .accessibilityIdentifier("menu.profile.nickname")
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .cardBackground(cornerRadius: 18)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardBackground(cornerRadius: 18)
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("menu.profile.edit")
     }
 
     private var menuList: some View {

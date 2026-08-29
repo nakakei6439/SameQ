@@ -244,9 +244,12 @@ protocol Backend: Sendable, TranslationAttemptPersisting {
     ///（`announcements` テーブルは insert/update/delete の RLS ポリシーを持たない。
     /// 管理者が直接 SQL / Supabase dashboard から投入する運用。アプリ内投稿・編集
     /// UI は作らない、`Prompt` の運用と同じ方針）。
-    /// - `LocalBackend`: 固定のサンプル配列を返す（オフライン開発用）。
-    /// - `SupabaseBackend`: `announcements` テーブルへ GET するだけ。
-    func announcements() async throws -> [Announcement]
+    ///
+    /// `locale`: `"ja"` か `"en"` のどちらかを渡す（`L10n.isJapanese` の判定と対応）。
+    /// この言語の行だけが返る（2026-08-29追記: 言語別配信）。
+    /// - `LocalBackend`: 固定のサンプル配列を返す（オフライン開発用、locale は無視）。
+    /// - `SupabaseBackend`: `announcements` テーブルへ `locale` で絞り込んで GET するだけ。
+    func announcements(locale: String) async throws -> [Announcement]
 }
 
 extension Backend {

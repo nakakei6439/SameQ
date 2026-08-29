@@ -182,6 +182,21 @@ struct RootView: View {
                 .fontDesign(.rounded)
                 .environment(session)
         }
+        // プロフィール編集（新機能）。ヘッダーのアバターとメニューのプロフィール行から
+        // 設定画面を経由せず直接開ける。中身は既存の `ProfileEditView`（設定画面と共用）。
+        .sheet(
+            isPresented: Binding(
+                get: { session.isProfileEditPresented },
+                set: { session.isProfileEditPresented = $0 }
+            )
+        ) {
+            ProfileEditView(
+                initialEmoji: session.user?.emoji ?? EmojiCatalog.all.first ?? "🙂",
+                initialNickname: session.user?.nickname ?? ""
+            )
+            .fontDesign(.rounded)
+            .environment(session)
+        }
     }
 
     private var loadingView: some View {

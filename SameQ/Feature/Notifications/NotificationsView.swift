@@ -23,7 +23,12 @@ struct NotificationsView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
+            // `ZStack` の既定の整列は `.center`。タブ＋空状態のように画面より
+            // 低い高さのコンテンツだと、そのまま垂直方向にも中央寄せされてしまい、
+            // ナビゲーションバー直下に大きな空白ができた上でタブが画面中央付近に
+            // 表示される不具合があった（2026-08-29修正）。`.top` に固定して
+            // タブバーを常にナビゲーションバー直下に置く。
+            ZStack(alignment: .top) {
                 Theme.canvas
                 VStack(spacing: 0) {
                     tabBar

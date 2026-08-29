@@ -132,8 +132,11 @@ final class SprintTwelveAcceptanceTests: XCTestCase {
         // （実機からの Supabase 往復は遅いことがあるため、attempt 9 の 15 秒では
         // ネットワーク状況次第で取りこぼす可能性があった）。
         let todayIdentifier = "today.identity"
+        // 2026-08-29: アバターがタップでプロフィール編集を開くボタンになったため
+        // button としても探す（既存の staticTexts/otherElements フォールバックは維持）。
         let openedToday = app.staticTexts[todayIdentifier].waitForExistence(timeout: 30)
             || app.otherElements[todayIdentifier].waitForExistence(timeout: 1)
+            || app.buttons[todayIdentifier].waitForExistence(timeout: 1)
 
         // 失敗アラートが出ていないこと。
         let failureAlertShown = app.staticTexts["うまくいきませんでした"].exists

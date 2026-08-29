@@ -46,14 +46,22 @@ struct AppHeaderBar: View {
             NotificationsEntryButton()
             PlusEntryButton()
 
-            Text(session.user?.emoji ?? "🙂")
-                .font(.system(size: 22))
-                .frame(width: 36, height: 36)
-                .background {
-                    Circle().fill(Theme.headerForeground.opacity(0.94))
-                }
-                .accessibilityIdentifier(identityIdentifier)
-                .accessibilityLabel(Text(session.user?.displayNickname ?? ""))
+            // アバターをタップするとプロフィール編集が直接開く（2026-08-29追記）。
+            // 以前は単なる `Text`（タップ不可）だったため、要素の種類が
+            // staticText → button に変わる。既存 UI テスト側もこれに合わせて更新済み。
+            Button {
+                session.isProfileEditPresented = true
+            } label: {
+                Text(session.user?.emoji ?? "🙂")
+                    .font(.system(size: 22))
+                    .frame(width: 36, height: 36)
+                    .background {
+                        Circle().fill(Theme.headerForeground.opacity(0.94))
+                    }
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(identityIdentifier)
+            .accessibilityLabel(Text(session.user?.displayNickname ?? ""))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
