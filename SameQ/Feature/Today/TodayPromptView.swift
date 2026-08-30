@@ -240,6 +240,23 @@ struct TodayPromptView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .cardBackground()
 
+            // 2026-08-30 TestFlight フィードバック ③ の対応:
+            // 「お題が違う / 書けない」というコメントへの UX 救済。
+            // 仕様（F04 / F17）で「1つのお題に 1 回まで」なので composer は
+            // 出ないが、そのままだと「書き直せない / 別のお題？」と誤解されるため、
+            // 「次のお題は新しい一日に届く」ことを明示する。
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.inkTertiary)
+                Text(L10n.Today.answeredHint)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.inkTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 4)
+            .accessibilityIdentifier("today.answeredHint")
+
             // モデル未ダウンロードの言語をダウンロードしている間は「準備中…」にして
             // 連打を防ぐ（受け入れ条件4・attempt 5）。1件もダウンロードが要らなければ
             // 一瞬も表示されず、いつもどおりすぐタイムラインが開く。
