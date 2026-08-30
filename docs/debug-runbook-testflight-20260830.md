@@ -178,6 +178,74 @@ Web UI（App Store Connect → SameQ → TestFlight → フィードバック）
 | `SameQ/Feature/Today/TodayPromptView.swift` | UI 追加 | `answeredSection` 末尾に `answeredHint` カードを追加 |
 | `SameQ/L10n.swift` | 文言追加 | `L10n.Today.answeredHint`（日英） |
 | `SameQTests/NotificationSchedulingTests.swift` | テスト追加 | ギャップ回避ロジックの 4 ケース |
+| `supabase/migrations/20260830000014_*.sql` | **真の根本原因** | `ensure_todays_prompt()` が `prompts_no_overlap` 制約違反で INSERT 失敗していたバグを修正 |
+
+## 🚨 真の根本原因（実機 / フィードバック ① 共通）
+
+**2026-08-30 19:27 JST の実機検証で発覚。** 上記の Swift 修正（通知発火タイミング）
+は**対症療法に過ぎず、本当の根本原因は DB 側**でした。
+
+### 症状
+- 19:27 JST（Day 30 プロンプトの active 期間内）でも「いまはお題がありません」固定
+- `promptState()` の自己修復 RPC `ensure_todays_prompt()` が silent に失敗
+
+### 直接の原因
+- マイグレーション 02（`20260817000002_prompt_lifecycle.sql`）で
+  ```sql
+  alter table public.prompts add constraint prompts_no_overlap
+      exclude using gist (tstzrange(starts_at, ends_at, '[)') with &&);
+  ```
+  が追加されている
+- 一方 `Prompt.defaultDuration` は 28 時間、`startOfDay` は UTC 00:00
+- 結果、Day 29 [08-29 00:00, 08-30 04:00) と Day 30 [08-30 00:00, 08-31 04:00) は
+  必ず **4 時間 overlap** する
+- マイグレーション 13（`20260829000013_ensure_todays_prompt.sql`）の
+  `ensure_todays_prompt()` はこの overlap を考慮しておらず、
+  `INSERT ... on conflict (id) do nothing` で必ず
+  ```
+  23P01 conflicting key value violates exclusion constraint "prompts_no_overlap"
+  ```
+  で失敗する
+- Swift 側 `try?` で握り潰されるので、ユーザーは「waiting 固定」しか見ない
+
+### 修正
+- マイグレーション 14（`20260830000014_fix_ensure_todays_prompt_overlap.sql`）
+- `ensure_todays_prompt()` 内で INSERT 直前に
+  ```sql
+  update public.prompts
+  set ends_at = v_starts_at
+  where ends_at > v_starts_at
+    and starts_at < v_starts_at;
+  ```
+  で「直前プロンプトの `ends_at` を新プロンプトの `starts_at` に切り詰める」
+  前処理を追加
+- 28h 有効の意図は維持（切り詰めは最大 4h のみ）
+- 制約も生かす（整合性チェックは有用なので）
+
+### 検証手順
+```sql
+-- 関数単体の動作確認
+select public.ensure_todays_prompt();
+-- 結果
+select id, text, starts_at, ends_at,
+       (now() >= starts_at and now() < ends_at) as is_active
+  from public.prompts
+ order by starts_at desc limit 5;
+-- → prompt_20260830 が is_active=true で出れば OK
+-- → 古い prompt_20260829 は ends_at が trunc されて 24h になっている
+```
+
+### アプリ側の確認
+- 既に DB が直っているので、アプリを**再起動 or 1 秒待って refresh()** すれば
+  新しいプロンプトが画面に出る
+- 実機で確認した 19:27 JST のスクショは、関数実行前は「waiting」、
+  関数実行後は「もし一日だけ、どこか知らない街を歩けるとしたら何を持って歩きますか？」
+  が表示された
+
+### 同根で直るもの
+- フィードバック ①: 通知タップ後にお題が出ない
+  （自己修復 RPC が毎回失敗していたため、`prompts` が恒久的に空だった）
+- 毎日 0:00 UTC を跨いだ瞬間に今後必ず起きていた**潜在バグ**
 
 ## 検証手順（CI / ローカル共通）
 
