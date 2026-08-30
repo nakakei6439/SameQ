@@ -25,6 +25,10 @@ settings:
     # ファイルシステム全体へアクセスできるよう、ユーザースクリプトサンドボックスを無効化。
     # サンドボックスを活かすと `Operation not permitted` で生成が失敗する。
     ENABLE_USER_SCRIPT_SANDBOXING: NO
+    # 2026-08-30: CFBundleDevelopmentRegion を固定で ja にする。
+    # (前は $(DEVELOPMENT_LANGUAGE) で xcodegen デフォルトの "en" が
+    # 入っていたため、日本向けアプリにもかかわらず開発言語が en 扱いだった)
+    DEVELOPMENT_LANGUAGE: ja
 
 targets:
   SameQ:
@@ -40,13 +44,22 @@ targets:
       path: SameQ/Info.plist
       properties:
         CFBundleDisplayName: SameQ
-        CFBundleShortVersionString: "1.0"
-        CFBundleVersion: "1"
+        CFBundleShortVersionString: "1.0.2"
+        CFBundleVersion: "3"
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIUserInterfaceStyle: Light
         ITSAppUsesNonExemptEncryption: false
+        # 2026-08-30: TestFlight の "What to Test" ダイアログに
+        # 日本語 / English の両タブを出すため、対応言語を宣言する。
+        # アプリ本体の i18n は SameQ/L10n.swift の `useEnglish` で
+        # ランタイム切替しているため、.strings / .xcstrings ファイルは
+        # 不要（xcodegen / Xcode の Localizations 設定も最小）。
+        # 第1引数を ja にすると CFBundleDevelopmentRegion とも整合。
+        CFBundleLocalizations:
+          - ja
+          - en
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nakakei6439.SameQ
