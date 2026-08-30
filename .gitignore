@@ -70,3 +70,8 @@ supabase/.temp
 #
 .product/autoloop-logs/
 .product/autoloop.lock
+
+# 一時作業用ディレクトリ（handoff doc や SQL スクリプトの一時置き場）
+# `.tmp/` 配下は Git 管理外。明示的にトラッキングしたいファイルは
+# `docs/` や `.product/` など別ディレクトリに移動してから add する。
+.tmp/
