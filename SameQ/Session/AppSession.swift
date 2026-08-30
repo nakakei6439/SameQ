@@ -182,6 +182,19 @@ final class AppSession {
     /// `deleteAccount()` などの明示的な状態リセットでも false に戻す。
     private var hasShownReceivedLikesRpcNotFoundAlert = false
 
+    /// 2026-08-30 TestFlight フィードバック ② の修正:
+    /// `ensureFreshSession()` を最後に呼んだ `clock.now`。access_token の有効期限
+    /// （Supabase 既定 1 時間）に対して、余裕を持って 50 分ごとに再取得する。
+    /// 1 秒ごとの `refresh()` から参照され、起動時（`start()`）に 1 回、
+    /// その後は 50 分経過ごとに 1 回だけ更新される。
+    /// `@Observable` の追跡対象にする必要がない内部状態。
+    @ObservationIgnored
+    private var lastSessionRefreshAt: Date?
+
+    /// `lastSessionRefreshAt` の閾値。1 時間のトークン寿命に対して 10 分の余裕を
+    /// とって 50 分にしておく（残り 10 分で切れた場合の再試行猶予）。
+    private static let sessionRefreshInterval: TimeInterval = 50 * 60
+
     var isSubmitting = false
     /// `submit()` が投稿完了後に裏で起動した `openTimeline()` の `Task`（attempt 6）。
     /// `@Observable` の追跡対象にする必要が無い内部実装詳細。
@@ -295,6 +308,11 @@ final class AppSession {
         // 「もう一度試す」を押しても同じ古いトークンで再試行するだけで復帰できなかった
         // （実機で観測。`ensureFreshSession()` のコメント参照）。
         await backend.ensureFreshSession()
+        // 2026-08-30 TestFlight フィードバック ② の修正: 起動時のリフレッシュを
+        // 起点として `lastSessionRefreshAt` を更新する。`refresh()` の 50 分ガードが
+        // ここから測ってくれるので、起動直後の 50 分間は余計な refresh_token 呼び出し
+        // が発生しない。
+        lastSessionRefreshAt = clock.now
         // BAN状態のアカウントは、今日のお題にもタイムラインにも入れない（F16）。
         // 運営がサーバー側でBANを切り替える運用のため、アプリ内に解除UIは無い。
         // スプリント13:
@@ -488,6 +506,16 @@ final class AppSession {
     /// オンボーディング完了や、画面の前面復帰・お題切替のたびに呼ぶ。
     /// 許可されているときだけ次の通知を予約する。拒否状態のときは何もしない
     /// （F25「通知を拒否した場合もアプリは通常どおり利用でき」）。
+    ///
+    /// ## 2026-08-30 TestFlight フィードバック ① の修正
+    /// お題の有効期間は 28 時間・UTC 00:00 始まり（JST 09:00 始まり）なので、
+    /// **前日のお題の `endsAt` から翌日のお題の `startsAt` のあいだは 4 時間の
+    /// 「お題不在ギャップ」がある**（前 04:00 JST 〜 後 09:00 JST ではない —
+    /// 正しくは 28h 有効で 4h ずれるため、お題が active でない区間が必ず存在する）。
+    /// 通知が 8:00 JST などの早い時刻に発火すると、ユーザーは
+    /// 「新しいお題が届きました」をタップして「お題がありません」画面に着地してしまう。
+    /// `earliestFireDate` に「現在プロンプトの `endsAt` から 4 時間後（＝次プロンプトの
+    /// `startsAt` 相当）」+ 30 分の安全マージンを渡して、その手前に発火しないようにする。
     func scheduleDailyReminderIfPossible() async {
         guard let scheduler = notificationScheduler else { return }
         let status: NotificationAuthorizationStatus
@@ -501,11 +529,20 @@ final class AppSession {
             return
         }
         let options = LaunchOptions.current
+        // 現在プロンプトが active な間は、その `endsAt` から 4 時間後を「次の
+        // プロンプトの開始予定」とみなして、それを下限にする。
+        // 28h 有効・24h 周期なので、`endsAt` の 4h 後は次のプロンプトの
+        // `startsAt` と同じ瞬間。+ 30 分のマージンで次のお題の反映と
+        // 自己修復 RPC（`ensure_todays_prompt`）の完了を待つ。
+        let earliestFireDate: Date? = promptState.prompt.map { p in
+            p.endsAt.addingTimeInterval(4 * 60 * 60 + 30 * 60)
+        }
         let fireDate = await scheduler.scheduleNextRandomNotification(
             now: clock.now,
             timeZone: .current,
             forceDenied: options.notificationForceDenied,
-            forcedHour: options.notificationForcedHour
+            forcedHour: options.notificationForcedHour,
+            earliestFireDate: earliestFireDate
         )
         nextScheduledNotificationAt = fireDate
     }
@@ -537,6 +574,21 @@ final class AppSession {
             return
         case .waiting, .today:
             break
+        }
+        // 2026-08-30 TestFlight フィードバック ② の修正:
+        // Supabase の access_token は既定 1 時間で失効する。1 秒ごとの `refresh()`
+        // は無条件に認証付き API を叩き続けるので、放置すると起動 1 時間後あたりから
+        // 401 で「セッションが切れました」アラートが連発する（実機観測）。
+        // `ensureFreshSession()` は冪等（リフレッシュ失敗時は何もしない）かつ 50 分間隔
+        // でしか走らないので、ここでは「最終リフレッシュから 50 分以上経過していたら
+        // 1 度だけ更新する」だけの軽量ガードを入れる。`start()` で 1 回目を必ず
+        // 通しているので、起動直後の 50 分間は追加呼び出しは発生しない。
+        if let last = lastSessionRefreshAt,
+           now.timeIntervalSince(last) < Self.sessionRefreshInterval {
+            // 50 分以内 → なにもしない（API 呼び出しを増やさない）
+        } else {
+            await backend.ensureFreshSession()
+            lastSessionRefreshAt = now
         }
         // 受信いいね数を定期更新（F35・受け入れ条件3）。
         await refreshReceivedLikeCount()

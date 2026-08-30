@@ -54,7 +54,11 @@ final class AnnouncementTests: XCTestCase {
 
     func test03_localBackendAnnouncementsReturnsSample() async throws {
         let backend = LocalBackend()
-        let items = try await backend.announcements()
+        // 2026-08-30: 関数シグネチャ変更（`locale` 必須化）への追従。
+        // 旧 main では `backend.announcements()` の呼び出しが build error で
+        // テストターゲット全体を止めていた（コメントにある `00000000-...0001` の
+        // シードデータ仕様は維持）。
+        let items = try await backend.announcements(locale: "ja")
         XCTAssertFalse(items.isEmpty, "オフライン開発用に最低1件返す")
         XCTAssertEqual(items.first?.id.uuidString, "00000000-0000-0000-0000-000000000001")
         XCTAssertFalse(items.first?.title.isEmpty ?? true)

@@ -236,4 +236,123 @@ final class NotificationSchedulingTests: XCTestCase {
         XCTAssertNil(session.pendingDeepLinkTarget,
                       "消費後は nil に戻る")
     }
+
+    // MARK: 2026-08-30 TestFlight フィードバック ① の回帰テスト
+    //
+    // お題の不在ギャップ（28h 有効 × 24h 周期 = 前プロンプトの `endsAt` から
+    // 4 時間後 = 次プロンプトの `startsAt` 相当）に通知を発火させないため、
+    // `earliestFireDate` を渡したときに「同じ暦日内の 8:00 が選べなくなる」ことを
+    // 境界値で確認する。
+
+    /// `earliestFireDate` が今日の 8:00 をまたぐ場合、
+    /// 候補は翌日に送られ、時刻は翌日の (forcedHour, randomMinute) で組み立てられる。
+    /// TestFlight フィードバック ① の再現シナリオ:
+    ///  `now = 7:00 JST` でプロンプトの `endsAt = 4:00 JST 同日` → 次の `startsAt = 9:00 JST 同日`。
+    /// 通知が 8:00 JST に発火するとタップ直後が「お題がありません」になるので、
+    /// `earliestFireDate = 9:30 JST` を渡して当日 8:00 の候補を捨てさせる。
+    func testPickNextDate_defersToNextDayWhenEarliestFireDateSkipsToday() {
+        let cal = calendar(in: tokyo)
+        // 2026-08-30 07:00 JST
+        let now = cal.date(from: DateComponents(
+            year: 2026, month: 8, day: 30, hour: 7, minute: 0
+        ))!
+        // 次のプロンプトの `startsAt` (= 09:00 JST) + 30 分の安全マージン
+        let earliestFireDate = cal.date(from: DateComponents(
+            year: 2026, month: 8, day: 30, hour: 9, minute: 30
+        ))!
+        let fireDate = NotificationTimePicker.pickNextDate(
+            now: now,
+            calendar: cal,
+            timeZone: tokyo,
+            forcedHour: 8,
+            earliestFireDate: earliestFireDate,
+            randomMinute: { 0 }
+        )
+        let components = cal.dateComponents(
+            [.year, .month, .day, .hour, .minute], from: fireDate
+        )
+        XCTAssertEqual(components.year, 2026)
+        XCTAssertEqual(components.month, 8)
+        XCTAssertEqual(components.day, 31, "当日は `earliestFireDate` を超えるので翌日に送る")
+        XCTAssertEqual(components.hour, 8, "翌日の同じ時（forcedHour）で組み立てる")
+        XCTAssertEqual(components.minute, 0)
+    }
+
+    /// `earliestFireDate` が今日の 22:00 以前なら、強制的に翌日に送られる。
+    /// 「現在プロンプトの `endsAt` が 22:00 過ぎで、翌朝の通知を予約したい」ケース。
+    func testPickNextDate_earliestFireDateAfterWindowForcesTomorrow() {
+        let cal = calendar(in: tokyo)
+        // 2026-08-30 21:00 JST
+        let now = cal.date(from: DateComponents(
+            year: 2026, month: 8, day: 30, hour: 21, minute: 0
+        ))!
+        // 「翌 8:00 以降まで発火しない」マージン
+        let earliestFireDate = cal.date(from: DateComponents(
+            year: 2026, month: 8, day: 31, hour: 0, minute: 0
+        ))!
+        let fireDate = NotificationTimePicker.pickNextDate(
+            now: now,
+            calendar: cal,
+            timeZone: tokyo,
+            forcedHour: 8,
+            earliestFireDate: earliestFireDate,
+            randomMinute: { 30 }
+        )
+        let components = cal.dateComponents(
+            [.year, .month, .day, .hour, .minute], from: fireDate
+        )
+        XCTAssertEqual(components.day, 31)
+        XCTAssertEqual(components.hour, 8)
+        XCTAssertEqual(components.minute, 30)
+    }
+
+    /// `earliestFireDate` が `now` と同時刻なら、floor として「同じ暦日」が組み立てられる。
+    /// 既存テストの「23:30 JST → 翌 8:00 JST」と同じく、floor 以降の最小候補を返す。
+    /// ランダム分を 8:15 に固定して境界を締める。
+    func testPickNextDate_earliestFireDateSameAsNowUsesFloor() {
+        let cal = calendar(in: tokyo)
+        // 2026-08-30 23:30 JST
+        let now = cal.date(from: DateComponents(
+            year: 2026, month: 8, day: 30, hour: 23, minute: 30
+        ))!
+        let fireDate = NotificationTimePicker.pickNextDate(
+            now: now,
+            calendar: cal,
+            timeZone: tokyo,
+            forcedHour: 8,
+            earliestFireDate: now, // 同じ = `nil` を渡したときと同じ結果
+            randomMinute: { 0 }
+        )
+        let components = cal.dateComponents(
+            [.year, .month, .day, .hour, .minute], from: fireDate
+        )
+        XCTAssertEqual(components.day, 31, "23:30 JST の翌日に送られる")
+        XCTAssertEqual(components.hour, 8)
+    }
+
+    /// `earliestFireDate` を渡さなくても既存テスト（`now = 8:00 JST`）の挙動は変わらない
+    /// （後方互換性: `nil` を渡したら `now` と同じ扱い）。
+    func testPickNextDate_earliestFireDateNilMatchesNowOnlyBehavior() {
+        let cal = calendar(in: tokyo)
+        let now = cal.date(from: DateComponents(
+            year: 2026, month: 6, day: 1, hour: 7, minute: 0
+        ))!
+        let without = NotificationTimePicker.pickNextDate(
+            now: now,
+            calendar: cal,
+            timeZone: tokyo,
+            forcedHour: 9,
+            randomMinute: { 0 }
+        )
+        let withSameAsNow = NotificationTimePicker.pickNextDate(
+            now: now,
+            calendar: cal,
+            timeZone: tokyo,
+            forcedHour: 9,
+            earliestFireDate: now,
+            randomMinute: { 0 }
+        )
+        XCTAssertEqual(without, withSameAsNow,
+                       "`earliestFireDate = nil` と `earliestFireDate = now` は同一結果")
+    }
 }

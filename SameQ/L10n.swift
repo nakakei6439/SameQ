@@ -202,6 +202,12 @@ enum L10n {
         static let oneAnswerPerPromptPlus: String = useEnglish
             ? "You can answer each prompt only once (Plus long-form)."
             : "1つのお題に答えられるのは1回だけです（Plus 長文対応）"
+        // 2026-08-30 TestFlight フィードバック ③ の対応: 回答済み画面に出す
+        // 「次の お題までお待ちください」案内。composer は出ないので、ここで
+        // 「お題が違うように見える」誤解を解くメッセージを置く。
+        static let answeredHint: String = useEnglish
+            ? "Your answer is locked in. The next prompt arrives in a new day."
+            : "あなたの回答は確定しました。次のお題は新しい一日に届きます。"
         static let yourAnswer: String = useEnglish ? "YOUR ANSWER" : "あなたの回答"
         static let openTimeline: String = useEnglish
             ? "Read the world's answers"

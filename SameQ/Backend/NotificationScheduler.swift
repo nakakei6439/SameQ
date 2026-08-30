@@ -21,13 +21,18 @@ protocol NotificationScheduling: Sendable {
     ///   `forceDeniedOverride` も同じ役割（許可状態も `.denied` として返す）。
     /// - Parameter forcedHour: Debug 用。`nil` 以外はその時（0〜23）で固定し、
     ///   分のランダム化はそのまま。境界値確認用。
+    /// - Parameter earliestFireDate: これ未満の時刻は選ばない。プロンプトの不在ギャップ
+    ///   （現在プロンプトの `endsAt` から次の `startsAt` までの空白時間帯）に発火しない
+    ///   ように、呼び出し側が「今のお題の終了 + 安全マージン」を渡す。`nil` のときは
+    ///   `now` を下限として扱う（=これまでの挙動）。
     /// - Returns: 実際に予約した時刻（範囲内であることを示す）。予約しなかったときは nil
     ///   （拒否されている・許可ダイアログがまだ・対象時間外の日付など）。
     func scheduleNextRandomNotification(
         now: Date,
         timeZone: TimeZone,
         forceDenied: Bool,
-        forcedHour: Int?
+        forcedHour: Int?,
+        earliestFireDate: Date?
     ) async -> Date?
 }
 
@@ -71,39 +76,50 @@ enum NotificationTimePicker {
     ///   - calendar: テストから `Calendar(identifier: .gregorian)` などを差し込みやすいよう公開。
     ///   - randomMinute: テストから固定の分を返せるようにする。
     ///   - forcedHour: 強制したい時（0〜23）。`nil` のときは 8〜21 のランダム。
+    ///   - earliestFireDate: これ未満の時刻は選ばない（翌日以降へ送る）。プロンプト
+    ///     不在ギャップなど「ここでは発火してはならない時刻」を呼び出し側から注入する。
+    ///     `nil` のときは `now` と同じ振る舞いになる。
     /// - Returns: `Date` または「翌日以降の 8:00」。失敗しない（必ず候補があるため）。
     static func pickNextDate(
         now: Date,
         calendar: Calendar,
         timeZone: TimeZone = .current,
         forcedHour: Int? = nil,
+        earliestFireDate: Date? = nil,
         randomMinute: RandomMinuteGenerator = { Int.random(in: 0...59) }
     ) -> Date {
         var calendar = calendar
         calendar.timeZone = timeZone
 
+        // 「これより前には発火しない」境界。`now` を下限として扱う。
+        let floor = earliestFireDate ?? now
+
         let hour = forcedHour ?? Int.random(in: earliestHour...(latestHour - 1))
         let minute = randomMinute()
-        // 今日の (hour, minute) を組み立てて、それが now より後なら今日を返す。
-        var components = calendar.dateComponents([.year, .month, .day], from: now)
+        // `floor` が属する暦日（timeZone 基準）の (hour, minute) を組み立てて、
+        // それが floor より後ならその日を返す。
+        var components = calendar.dateComponents([.year, .month, .day], from: floor)
         components.hour = hour
         components.minute = minute
         components.second = 0
-        let candidate = calendar.date(from: components) ?? now
-        if candidate > now {
+        let candidate = calendar.date(from: components) ?? floor
+        if candidate > floor {
             return candidate
         }
-        // 今日の候補が既に過ぎている → 翌日の同時刻へ。
+        // その日の候補が floor 以前 → 翌日の同時刻へ。
         // hour 自体をランダムで選んでいる場合、翌日も同じ時で構わない
         // （翌日の 8:00〜21:59 のランダムな (hour, minute) になる）。
-        let tomorrowComponents = calendar.dateComponents([.year, .month, .day], from: now.addingTimeInterval(86400))
+        let tomorrowComponents = calendar.dateComponents(
+            [.year, .month, .day],
+            from: floor.addingTimeInterval(86400)
+        )
         var tomorrowCandidateComponents = tomorrowComponents
         let tomorrowHour = forcedHour ?? Int.random(in: earliestHour...(latestHour - 1))
         let tomorrowMinute = randomMinute()
         tomorrowCandidateComponents.hour = tomorrowHour
         tomorrowCandidateComponents.minute = tomorrowMinute
         tomorrowCandidateComponents.second = 0
-        return calendar.date(from: tomorrowCandidateComponents) ?? now.addingTimeInterval(86400)
+        return calendar.date(from: tomorrowCandidateComponents) ?? floor.addingTimeInterval(86400)
     }
 }
 
@@ -145,7 +161,8 @@ final class LiveNotificationScheduler: NotificationScheduling, @unchecked Sendab
         now: Date,
         timeZone: TimeZone,
         forceDenied: Bool,
-        forcedHour: Int?
+        forcedHour: Int?,
+        earliestFireDate: Date?
     ) async -> Date? {
         // 拒否状態では予約しない（F25「通知を拒否した場合もアプリは通常どおり利用でき」）。
         // 設定画面で案内だけ出す。デバッグ用の `forceDenied` もここで弾く。
@@ -162,7 +179,8 @@ final class LiveNotificationScheduler: NotificationScheduling, @unchecked Sendab
             now: now,
             calendar: Calendar.current,
             timeZone: timeZone,
-            forcedHour: forcedHour
+            forcedHour: forcedHour,
+            earliestFireDate: earliestFireDate
         )
         await cancelAllPending()
         let content = UNMutableNotificationContent()
@@ -222,7 +240,8 @@ actor FakeNotificationScheduler: NotificationScheduling {
         now: Date,
         timeZone: TimeZone,
         forceDenied: Bool,
-        forcedHour: Int?
+        forcedHour: Int?,
+        earliestFireDate: Date?
     ) async -> Date? {
         scheduleCallCount += 1
         if forceDenied { return nil }
@@ -233,7 +252,8 @@ actor FakeNotificationScheduler: NotificationScheduling {
             now: now,
             calendar: Calendar.current,
             timeZone: timeZone,
-            forcedHour: forcedHour
+            forcedHour: forcedHour,
+            earliestFireDate: earliestFireDate
         )
         lastScheduledAt = fireDate
         scheduledDates.append(fireDate)
