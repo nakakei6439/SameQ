@@ -125,7 +125,7 @@ Paywall surface:
 | フィールド | 値 |
 |---|---|
 | App Store URL (when live) | `https://apps.apple.com/app/id6805425491` |
-| TestFlight build (during Shipaton) | `https://appstoreconnect.apple.com/apps/6805425491/testflight/builds` |
+| TestFlight build (during Shipaton) | `https://testflight.apple.com/join/xv7kJFRm` |
 | GitHub (private during Shipaton) | (Devpost 側で non-public OK か確認) |
 | Demo video (when ready) | YouTube unlisted or Devpost direct upload |
 
