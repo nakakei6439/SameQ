@@ -1,3 +1,26 @@
+- 2026-09-04: App Store 初回審査リジェクト（2.1a）対応（コーディネーター）。Apple が
+  `1.0 (1)` を Guideline 2.1(a) でリジェクト。理由はレビュー中のオンボーディング通知許可画面で
+  「セッションが切れました」（HTTP 401）が出て審査続行不能。調査（Explore ×3）の結論:
+  審査対象の `1.0 (1)` は `edb8f25`（tokenBox 反映漏れ修正・2026-08-27）の**前日 2026-08-26 に
+  アーカイブされた古いバイナリ**（版数を 1.0 に上げた `cb87531`・唯一の App Store 準備コミット
+  `3ee1837` がどちらも 8-26）。修正チェーン（`edb8f25` → `8ad321a` ensureFreshSession →
+  `59ffdd9` 50分ごと更新）は現行 HEAD に全て健在。**evaluator が新規インストールからの
+  オンボーディング完走を iPhone（iPhone 17 Pro Max / iOS 26.5）と iPad（iPad Air 11・iPhone 互換
+  モード）の両方・通知許可の許可/あとで両分岐で再確認、全ログ横断 4xx/5xx = 0**
+  （`.product/sprints/12-server-connection/eval-appstore-resubmit.md`）。**対応方針（ユーザー確定）**:
+  コード無変更で `CFBundleVersion` を 5→6 のみバンプ（内容は TestFlight 承認済み build 5 と同一）、
+  版数は 1.0.2 据え置き。README 更新・commit・push（`ebcbd98`、コーディネーターが直接 =
+  ドキュメント＋メタデータのみ）。運営お知らせは build 5 と機能差ゼロのため新規行を投入せず
+  （CLAUDE.md の「黙って省略しない」に従い明示）。`xcodebuild archive` → `-exportArchive`
+  （ExportOptions method=app-store-connect, ASC API キー `AuthKey_BR882VJ4P8.p8`）→
+  `xcrun altool --validate-app`（VERIFY SUCCEEDED）→ `--upload-app`（UPLOAD SUCCEEDED、
+  Delivery UUID `fab86ebf-a147-43a1-9386-ca95a6f5a7d5`）。**残り（ASC GUI 手作業）**:
+  build 6 の処理完了待ち → リジェクト済みバージョン `1.0` の版数を `1.0.2` に変更して build 6 を
+  選択・審査へ再提出 → Resolution Center に返信（下書き
+  `scratchpad/apple-reply.md`：原因＝既知バグ・審査対象ビルドの翌日修正済み・iPhone/iPad で
+  クリーンインストール完走確認・再審査依頼）。memory `testflight_stale_session_expired_bug.md` に
+  「『セッションが切れました』が出たら、まず提出/配信済みビルドが修正より古くないかを最優先で
+  疑う」を追記。
 - 2026-08-31: TestFlight外部テスト仕上げ（コーディネーター）。ローカルの`Info.plist`/`project.yml`が
   未コミットのまま`CFBundleVersion: 3→4`になっていた誤りを、実際にアップロード済みの最終ビルド
   `5`（Englishローカライゼーション込み・承認済み）に合わせて修正・commit・push（`e6ed1f9`、
