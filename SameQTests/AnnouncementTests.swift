@@ -64,4 +64,34 @@ final class AnnouncementTests: XCTestCase {
         XCTAssertFalse(items.first?.title.isEmpty ?? true)
         XCTAssertFalse(items.first?.body.isEmpty ?? true)
     }
+
+    /// 2026-09-04 adhoc: 英語 locale のときに英語版のお知らせが返ることを検証する。
+    /// 端末言語が英語のときにスクショ撮影で日本語が混ざらないようにするための対応。
+    func test04_localBackendAnnouncementsEnglishLocaleReturnsEnglishCopy() async throws {
+        let backend = LocalBackend()
+        let items = try await backend.announcements(locale: "en")
+        XCTAssertFalse(items.isEmpty, "英語 locale でも最低1件返す")
+        XCTAssertEqual(items.first?.title, "Welcome to SameQ")
+        XCTAssertEqual(
+            items.first?.body,
+            "Answer one question a day, at the same moment as someone else in the world."
+        )
+        XCTAssertEqual(items.first?.id.uuidString, "00000000-0000-0000-0000-000000000002")
+        // 日本語版 ID とは別物（言語ごとに別行として扱う）であることを確認。
+        XCTAssertNotEqual(
+            items.first?.id.uuidString,
+            "00000000-0000-0000-0000-000000000001",
+            "日本語版と同じ ID を返してはいけない"
+        )
+    }
+
+    /// 2026-09-04 adhoc: locale 未指定相当（"ja" 以外の未知コード）のときに
+    /// 既定の日本語版へフォールバックすることを検証する。
+    func test05_localBackendAnnouncementsUnknownLocaleFallsBackToJapanese() async throws {
+        let backend = LocalBackend()
+        let items = try await backend.announcements(locale: "fr")
+        XCTAssertFalse(items.isEmpty, "未知 locale でも日本語版のシードは返す")
+        XCTAssertEqual(items.first?.title, "SameQ へようこそ")
+        XCTAssertEqual(items.first?.id.uuidString, "00000000-0000-0000-0000-000000000001")
+    }
 }

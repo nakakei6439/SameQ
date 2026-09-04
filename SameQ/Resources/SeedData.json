@@ -3,6 +3,7 @@
     {
       "id": "prompt_001",
       "text": "今日、思わず笑ってしまったことは何ですか？",
+      "textEn": "What made you laugh out loud today?",
       "promptLanguage": "ja",
       "posts": [
         {

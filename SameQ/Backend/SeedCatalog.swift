@@ -19,6 +19,10 @@ enum SeedCatalog {
         struct SeedPrompt: Decodable {
             let id: String
             let text: String
+            /// 端末UI言語が日本語系でない（`L10n.isJapanese == false`）ときに表示する英語テキスト。
+            /// 英語版 App Store スクショなど、オフライン経路でも端末言語で出し分けたいときに使う
+            /// （2026-09-04 adhoc タスク）。無ければ従来の `text`（日本語）にフォールバック。
+            let textEn: String?
             let posts: [SeedPost]
             /// お題原文の言語（F22 の翻訳可否判定に使う内部情報）。無ければ日本語として扱う。
             let promptLanguage: String?
@@ -97,12 +101,30 @@ enum SeedCatalog {
         for (index, seedPrompt) in effectivePrompts.enumerated() {
             let startsAt = starts[index]
             let endsAt = startsAt.addingTimeInterval(Prompt.defaultDuration)
+            // 2026-09-04 adhoc: 端末UI言語が英語（`L10n.isJapanese == false`）かつ
+            // `textEn` が定義されている seed prompt は、英語テキストを優先する。
+            // シミュレータでは Apple Translation が全ペア未対応なので、翻訳経由では
+            // 英語化できない。`L10n.isJapanese` は起動時に1度だけ確定する（F38）。
+            let promptText: String = {
+                if !L10n.isJapanese, let en = seedPrompt.textEn, !en.isEmpty {
+                    return en
+                }
+                return seedPrompt.text
+            }()
+            // `textEn` を採用したときは Prompt.language も "en" に揃え、`promptLanguage`
+            // ベースの判定（F22: 翻訳可否）が端末表示言語と整合するようにする。
+            let promptLanguage: String = {
+                if !L10n.isJapanese, let en = seedPrompt.textEn, !en.isEmpty {
+                    return "en"
+                }
+                return seedPrompt.promptLanguage ?? "ja"
+            }()
             prompts.append(Prompt(
                 id: seedPrompt.id,
-                text: seedPrompt.text,
+                text: promptText,
                 startsAt: startsAt,
                 endsAt: endsAt,
-                language: seedPrompt.promptLanguage ?? "ja"
+                language: promptLanguage
             ))
 
             var promptPosts = seedPrompt.posts.map { seed in

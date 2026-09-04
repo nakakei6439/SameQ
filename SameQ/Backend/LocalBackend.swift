@@ -671,15 +671,30 @@ actor LocalBackend: Backend {
     // MARK: - 運営お知らせ（新機能）
 
     /// オフライン開発用の固定サンプル。管理者投入を模した最小限のダミーデータ。
-    /// `locale` は無視する（オフライン開発では言語の出し分けを検証しないため）。
+    /// 2026-09-04 adhoc: `locale` を見て ja / en それぞれの文言を返すようにした
+    /// （英語版 App Store スクショの撮影用。シミュレータでは Apple Translation が
+    /// 機能せず、起動引数 `-SameQUseLocalBackend` 経路の文言を端末言語で出し分ける
+    /// 必要がある）。Supabase 経路は既に `locale` で絞り込み済みのため変更不要。
     func announcements(locale: String) async throws -> [Announcement] {
-        [
-            Announcement(
-                id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
-                title: "SameQ へようこそ",
-                body: "毎日1つのお題に、世界のどこかの誰かと同時に答えます。",
-                publishedAt: clock.now
-            )
-        ]
+        switch locale {
+        case "en":
+            return [
+                Announcement(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
+                    title: "Welcome to SameQ",
+                    body: "Answer one question a day, at the same moment as someone else in the world.",
+                    publishedAt: clock.now
+                )
+            ]
+        default:
+            return [
+                Announcement(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+                    title: "SameQ へようこそ",
+                    body: "毎日1つのお題に、世界のどこかの誰かと同時に答えます。",
+                    publishedAt: clock.now
+                )
+            ]
+        }
     }
 }
