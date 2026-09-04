@@ -1,0 +1,111 @@
+appId: com.nakakei6439.SameQ
+name: SameQ full journey (onboarding -> answer -> 5 cuts + timeline)
+---
+- launchApp:
+    clearState: true
+    arguments:
+      "-SameQUseLocalBackend": true
+      "-SameQScenario": "expiring"
+      "-SameQExpirySeconds": 90000
+      "-SameQGapSeconds": 3600
+      "-SameQFakePlus": true
+      "-SameQFakePlusTrial": true
+# --- onboarding ---
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: "onboarding.next"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "onboarding.terms.agree"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "onboarding.next"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "onboarding.emoji.🧩"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "onboarding.next"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "onboarding.next"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "onboarding.notification.later"
+- waitForAnimationToEnd:
+    timeout: 3000
+# --- answer today's prompt ---
+- extendedWaitUntil:
+    visible:
+      id: "today.input"
+    timeout: 40000
+- tapOn:
+    id: "today.input"
+- inputText: "${ANSWER}"
+- runFlow:
+    when:
+      visible:
+        id: "today.doneEditing"
+    commands:
+      - tapOn:
+          id: "today.doneEditing"
+- tapOn:
+    id: "today.submit"
+- extendedWaitUntil:
+    visible:
+      id: "today.myAnswer"
+    timeout: 40000
+    optional: true
+# if the timeline sheet auto-opened after submit, close it back to Today
+- runFlow:
+    when:
+      visible:
+        id: "timeline.close"
+    commands:
+      - tapOn:
+          id: "timeline.close"
+- extendedWaitUntil:
+    visible:
+      id: "today.myAnswer"
+    timeout: 20000
+# 01 today (answered, CTA visible)
+- takeScreenshot: ${OUT_01}
+# 03 menu
+- tapOn:
+    id: "menu.open"
+- assertVisible:
+    id: "menu.root"
+- takeScreenshot: ${OUT_03}
+# 04 notifications (operator announcements)
+- tapOn:
+    id: "notifications.open"
+- assertVisible:
+    id: "notifications.root"
+- takeScreenshot: ${OUT_04}
+- tapOn:
+    id: "notifications.close"
+# 05 plus (Y480 / 1 month free)
+- tapOn:
+    id: "menu.open"
+- tapOn:
+    id: "plus.open"
+- assertVisible:
+    id: "plus.root"
+- takeScreenshot: ${OUT_05}
+- tapOn:
+    id: "plus.close"
+# 02 timeline (world answers)
+- tapOn:
+    id: "today.openTimeline"
+- extendedWaitUntil:
+    visible:
+      id: "timeline.close"
+    timeout: 40000
+- takeScreenshot: ${OUT_02}

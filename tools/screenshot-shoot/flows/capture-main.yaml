@@ -1,0 +1,37 @@
+appId: com.nakakei6439.SameQ
+name: SameQ 01-today / 03-menu / 04-notifications / 05-plus (unanswered state)
+---
+# 01 today
+- launchApp
+- assertVisible:
+    id: "header.appName"
+- takeScreenshot: ${OUT_01}
+
+# 03 menu
+- tapOn:
+    id: "menu.open"
+- assertVisible:
+    id: "menu.root"
+- takeScreenshot: ${OUT_03}
+
+# 04 notifications (Menu → 通知)
+- tapOn:
+    id: "notifications.open"
+- assertVisible:
+    id: "notifications.root"
+- takeScreenshot: ${OUT_04}
+- tapOn:
+    id: "notifications.close"
+
+# 05 plus (Menu → Plus)
+- tapOn:
+    id: "menu.open"
+- assertVisible:
+    id: "menu.root"
+- tapOn:
+    id: "plus.open"
+- assertVisible:
+    id: "plus.root"
+- takeScreenshot: ${OUT_05}
+- tapOn:
+    id: "plus.close"

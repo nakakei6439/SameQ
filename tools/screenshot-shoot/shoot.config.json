@@ -1,0 +1,87 @@
+{
+  "_readme": [
+    "ios-screenshot-shoot の SameQ 用プロジェクト設定。",
+    "デスクトップ ~/Desktop/SameQ-screenshots-2026-08-30/ に生キャプチャを書き出す。",
+    "合成（app-store-screenshots）は行わない。",
+    "5カット × 2言語 = 10枚。日本語を基準に確定してから英語版へ展開する。",
+    "driver は maestro。accessibilityIdentifier で要素タップするので macOS アクセシビリティ権限が要らない。",
+    "build.cmd は空（ビルド済みアプリを再利用）。"
+  ],
+
+  "name": "SameQ",
+  "root": "/Users/nakagawakeita/Products/iOSApp/SameQ",
+  "appDir": "",
+
+  "driver": "maestro",
+  "bundleId": "com.nakakei6439.SameQ",
+  "appGroup": "group.com.nakakei6439.SameQ",
+
+  "sourceLocale": "ja",
+  "localeStrategy": "device",
+
+  "locales": [
+    { "code": "ja", "appleLanguage": "ja", "appleLocale": "ja_JP", "asc": "ja", "i18n": "ja" },
+    { "code": "en", "appleLanguage": "en", "appleLocale": "en_US", "asc": "en-US", "i18n": "en" }
+  ],
+
+  "devices": [
+    {
+      "id": "iphone",
+      "deviceType": "iPhone 17 Pro",
+      "simName": "App-Shots-iPhone",
+      "size": [1206, 2622],
+      "studioPath": "apple/iphone"
+    }
+  ],
+  "simulator": { "runtime": "auto" },
+
+  "cuts": [
+    { "nn": "01", "id": "today", "desc": "今日のお題（ホーム）" },
+    { "nn": "02", "id": "timeline", "desc": "タイムライン（他人の回答スワイプ）" },
+    { "nn": "03", "id": "menu", "desc": "メニュー（ハンバーガー）" },
+    { "nn": "04", "id": "notifications", "desc": "通知 + 運営お知らせ" },
+    { "nn": "05", "id": "plus", "desc": "Plus サブスク" }
+  ],
+
+  "paths": {
+    "raw": "/Users/nakagawakeita/Desktop/SameQ-screenshots-2026-08-30/raw/{locale}",
+    "rawName": "{nn}-{id}.png",
+    "studio": "tools/app-store-screenshots",
+    "studioRaw": "public/screenshots/{studioPath}/{studioLocale}",
+    "studioName": "{nn}.png",
+    "final": "/Users/nakagawakeita/Desktop/SameQ-screenshots-2026-08-30/raw/{locale}",
+    "downloads": "~/Downloads",
+    "state": "tools/screenshot-shoot/shoot.state.json",
+    "logs": "tools/screenshot-shoot/logs"
+  },
+
+  "studio": { "port": 3000 },
+
+  "style": { "name": "", "notes": "", "appliedAt": "" },
+
+  "prefs": {
+    "app": { "didCompleteOnboarding": true }
+  },
+
+  "statusBar": { "time": "9:41" },
+  "bootSettleSeconds": 12,
+  "launchSettleSeconds": 10,
+
+  "build": {
+    "cmd": ""
+  },
+
+  "verify": {
+    "refDiffMin": 0.5,
+    "refDiffMax": 45.0,
+    "bandDiffMax": 18.0
+  },
+
+  "maestro": {
+    "captureFlow": "tools/screenshot-shoot/flows/capture.yaml",
+    "metroPort": "",
+    "env": {
+      "JAVA_HOME": "/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home"
+    }
+  }
+}

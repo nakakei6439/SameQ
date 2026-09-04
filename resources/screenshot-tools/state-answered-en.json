@@ -1,0 +1,32 @@
+{
+  "blockedAuthors" : [],
+  "discardedCandidatesCount" : 0,
+  "languageEncounters" : {},
+  "lastPostBody" : "I'd open the window and feel the morning light.",
+  "lastPrepareAttemptAt" : {},
+  "likedPostIDs" : [],
+  "myPosts" : [
+    {
+      "id" : "11111111-1111-1111-1111-111111111111",
+      "promptID" : "prompt_20260830",
+      "authorID" : "00000000-0000-0000-0000-000000000001",
+      "authorEmoji" : "🌱",
+      "authorNickname" : null,
+      "body" : "I'd open the window and feel the morning light.",
+      "bodyLanguage" : "en",
+      "createdAt" : "2026-08-30T08:00:00Z",
+      "expiresAt" : "2026-08-31T23:59:59Z",
+      "decorations" : []
+    }
+  ],
+  "reports" : [],
+  "schemaVersion" : 8,
+  "supabaseAuth" : null,
+  "user" : {
+    "createdAt" : "2026-08-30T07:00:00Z",
+    "emoji" : "🌱",
+    "id" : "00000000-0000-0000-0000-000000000001",
+    "nickname" : null
+  },
+  "viewedPostIDs" : []
+}

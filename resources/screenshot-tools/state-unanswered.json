@@ -1,0 +1,19 @@
+{
+  "blockedAuthors" : [],
+  "discardedCandidatesCount" : 0,
+  "languageEncounters" : {},
+  "lastPostBody" : null,
+  "lastPrepareAttemptAt" : {},
+  "likedPostIDs" : [],
+  "myPosts" : [],
+  "reports" : [],
+  "schemaVersion" : 8,
+  "supabaseAuth" : null,
+  "user" : {
+    "createdAt" : "2026-08-30T07:00:00Z",
+    "emoji" : "🌱",
+    "id" : "00000000-0000-0000-0000-000000000001",
+    "nickname" : null
+  },
+  "viewedPostIDs" : []
+}

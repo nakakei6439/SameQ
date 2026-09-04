@@ -1,0 +1,42 @@
+appId: com.nakakei6439.SameQ
+name: SameQ App Store screenshots (5 cuts)
+---
+# 01 today
+- launchApp
+- assertVisible:
+    id: "header.appName"
+- takeScreenshot: ${OUT_01}
+
+# 03 menu（先にメニューを撮ってから閉じる）
+- tapOn:
+    id: "menu.open"
+- assertVisible:
+    id: "menu.root"
+- takeScreenshot: ${OUT_03}
+
+# 04 notifications（Menu → 通知）
+- tapOn:
+    id: "notifications.open"
+- assertVisible:
+    id: "notifications.root"
+- takeScreenshot: ${OUT_04}
+# 通知画面を閉じる
+- tapOn:
+    id: "notifications.close"
+
+# 05 plus（Menu → Plus）
+- tapOn:
+    id: "menu.open"
+- tapOn:
+    id: "plus.open"
+- assertVisible:
+    id: "plus.root"
+- takeScreenshot: ${OUT_05}
+- tapOn:
+    id: "plus.close"
+
+# 02 timeline（メニューを閉じた後、お題画面の「世界共通の答えを見る」相当の遷移）
+# 回答済み状態なら openTimelineIfAnswered: true で自動 sheet が出る
+- assertVisible:
+    id: "header.appName"
+- takeScreenshot: ${OUT_02}

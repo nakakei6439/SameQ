@@ -70,6 +70,13 @@ supabase/.temp
 #
 .product/autoloop-logs/
 .product/autoloop.lock
+.product/adhoc-gen.log
+
+# スクショ撮影ツールの実行時生成物（ツール本体は tools/ 配下にコミットする）
+#
+tools/screenshot-shoot/logs/
+tools/screenshot-shoot/.udid-iphone
+tools/screenshot-shoot/shoot.state.json
 
 # 一時作業用ディレクトリ（handoff doc や SQL スクリプトの一時置き場）
 # `.tmp/` 配下は Git 管理外。明示的にトラッキングしたいファイルは

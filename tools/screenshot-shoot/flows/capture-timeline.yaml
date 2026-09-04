@@ -1,0 +1,11 @@
+appId: com.nakakei6439.SameQ
+name: SameQ 02-timeline (answered state, sheet auto-opens)
+---
+# answered state で起動すると applyPromptState(openTimelineIfAnswered: true) で
+# 自動的にタイムライン sheet が出る。シートが開いた状態でスクショ。
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "timeline.close"
+    timeout: 20000
+- takeScreenshot: ${OUT_02}

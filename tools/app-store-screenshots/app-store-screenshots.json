@@ -1,0 +1,238 @@
+{
+  "schemaVersion": 2,
+  "appName": "SameQ",
+  "themeId": "sameq-editorial",
+  "connectedCanvas": false,
+  "locales": [
+    "ja",
+    "en"
+  ],
+  "locale": "ja",
+  "device": "iphone",
+  "orientation": "portrait",
+  "appIcon": "/app-icon.png",
+  "slidesByDevice": {
+    "iphone": [
+      {
+        "id": "sq_01_today",
+        "layout": "device-bottom",
+        "label": {
+          "ja": "1日1問、世界共通",
+          "en": "ONE QUESTION A DAY"
+        },
+        "headline": {
+          "ja": "同じ問いに、\n答えるだけ。",
+          "en": "One question.\nThe whole world."
+        },
+        "screenshot": "/screenshots/apple/iphone/{locale}/01.png"
+      },
+      {
+        "id": "sq_02_timeline",
+        "layout": "device-bottom",
+        "label": {
+          "ja": "答えて、はじめて読める",
+          "en": "ANSWER FIRST"
+        },
+        "headline": {
+          "ja": "誰かの答えを、\n1件ずつ。",
+          "en": "A stranger's reply,\none at a time."
+        },
+        "screenshot": "/screenshots/apple/iphone/{locale}/02.png"
+      },
+      {
+        "id": "sq_03_notify",
+        "layout": "device-bottom",
+        "inverted": true,
+        "label": {
+          "ja": "通知は1日1回だけ",
+          "en": "ONCE A DAY"
+        },
+        "headline": {
+          "ja": "いつ届くかは、\nわからない。",
+          "en": "You never know\nwhen it comes."
+        },
+        "screenshot": "/screenshots/apple/iphone/{locale}/04.png"
+      },
+      {
+        "id": "sq_04_plus",
+        "layout": "device-bottom",
+        "label": {
+          "ja": "SameQ Plus",
+          "en": "SAMEQ PLUS"
+        },
+        "headline": {
+          "ja": "もっと長く、\nあなたらしく。",
+          "en": "Write longer.\nMore like you."
+        },
+        "screenshot": "/screenshots/apple/iphone/{locale}/05.png"
+      },
+      {
+        "id": "sq_05_anon",
+        "layout": "device-bottom",
+        "label": {
+          "ja": "フォローも検索もなし",
+          "en": "NO FOLLOWS. NO SEARCH."
+        },
+        "headline": {
+          "ja": "名前も履歴も、\n残らない。",
+          "en": "No name.\nNothing kept."
+        },
+        "screenshot": "/screenshots/apple/iphone/{locale}/03.png"
+      }
+    ],
+    "android": [
+      {
+        "id": "s_mtmf6heu_5",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Sell one\nidea per slide."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mtmf6heu_6",
+        "layout": "device-bottom",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "Your headline\nlives here."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mtmf6heu_7",
+        "layout": "two-devices",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "Show two\nscreens at once."
+        },
+        "screenshot": "",
+        "screenshotSecondary": ""
+      },
+      {
+        "id": "s_mtmf6heu_8",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 03"
+        },
+        "headline": {
+          "en": "Flip the contrast\nfor visual rhythm."
+        },
+        "screenshot": "",
+        "inverted": true
+      },
+      {
+        "id": "s_mtmf6heu_9",
+        "layout": "no-device",
+        "label": {
+          "en": "MORE"
+        },
+        "headline": {
+          "en": "And so\nmuch more."
+        },
+        "screenshot": ""
+      }
+    ],
+    "ipad": [
+      {
+        "id": "s_mtmf6heu_a",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Made for\nthe big screen."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mtmf6heu_b",
+        "layout": "device-bottom",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "Built for\nfocus."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mtmf6heu_c",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "Always within reach."
+        },
+        "screenshot": "",
+        "inverted": true
+      }
+    ],
+    "android-7": [
+      {
+        "id": "s_mtmf6heu_d",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Pocket-sized\npower."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mtmf6heu_e",
+        "layout": "split-landscape",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "Wide canvas,\nbigger ideas."
+        },
+        "screenshot": ""
+      }
+    ],
+    "android-10": [
+      {
+        "id": "s_mtmf6heu_f",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Made for\nthe big screen."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mtmf6heu_g",
+        "layout": "split-landscape",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "Wide canvas,\nbigger ideas."
+        },
+        "screenshot": ""
+      }
+    ],
+    "feature-graphic": [
+      {
+        "id": "s_mtmf6heu_h",
+        "layout": "feature-graphic",
+        "label": {},
+        "headline": {
+          "en": "Your tagline goes here."
+        },
+        "screenshot": ""
+      }
+    ]
+  }
+}
