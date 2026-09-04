@@ -1,3 +1,28 @@
+- 2026-09-04: App Store 用マーケティングスクショ 合成デッキ作成（コーディネーター、
+  `/app-store-screenshots` + `/ios-screenshot-shoot` スキル）。既存の App Store スクショが
+  端末素のUIキャプチャだったため、広告的な合成デッキを新規作成。
+  - **撮影**: 現ビルド（HEAD 相当）で ja / en 各5カット（today / timeline / menu /
+    notifications / plus）を撮り直し。`tools/screenshot-shoot/flows/capture-full.yaml`
+    （maestro、オンボーディング〜回答〜5カット一気通し）＋ 起動フラグ
+    `-SameQUseLocalBackend -SameQScenario expiring -SameQFakePlus -SameQFakePlusTrial`。
+    生キャプチャは `~/Desktop/SameQ-screenshots-2026-09-04/raw/{ja,en}/`。
+  - **シード英語化**（commit `8b51128`、generator=MiniMax-M3 → evaluator 検証済み）:
+    en 端末でも LocalBackend のお題文・お知らせが日本語固定だった問題を修正。
+    `SeedData.json` prompt_001 に `textEn`、`SeedCatalog` が `!L10n.isJapanese` で英語採用、
+    `LocalBackend.announcements(locale:)` が `en` で "Welcome to SameQ"。ユニット 230/230。
+  - **合成エディタ**: `tools/app-store-screenshots/`（Next.js、`/app-store-screenshots`
+    スキルの template）。テーマ `sameq-editorial`（クリーム地 `#F4EBDD` ＋グリーン
+    `#3F7D57`、`src/lib/constants.ts` に追加）、5スライド device-bottom、見出し日英2行。
+    `EXPORT_SIZES.iphone` は 6.9"（1320×2868）のみに絞ってある（書き出し高速化。ASC は
+    この1サイズで全 iPhone 枠に適用可）。**このディレクトリは未コミット**（`node_modules`
+    含む・約22MB。デッキ確定後にコミット判断）。
+  - **書き出し済み**: `~/Downloads/sameq-ios-iphone-20260904-1921.zip`
+    （`ios/iphone/1320x2868/{ja,en}/01〜05-device-bottom.png`、計10枚）。
+  - **⚠️ 申し送り（重要）**: この合成スクショは **build 6 が App Store 承認されるまで
+    アップロードしない**。審査待ち／審査中はスクショが編集ロックされ、差し替えるには
+    審査を取り下げ→再提出（順番待ちやり直し）になるため。build 6 承認後に、ライブ版の
+    スクショをこの zip の中身で差し替える（メタデータのみ更新・バイナリ再提出不要）。
+    現状 attach 済みの素キャプチャは審査を通る品質なので急がない。
 - 2026-09-04: App Store 初回審査リジェクト（2.1a）対応（コーディネーター）。Apple が
   `1.0 (1)` を Guideline 2.1(a) でリジェクト。理由はレビュー中のオンボーディング通知許可画面で
   「セッションが切れました」（HTTP 401）が出て審査続行不能。調査（Explore ×3）の結論:
