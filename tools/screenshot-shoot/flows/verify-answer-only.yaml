@@ -1,0 +1,31 @@
+appId: com.nakakei6439.SameQ
+name: answer + open timeline (app already past onboarding)
+---
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "today.input"
+- waitForAnimationToEnd:
+    timeout: 1500
+- inputText: "autumn osmanthus scent"
+- waitForAnimationToEnd:
+    timeout: 1500
+- runFlow:
+    when:
+      visible:
+        id: "today.doneEditing"
+    commands:
+      - tapOn:
+          id: "today.doneEditing"
+- tapOn:
+    id: "today.submit"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: /tmp/va-01-after-submit
+- runFlow:
+    when:
+      visible:
+        id: "timeline.close"
+    commands:
+      - takeScreenshot: /tmp/va-02-timeline-auto

@@ -71,6 +71,8 @@ supabase/.temp
 .product/autoloop-logs/
 .product/autoloop.lock
 .product/adhoc-gen.log
+.product/adhoc-*-gen.log
+.product/adhoc-*-gen2.log
 
 # スクショ撮影ツールの実行時生成物（ツール本体は tools/ 配下にコミットする）
 #

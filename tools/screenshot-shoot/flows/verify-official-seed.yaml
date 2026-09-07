@@ -1,0 +1,114 @@
+appId: com.nakakei6439.SameQ
+name: verify official seed answers (production backend, fresh account)
+---
+- launchApp:
+    clearState: true
+    arguments:
+      "-SameQResetState": true
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: "onboarding.next"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "onboarding.terms.agree"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "onboarding.next"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "onboarding.emoji.🐢"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "onboarding.next"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "onboarding.next"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "onboarding.notification.later"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible:
+      id: "today.input"
+    timeout: 60000
+- tapOn:
+    id: "today.input"
+- waitForAnimationToEnd:
+    timeout: 1500
+- inputText: "fresh bread from the bakery this morning"
+- waitForAnimationToEnd:
+    timeout: 1500
+- runFlow:
+    when:
+      visible:
+        id: "today.doneEditing"
+    commands:
+      - tapOn:
+          id: "today.doneEditing"
+- tapOn:
+    id: "today.submit"
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: /tmp/vo-01
+- runFlow:
+    when:
+      visible:
+        id: "timeline.close"
+    commands:
+      - tapOn:
+          id: "timeline.close"
+- waitForAnimationToEnd:
+    timeout: 1500
+- runFlow:
+    when:
+      visible:
+        id: "today.openTimeline"
+    commands:
+      - tapOn:
+          id: "today.openTimeline"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: /tmp/vo-02
+- swipe:
+    start: "50%,45%"
+    end: "8%,45%"
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: /tmp/vo-03
+- swipe:
+    start: "50%,45%"
+    end: "8%,45%"
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: /tmp/vo-04
+- swipe:
+    start: "50%,45%"
+    end: "8%,45%"
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: /tmp/vo-05
+- swipe:
+    start: "50%,45%"
+    end: "8%,45%"
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: /tmp/vo-06
+- swipe:
+    start: "50%,45%"
+    end: "8%,45%"
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: /tmp/vo-07

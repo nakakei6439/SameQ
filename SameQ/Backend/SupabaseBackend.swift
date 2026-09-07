@@ -325,6 +325,14 @@ actor SupabaseBackend: Backend {
             try? await client.rpcVoid(function: "ensure_todays_prompt")
             row = try? await fetchActiveRow()
         }
+        // タイムラインに恒久的な「運営回答」を補充する（2026-09-05: Apple App Review
+        // 2 度目のリジェクト Guideline 2.1(a) 対応）。`ensure_todays_prompt()` と同じく
+        // 冪等で、失敗しても本来の機能（お題取得）をブロックしない。お題が確定した
+        // 直後に呼ぶことで、今日のお題に紐付く 5 件の運営投稿を `world_timeline`
+        // に並べる（お題未確定のときは `posts_set_expiry` トリガーが "unknown prompt"
+        // 例外を投げるが、SupabaseClient.rpcVoid がそれを外側へ伝播するため、
+        // ここでは `try?` で握り潰す）。
+        try? await client.rpcVoid(function: "ensure_official_answers")
         guard let row else {
             // 次のお題の開始時刻を探して返す（あれば）
             let nextRows: [PromptRow] = try await client.get(
@@ -463,14 +471,20 @@ actor SupabaseBackend: Backend {
 
     func timelinePosts(promptID: String) async throws -> [Post] {
         try checkConnectivity()
-        // `world_timeline` ビューの実スキーマには `body_language` / `decorations`
-        // カラムが無い（init migration のビュー定義のまま。後続の
-        // 20260819000004_server_connection.sql は未適用）。装飾は欠落扱い、
-        // 言語は翻訳フォールバック用にクライアント側の `body_language` で
-        // 補完する（既定値 "und"）。F35 の受け入れ条件には影響しない。
+        // `world_timeline` ビューは migration 20260819000004_server_connection.sql で
+        // `body_language` / `created_at` / `expires_at` / `decorations` 列を返す形に
+        // 拡張済み（2026-09-07 確認: `information_schema.columns` に10列揃っている）。
+        // `body_language` を SELECT することで、端末言語と同じ投稿は
+        // `AppSession.drawNextPost` → `Translator.translate` 冒頭のショートカット
+        // （`sourceCode == targetLanguageCode` で `.text(text)` 即返し）で翻訳を
+        // スキップできる。これを取らず `body_language` を欠落させると `toPost()`
+        // 側の `?? "und"` で全投稿が "und" になり、シミュレータや翻訳モデル未DL
+        // 端末で Apple 翻訳が恒久 `.unavailable` を返して全投稿が読み飛ばされ、
+        // タイムライン UI が `.exhausted` に張り付く（= 他人の回答が見えない）。
+        // `decorations` は実機で装飾を復元するために必要。
         let rows: [PostRow] = try await client.get(
             table: "world_timeline",
-            select: "id,prompt_id,author_id,author_emoji,author_nickname,body,created_at,expires_at",
+            select: "id,prompt_id,author_id,author_emoji,author_nickname,body,body_language,created_at,expires_at,decorations",
             filters: ["prompt_id": "eq.\(promptID)"]
         )
         return rows.map { $0.toPost() }
@@ -951,8 +965,13 @@ actor SupabaseBackend: Backend {
 private struct Empty: Encodable {}
 
 /// Supabase が返す `posts` / `world_timeline` 行。
-/// `world_timeline` ビューは `body_language` / `decorations` を出さないため、
-/// `toPost()` 側で欠落値を補完する。
+/// `world_timeline` ビューは migration 20260819000004_server_connection.sql で
+/// `body_language` / `decorations` を含む全列を返す。SELECT を取りこぼすと
+/// `toPost()` 側の `?? "und"` / `?? []` がフォールバックして、翻訳の言語
+/// ショートカットを効かなくなる（シミュレータで他人の回答が全部スキップされる）。
+/// `posts` テーブルは実スキーマに `author_emoji` / `author_nickname` /
+/// `decorations` を持たない（init migration）ので、それらを要求する経路は
+/// 別途 `state.user` から補完する（`myPost` / `submitPost` 参照）。
 private struct PostRow: Decodable {
     let id: UUID
     let prompt_id: String
