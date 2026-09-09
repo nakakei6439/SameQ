@@ -1,3 +1,42 @@
+- 2026-09-09/10: App Store 3度目リジェクト対応 = スプリント20（コーディネーターが直接実装）。
+  Apple が `1.0.2 (7)` を **Guideline 1.2（ユーザー生成コンテンツ）と 3.1.2（サブスクリプション）**
+  の2件でリジェクト（Submission ID `8e7b3e06-9aa8-4eee-adc9-3756a7f69468`）。1.2 は匿名投稿がある
+  アプリ向けの定型8項目で "all of the following" と明記されているため、8項目すべてを1ビルドで揃えた。
+  **ユーザー指示によりハーネス（generator/evaluator）は使わず、コーディネーターが直接実装**。
+  **実装（F48-F54 / spec.md 前提1・19 を改訂、前提37-43 を新設）**: 禁止語フィルタ（本文＋ニックネーム、
+  日本語は部分一致・英語は語境界一致、端末側とサーバー側の二重）／自分の回答の削除（`status='removed'` の
+  論理削除。削除後は同じお題に再回答不可）／通報3件（禁止語一致なら1件）で自動非表示・非表示3件で自動BAN
+  （運営名義は対象外）／設定とBAN画面のお問い合わせ／規約の日英化とゼロトレランス条項（第2条）／
+  規約同意の版つき記録と再同意／Plus 購入画面の規約リンク（3.1.2）。
+  **実装中に見つけて直した危険な穴3件**: (a) `updateProfile` が Post を作り直す際に `status` が落ちて
+  削除済みの回答が復活、(b) `pruneExpired` が「削除」を「期限切れ」と誤判定して通報記録を早期削除
+  （F34 の30日保持が壊れる）、(c) 運営回答の自動投入がフィルタで失敗すると当日のタイムラインが空になる
+  （2回目のリジェクト 2.1(a) の再発）→ 運営名義をフィルタ対象外に。
+  **RLS ではなく RPC を選んだ理由**: RLS の `with check` は「どの列を更新したか」を制限できないため、
+  `posts` に UPDATE を許すと同じ UPDATE で `body` を書き換えられる（＝通報された投稿者が本文を
+  差し替えて逃げられる）。`remove_my_post()` を `security definer` にして posts への直接 UPDATE は許さない。
+  **検証**: ユニット263件・スプリント20受け入れUI 8件すべて green。本番DBへ適用し、誤検知が無いこと
+  （`I passed the class and the analysis was fine.` / `Scunthorpe` が検出されない）を SQL で実証。
+  **スプリント19も同時に解決**: 未コミットで残っていたお題プール999件化を、`verify.py` で Swift↔SQL の
+  byte-exact 一致を確認のうえコミット。**migration の配列末尾に余分なカンマがあり適用できない状態だった**
+  （未適用のまま残っていたため誰も踏んでいなかった）のを修正して本番へ適用。
+  **リリース**: `1.0.2 (7)` → `1.0.3 (8)`（TestFlight に 1.0.2 (7) が配信済みで、同じ版数で中身が違うと
+  運営お知らせとずれるため版数ごと上げた）。README 更新 → commit（`c84482a` / `bae2a18`）→ push →
+  `announcements` に日英2行を投入 → `xcodebuild archive`（ARCHIVE SUCCEEDED）→ `-exportArchive`
+  （EXPORT SUCCEEDED）→ `altool --validate-app`（VERIFY SUCCEEDED）→ `--upload-app`
+  （**UPLOAD SUCCEEDED、Delivery UUID `78353976-7223-45a9-abfa-7a976b90ef5f`**）まで完了。
+  ASC API キーは `AuthKey_BR882VJ4P8.p8` / Issuer `4a7eba90-53ca-4945-ae45-78facdf6f085`。Web版規約（`nakakei6439.github.io`、commit `83f85a3`）も
+  アプリと同じ14条構成に日英で同期し、公開反映を実URLで確認済み。
+  **残り（ASC の GUI 手作業）**: 年齢レーティングを 18+ に／「App情報 → 使用許諾契約」にカスタム EULA を登録／
+  説明文（ja / en-US）に規約・プライバシーのリンクを追記（**API は `GET_COLLECTION` 不可で
+  ローカライズ ID を列挙できず自動化できない**）／**ASC 上のバージョン文字列を 1.0.2 → 1.0.3 に変更**
+  （しないと build 8 を選択できない）／App Review Notes の貼り付け（**通報・ブロックへのタップ手順を
+  必ず含める**。2回目のリジェクトはここに到達できなかったのが原因）／Resolution Center への返信。
+  文面とチェックリストは `docs/app-review-notes-1.2-ugc.md`、日次の通報対応手順は
+  `docs/moderation-runbook.md`。
+  **既知の未解決**: 既存UIテスト4件が失敗（3件はスプリント18のヘッダー改修＝前提22 に追随していない
+  古いアサーション、1件は本番サーバー依存のE2E）。今回の変更が原因ではないため範囲外として未修正。
+  スプリント19の evaluator 検証も未実施のまま。
 - 2026-09-04: App Store 用マーケティングスクショ 合成デッキ作成（コーディネーター、
   `/app-store-screenshots` + `/ios-screenshot-shoot` スキル）。既存の App Store スクショが
   端末素のUIキャプチャだったため、広告的な合成デッキを新規作成。
