@@ -128,6 +128,10 @@ actor LocalBackend: Backend {
     func createAnonymousUser(emoji: String, nickname: String?) async throws -> AppUser {
         if let existing = state.user { return existing }
         let trimmed = nickname?.trimmingCharacters(in: .whitespacesAndNewlines)
+        // ニックネームも他のユーザーに表示される投稿内容なので、本文と同じ辞書で見る（F48）。
+        if let trimmed, ContentFilter.containsProhibitedTerm(trimmed) {
+            throw BackendError.prohibitedNickname
+        }
         let user = AppUser(
             id: UUID(),
             emoji: emoji,
@@ -154,6 +158,10 @@ actor LocalBackend: Backend {
         guard !trimmedEmoji.isEmpty else { throw BackendError.emptyBody }
         let trimmedNickname = nickname?.trimmingCharacters(in: .whitespacesAndNewlines)
         let newNickname: String? = (trimmedNickname?.isEmpty ?? true) ? nil : trimmedNickname
+        // 初回設定だけでなく、あとからの変更でも同じ辞書で見る（F48）。
+        if let newNickname, ContentFilter.containsProhibitedTerm(newNickname) {
+            throw BackendError.prohibitedNickname
+        }
 
         var next = state
         let updated = AppUser(
@@ -178,7 +186,10 @@ actor LocalBackend: Backend {
                 bodyLanguage: post.bodyLanguage,
                 createdAt: post.createdAt,
                 expiresAt: post.expiresAt,
-                decorations: post.decorations
+                decorations: post.decorations,
+                // 状態を引き継がないと、プロフィールを変えただけで削除済みの回答が
+                // `.visible` に戻ってしまう（F49）。
+                status: post.status
             )
         }
         try store.save(next)
@@ -225,7 +236,10 @@ actor LocalBackend: Backend {
     func myPost(promptID: String) async throws -> Post? {
         let now = clock.now
         pruneExpired(at: now)
-        return state.myPosts.first { $0.promptID == promptID && $0.isVisible(at: now) }
+        // `isVisible(at:)` は `status == .visible` も見るので、ここでは使わない。
+        // 自分で削除した回答（`.removed`）も返さないと、呼び出し側が「未回答」と
+        // 取り違えて入力欄に戻してしまう（F49・置いた前提1）。
+        return state.myPosts.first { $0.promptID == promptID && now < $0.expiresAt }
     }
 
     @discardableResult
@@ -253,6 +267,12 @@ actor LocalBackend: Backend {
         guard !PostValidator.isMeaninglessRepetition(trimmed) else {
             throw BackendError.meaninglessBody
         }
+        // 禁止表現（F48）。どの語に当たったかは返さない（置いた前提36）。
+        guard !ContentFilter.containsProhibitedTerm(trimmed) else {
+            throw BackendError.prohibitedBody
+        }
+        // 削除済みの回答も `myPosts` に残るので、この判定はそのまま
+        // 「削除したあと同じお題へ再回答できない」ことも担保する（置いた前提1）。
         guard !state.myPosts.contains(where: { $0.promptID == promptID }) else {
             throw BackendError.alreadyAnswered
         }
@@ -283,6 +303,37 @@ actor LocalBackend: Backend {
         try store.save(next)
         state = next
         return post
+    }
+
+    func removeMyPost(id: UUID) async throws {
+        let now = clock.now
+        pruneExpired(at: now)
+        guard state.user != nil else { throw BackendError.notSignedIn }
+        guard let index = state.myPosts.firstIndex(where: { $0.id == id }),
+              state.myPosts[index].status != .removed else {
+            throw BackendError.postNotFound
+        }
+
+        var next = state
+        next.myPosts[index] = next.myPosts[index].withStatus(.removed)
+        // 取り消した文面を翌日以降まで縛る理由は無いので、連投判定の記録は消す
+        // （同じお題への再投稿は `alreadyAnswered` が防ぐので、これで穴は開かない）。
+        next.lastPostBody = nil
+        try store.save(next)
+        state = next
+    }
+
+    // MARK: 規約への同意（F53）
+
+    func recordTermsAcceptance(version: String, at date: Date) async throws {
+        var next = state
+        next.termsAcceptance = TermsAcceptance(version: version, acceptedAt: date)
+        try store.save(next)
+        state = next
+    }
+
+    func termsAcceptance() async throws -> TermsAcceptance? {
+        state.termsAcceptance
     }
 
     // MARK: 世界タイムライン
@@ -576,12 +627,16 @@ actor LocalBackend: Backend {
     ///
     /// ブロックは投稿ではなく相手に対するものなので、ここでは消さない（解除するまで残る）。
     private func pruneExpired(at now: Date) {
-        let liveMyPosts = state.myPosts.filter { $0.isVisible(at: now) }
+        // ここで見るのは**表示期限だけ**（状態は見ない）。自分で削除した回答は
+        // まだ期限内なら残す。削除を「期限切れ」と混同すると、その回答に対する
+        // 通報の記録まで早期に消えて安全ログの30日保持（F34）が壊れるうえ、
+        // 「削除したのに未回答扱いになって再回答できる」ことにもなる（置いた前提1）。
+        let liveMyPosts = state.myPosts.filter { $0.isWithinDisplayPeriod(at: now) }
         let livePostIDs = Set(liveMyPosts.map(\.id)).union(
-            schedule.posts.filter { $0.isVisible(at: now) }.map(\.id)
+            schedule.posts.filter { $0.isWithinDisplayPeriod(at: now) }.map(\.id)
         )
-        let expiredPostIDs = Set(state.myPosts.filter { !$0.isVisible(at: now) }.map(\.id)).union(
-            schedule.posts.filter { !$0.isVisible(at: now) }.map(\.id)
+        let expiredPostIDs = Set(state.myPosts.filter { !$0.isWithinDisplayPeriod(at: now) }.map(\.id)).union(
+            schedule.posts.filter { !$0.isWithinDisplayPeriod(at: now) }.map(\.id)
         )
         let liveLikes = state.likedPostIDs.filter { livePostIDs.contains($0) }
         let liveViewed = state.viewedPostIDs.filter { !expiredPostIDs.contains($0) }

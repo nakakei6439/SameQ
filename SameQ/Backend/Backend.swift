@@ -78,6 +78,11 @@ protocol Backend: Sendable, TranslationAttemptPersisting {
 
     /// そのお題への自分の回答。未回答なら nil。これが nil の間はタイムラインを開けない。
     /// 表示期限を過ぎた回答は nil を返す（お題が変われば再び未回答になる）。
+    ///
+    /// **自分で削除した回答（`status == .removed`）は nil にせず、そのまま返す**（F49）。
+    /// 呼び出し側が「まだ回答していない」と「回答したが取り消した」を区別できないと、
+    /// 入力欄に戻って再投稿を促してしまう（同じお題への再投稿はできない）。
+    /// 回答したという事実は残るので、世界の回答を読む権利（F05）も失わない。
     func myPost(promptID: String) async throws -> Post?
 
     /// 回答を投稿する。1つのお題につき1回だけ（F04 / F29 / F30）。
@@ -93,6 +98,28 @@ protocol Backend: Sendable, TranslationAttemptPersisting {
         decorations: [PostDecoration],
         isPlus: Bool
     ) async throws -> Post
+
+    /// 自分の回答を取り消す（F49・App Store ガイドライン 1.2）。
+    ///
+    /// 行を消すのではなく `status` を `.removed` にする。行ごと消すと、その回答に
+    /// 対する通報の記録まで `on delete cascade` で道連れになり、「通報された
+    /// 投稿者が自分で消して証拠を無くす」ことができてしまう（置いた前提37）。
+    /// 読み手から見えなくなるという結果は、行を消すのと変わらない。
+    ///
+    /// 削除しても「1つのお題につき投稿は1回」は変わらないので、同じお題へ
+    /// 改めて回答することはできない（置いた前提1）。
+    func removeMyPost(id: UUID) async throws
+
+    // MARK: 規約への同意（F53）
+
+    /// 同意した規約の版と日時を記録する。
+    /// Apple のガイドライン 1.2 は「利用規約への同意を求めること」を要求している。
+    /// 同意した事実が残っていないと、規約を改定したときに既存の利用者へ
+    /// 読ませ直す判断ができない（置いた前提42）。
+    func recordTermsAcceptance(version: String, at date: Date) async throws
+
+    /// 直近に同意した規約の版と日時。未同意なら nil。
+    func termsAcceptance() async throws -> TermsAcceptance?
 
     // MARK: 世界タイムライン（F06 / F11 / F12）
 
@@ -338,6 +365,12 @@ enum BackendError: LocalizedError, Equatable {
     case duplicateBody
     /// 空白のみ、または同一文字の過剰な繰り返し（F17）。
     case meaninglessBody
+    /// 本文が禁止表現を含む（F48）。どの語に当たったかは持たない（前提36）。
+    case prohibitedBody
+    /// ニックネームが禁止表現を含む（F48）。
+    case prohibitedNickname
+    /// 自分の回答が見つからない、または既に削除済み（F49）。
+    case postNotFound
     /// いいね・通報の連打制限（F17）。`retryAfterSeconds` は解除までの目安秒数。
     case rateLimited(action: RateLimitedAction, retryAfterSeconds: Int)
 
@@ -361,6 +394,12 @@ enum BackendError: LocalizedError, Equatable {
             return L10n.Errors.duplicateBody
         case .meaninglessBody:
             return L10n.Errors.meaninglessBody
+        case .prohibitedBody:
+            return L10n.Errors.prohibitedBody
+        case .prohibitedNickname:
+            return L10n.Errors.prohibitedNickname
+        case .postNotFound:
+            return L10n.Errors.postNotFound
         case .rateLimited(let action, let retryAfterSeconds):
             let actionName = action == .like
                 ? L10n.Errors.rateLimitedActionLike

@@ -69,7 +69,13 @@ final class AppSession {
     private(set) var user: AppUser?
     private(set) var promptState: PromptState = .waiting(nextStartsAt: nil)
     /// 今日のお題への自分の回答。nil の間は世界タイムラインを開けない（F05）。
+    /// 自分で削除した回答は nil にならず、`status == .removed` のまま入っている（F49）。
     private(set) var myPost: Post?
+    /// 記録済みの規約同意（F53）。設定画面に「同意した日」を出すのに使う。
+    private(set) var termsAcceptance: TermsAcceptance?
+    /// 規約が改定され、再同意が必要な状態か（F53・置いた前提42）。
+    /// true の間は規約全文と同意ボタンを全画面で出し、投稿させない。
+    private(set) var needsTermsReconsent = false
     /// 今日のお題を端末言語へ翻訳した表示用の本文（F22）。
     /// 翻訳が終わるまでは nil にして、画面側に準備中の表示をさせる
     /// （原文が一瞬見えてから翻訳に差し替わる「ちらつき」を避けるため）。
@@ -375,6 +381,9 @@ final class AppSession {
                 screen = .onboarding
                 return
             }
+
+            // 規約が改定されていれば、ここで再同意を求める状態にする（F53・置いた前提42）。
+            await refreshTermsAcceptance()
 
             try await applyPromptState(openTimelineIfAnswered: true)
             // オンボーディング完了アカウントで起動した時点で、お題待ち／今日の両方とも
@@ -712,6 +721,8 @@ final class AppSession {
     func completeOnboarding(emoji: String, nickname: String?) async {
         do {
             user = try await backend.createAnonymousUser(emoji: emoji, nickname: nickname)
+            // 同意は初回設定の規約画面で既に取っている。ここで記録に残す（F53）。
+            await acceptCurrentTerms()
             promptState = try await backend.promptState()
             try await applyPromptState(openTimelineIfAnswered: false)
             // オンボーディング直後の通知許可状態を読み直してから、必要なら通知を予約する
@@ -1098,6 +1109,50 @@ final class AppSession {
             }
             alertMessage = error.localizedDescription
         }
+    }
+
+    // MARK: 自分の回答の削除（F49）
+
+    /// 自分の回答を取り消す。取り消した瞬間に、すべての人の画面から見えなくなる。
+    ///
+    /// 削除しても `myPost` は nil にならない（`status` が `.removed` になった同じ回答が
+    /// 返ってくる）。入力欄に戻して再投稿を促さないためで、同じお題への再回答は
+    /// できない（置いた前提1）。回答したという事実は残るので、その日の世界の回答は
+    /// このまま読み続けられる。
+    func removeMyPost() async -> Bool {
+        guard let post = myPost, !post.isRemovedByAuthor else { return false }
+        do {
+            try await backend.removeMyPost(id: post.id)
+            myPost = post.withStatus(.removed)
+            return true
+        } catch {
+            alertMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    // MARK: 規約への同意（F53）
+
+    /// 規約に同意したことを記録する。オンボーディングの完了時と、規約改定後の
+    /// 再同意で呼ぶ。記録できなくても利用そのものは止めない（同意は本人と端末の
+    /// 間で成立していればよく、集計・照会の仕組みは作らない。置いた前提42）。
+    func acceptCurrentTerms() async {
+        let now = Date()
+        try? await backend.recordTermsAcceptance(version: LegalText.version, at: now)
+        termsAcceptance = TermsAcceptance(version: LegalText.version, acceptedAt: now)
+        needsTermsReconsent = false
+    }
+
+    /// 記録済みの同意を読み直し、規約が新しくなっていれば再同意を求める状態にする。
+    /// アカウントがまだ無い（＝これからオンボーディングで同意する）ときは何もしない。
+    func refreshTermsAcceptance() async {
+        guard user != nil else {
+            needsTermsReconsent = false
+            return
+        }
+        let stored = try? await backend.termsAcceptance()
+        termsAcceptance = stored
+        needsTermsReconsent = (stored?.version != LegalText.version)
     }
 
     // MARK: 通報とブロック（F13 / F14 / F15）

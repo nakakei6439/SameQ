@@ -30,6 +30,8 @@ struct SettingsView: View {
     @State private var legalDocument: LegalDocument?
     /// アカウント削除の確認ダイアログ（F33）。true のあいだ表示。
     @State private var showsDeleteConfirmation = false
+    /// お問い合わせシート（F51）。true のあいだ表示。
+    @State private var showsContact = false
 
     var body: some View {
         NavigationStack {
@@ -39,6 +41,9 @@ struct SettingsView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         profileSection
+                        // 審査でも実利用でも、設定を開いた瞬間に連絡先が見えることが
+                        // 大事なので先頭に置く（F51 / ガイドライン 1.2）。
+                        supportSection
                         legalSection
                         notificationSection
                         plusSection
@@ -73,6 +78,11 @@ struct SettingsView: View {
         }
         .sheet(item: $legalDocument) { document in
             LegalView(document: document)
+                .fontDesign(.rounded)
+                .environment(session)
+        }
+        .sheet(isPresented: $showsContact) {
+            ContactView()
                 .fontDesign(.rounded)
                 .environment(session)
         }
@@ -347,6 +357,28 @@ struct SettingsView: View {
 
     /// 利用規約 / プライバシーポリシーを `LegalView` で sheet 表示する。
     /// リリース前にダミー本文を差し替える想定（`LegalText`）。
+    // MARK: お問い合わせセクション（F51）
+
+    private var supportSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L10n.Settings.supportSection)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.inkTertiary)
+                .tracking(1)
+                .padding(.horizontal, 4)
+
+            VStack(spacing: 0) {
+                legalRow(
+                    title: L10n.Settings.supportContact,
+                    identifier: "settings.support.contact"
+                ) {
+                    showsContact = true
+                }
+            }
+            .cardBackground(cornerRadius: 18)
+        }
+    }
+
     private var legalSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L10n.Settings.legalSection)
@@ -371,8 +403,25 @@ struct SettingsView: View {
                 }
             }
             .cardBackground(cornerRadius: 18)
+
+            // 規約に同意した日（F53）。いつ同意したかを本人が確認できるようにする。
+            if let acceptance = session.termsAcceptance {
+                Text(L10n.Settings.legalAcceptedOn(Self.acceptedOnFormatter.string(from: acceptance.acceptedAt)))
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.inkTertiary)
+                    .padding(.horizontal, 4)
+                    .accessibilityIdentifier("settings.legal.acceptedOn")
+            }
         }
     }
+
+    /// 同意日の表示用。端末のロケールに従った日付だけの表記にする。
+    private static let acceptedOnFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
 
     private func legalRow(
         title: String,

@@ -123,6 +123,21 @@ struct OnboardingView: View {
             legalCard(title: L10n.Onboarding.termsBody, body: LegalText.terms)
             legalCard(title: L10n.Onboarding.privacyBody, body: LegalText.privacy)
 
+            // ゼロトレランス条項の要約（F52）。規約本文は高さ150ptのスクロール
+            // ボックスなので、条文の中だけに置くとスクロールされず読まれない。
+            // 同意欄のすぐ上に常時出して、必ず目に入るようにする。
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "exclamationmark.shield.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.accent)
+                Text(L10n.Onboarding.zeroToleranceSummary)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 4)
+            .accessibilityIdentifier("onboarding.terms.zeroTolerance")
+
             Button {
                 agreedToTerms.toggle()
             } label: {

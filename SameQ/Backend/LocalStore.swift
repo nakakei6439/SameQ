@@ -52,6 +52,10 @@ struct PersistedState: Codable, Sendable {
     /// サーバーには送らず、再インストールで消えても問題ない）。
     var languageEncounters: [String: Int]
 
+    /// 同意した利用規約の版と日時（F53）。未同意なら nil。
+    /// 版が `LegalText.version` と違うときは、起動時に再同意を求める（置いた前提42）。
+    var termsAcceptance: TermsAcceptance?
+
     /// 2 で `viewedPostIDs`、3 で `reports` / `blockedAuthors`、4 で `lastPostBody`、
     /// 5 で `lastPrepareAttemptAt` を追加した。
     /// `discardedCandidatesCount` は 6 で追加したが、スキーマバージョンは据え置き
@@ -62,7 +66,11 @@ struct PersistedState: Codable, Sendable {
     /// 7 で `supabaseAuth` を追加（スプリント12・F35）。
     /// 8 で `languageEncounters` を追加（スプリント17・F41）。既存ファイルには
     /// キーが無いので `decodeIfPresent` でフォールバック（空辞書）。
-    static let currentSchemaVersion = 8
+    /// 9 で `Post.status`（F49 / F50）と `termsAcceptance`（F53）を追加。
+    /// どちらも `decodeIfPresent` でフォールバックする（`Post.init(from:)` は
+    /// 欠けている `status` を `.visible` として読む）ので、既存のアカウント・
+    /// 回答・いいね・ブロックは消えない。
+    static let currentSchemaVersion = 9
 
     static let empty = PersistedState(
         schemaVersion: currentSchemaVersion,
@@ -76,7 +84,8 @@ struct PersistedState: Codable, Sendable {
         lastPrepareAttemptAt: [:],
         discardedCandidatesCount: 0,
         supabaseAuth: nil,
-        languageEncounters: [:]
+        languageEncounters: [:],
+        termsAcceptance: nil
     )
 
     init(
@@ -91,7 +100,8 @@ struct PersistedState: Codable, Sendable {
         lastPrepareAttemptAt: [String: Date] = [:],
         discardedCandidatesCount: Int = 0,
         supabaseAuth: SupabaseAuthState? = nil,
-        languageEncounters: [String: Int] = [:]
+        languageEncounters: [String: Int] = [:],
+        termsAcceptance: TermsAcceptance? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.user = user
@@ -105,6 +115,7 @@ struct PersistedState: Codable, Sendable {
         self.discardedCandidatesCount = discardedCandidatesCount
         self.supabaseAuth = supabaseAuth
         self.languageEncounters = languageEncounters
+        self.termsAcceptance = termsAcceptance
     }
 
     /// 旧バージョン（schemaVersion 1〜7）の保存ファイルにはキーが無いので、
@@ -123,7 +134,19 @@ struct PersistedState: Codable, Sendable {
         discardedCandidatesCount = try container.decodeIfPresent(Int.self, forKey: .discardedCandidatesCount) ?? 0
         supabaseAuth = try container.decodeIfPresent(SupabaseAuthState.self, forKey: .supabaseAuth)
         languageEncounters = try container.decodeIfPresent([String: Int].self, forKey: .languageEncounters) ?? [:]
+        termsAcceptance = try container.decodeIfPresent(TermsAcceptance.self, forKey: .termsAcceptance)
     }
+}
+
+/// 利用規約への同意の記録（F53）。
+///
+/// Apple のガイドライン 1.2 は「利用規約への同意を求めること」を要求している。
+/// 同意した事実が端末に残っていないと、規約を改定したときに既存の利用者へ
+/// 読ませ直す判断ができない（置いた前提42）。
+struct TermsAcceptance: Codable, Equatable, Sendable {
+    /// 同意した規約の版（`LegalText.version` と同じ文字列）。
+    let version: String
+    let acceptedAt: Date
 }
 
 /// `PersistedState` を JSON 1ファイルとして読み書きする。

@@ -12,6 +12,8 @@ struct PlusView: View {
 
     /// 購入処理中の重複タップ防止。`true` のあいだは購入ボタンも復元ボタンも押せない。
     @State private var isWorking = false
+    /// 規約・プライバシーポリシー表示シート（F54 / ガイドライン 3.1.2）。
+    @State private var legalDocument: LegalDocument?
 
     var body: some View {
         @Bindable var session = session
@@ -23,6 +25,10 @@ struct PlusView: View {
                         heroSection
                         benefitsSection
                         purchaseSection
+                        // 自動更新サブスクリプションは、購入画面そのものに
+                        // 規約とプライバシーへの機能するリンクを置く（F54 /
+                        // ガイドライン 3.1.2）。設定画面にあるだけでは足りない。
+                        legalSection
                         restoreSection
                         disclaimerSection
                     }
@@ -43,6 +49,11 @@ struct PlusView: View {
         // `children: .contain` が無いと、中のボタンの識別子まで上書きしてしまう。
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("plus.root")
+        .sheet(item: $legalDocument) { document in
+            LegalView(document: document)
+                .fontDesign(.rounded)
+                .environment(session)
+        }
         .overlay(
             // UI テストから「Plus 画面が確実に表示された」ことを判定するための不可視アンカー。
             // accessibilityIdentifier は AccessibilityElement に乗らないケースがあるため、
@@ -135,6 +146,29 @@ struct PlusView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+    }
+
+    /// 自動更新の説明と、規約・プライバシーポリシーへのリンク（F54）。
+    private var legalSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L10n.Plus.autoRenewNote)
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.inkTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("plus.autoRenewNote")
+
+            HStack(spacing: 18) {
+                Button(L10n.Plus.legalTerms) { legalDocument = .terms }
+                    .accessibilityIdentifier("plus.legal.terms")
+                Button(L10n.Plus.legalPrivacy) { legalDocument = .privacy }
+                    .accessibilityIdentifier("plus.legal.privacy")
+                Spacer(minLength: 0)
+            }
+            .font(.system(size: 13, weight: .semibold))
+            .buttonStyle(.plain)
+            .foregroundStyle(Theme.accent)
+        }
+        .padding(.horizontal, 4)
     }
 
     private var purchaseSection: some View {

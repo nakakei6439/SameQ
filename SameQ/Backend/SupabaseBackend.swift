@@ -148,6 +148,10 @@ actor SupabaseBackend: Backend {
         // になり、オンボーディングが「セッションが切れました」アラートで
         // 停止する（evaluator attempt 9 で 2回連続観測された不具合）。
         tokenBox.value = auth.accessToken
+        // ニックネームも他のユーザーに表示される投稿内容なので、本文と同じ辞書で見る（F48）。
+        if let trimmed, ContentFilter.containsProhibitedTerm(trimmed) {
+            throw BackendError.prohibitedNickname
+        }
         let user = AppUser(
             id: auth.userID,
             emoji: emoji,
@@ -204,17 +208,29 @@ actor SupabaseBackend: Backend {
         guard !trimmedEmoji.isEmpty else { throw BackendError.emptyBody }
         let trimmedNickname = nickname?.trimmingCharacters(in: .whitespacesAndNewlines)
         let newNickname: String? = (trimmedNickname?.isEmpty ?? true) ? nil : trimmedNickname
+        // ニックネームも他のユーザーに表示される投稿内容なので、本文と同じ辞書で見る（F48）。
+        if let newNickname, ContentFilter.containsProhibitedTerm(newNickname) {
+            throw BackendError.prohibitedNickname
+        }
 
         struct UserUpdate: Encodable {
             let emoji: String
             let nickname: String?
         }
-        _ = try await client.updateVoid(
-            table: "users",
-            filters: ["id": "eq.\(current.id.uuidString)"],
-            body: UserUpdate(emoji: trimmedEmoji, nickname: newNickname),
-            select: "id"
-        )
+        do {
+            _ = try await client.updateVoid(
+                table: "users",
+                filters: ["id": "eq.\(current.id.uuidString)"],
+                body: UserUpdate(emoji: trimmedEmoji, nickname: newNickname),
+                select: "id"
+            )
+        } catch let error as SupabaseError {
+            if case .forbidden(let message) = error,
+               message.contains("prohibited_nickname") {
+                throw BackendError.prohibitedNickname
+            }
+            throw error
+        }
         let updated = AppUser(
             id: current.id,
             emoji: trimmedEmoji,
@@ -370,7 +386,7 @@ actor SupabaseBackend: Backend {
         // 完了直後に必ずアラートが出る二次不具合を修正）。
         let rows: [PostRow] = try await client.get(
             table: "posts",
-            select: "id,prompt_id,author_id,body,body_language,created_at,expires_at",
+            select: "id,prompt_id,author_id,body,body_language,created_at,expires_at,status",
             filters: [
                 "prompt_id": "eq.\(promptID)",
                 "author_id": "eq.\(user.id.uuidString)"
@@ -405,6 +421,11 @@ actor SupabaseBackend: Backend {
         }
         guard !PostValidator.isMeaninglessRepetition(trimmed) else {
             throw BackendError.meaninglessBody
+        }
+        // 禁止表現（F48）。サーバー側の before insert トリガでも同じ判定をするが、
+        // ここで弾くのは「書いている本人にその場で気づかせる」ため（置いた前提35）。
+        guard !ContentFilter.containsProhibitedTerm(trimmed) else {
+            throw BackendError.prohibitedBody
         }
         if let lastBody = state.lastPostBody, lastBody == trimmed {
             throw BackendError.duplicateBody
@@ -451,6 +472,13 @@ actor SupabaseBackend: Backend {
                message.contains("prompt is not active") {
                 throw BackendError.promptNotActive
             }
+            // 禁止表現 → サーバー側の before insert トリガー（F48）。
+            // 端末側で先に弾いているので通常はここに来ないが、辞書がサーバー側だけ
+            // 新しい場合（ビルドを出さずに語を足したとき）はここで受ける。
+            if case .forbidden(let message) = error,
+               message.contains("prohibited_body") {
+                throw BackendError.prohibitedBody
+            }
             throw error
         }
         var post = row.toPost()
@@ -465,6 +493,68 @@ actor SupabaseBackend: Backend {
         try? store.save(next)
         state = next
         return post
+    }
+
+    func removeMyPost(id: UUID) async throws {
+        try checkConnectivity()
+        guard state.user != nil else { throw BackendError.notSignedIn }
+
+        // RLS の UPDATE ポリシーではなく security definer の RPC を使う。
+        // RLS の with check は「どの列を更新したか」を制限できないため、posts に
+        // UPDATE を許すと同じ UPDATE で body を書き換えられてしまう
+        //（＝投稿の編集が可能になり、通報された投稿者が本文を差し替えて逃げられる）。
+        // migration 20260909000001_sprint20_ugc_safety.sql のコメント参照。
+        struct RemoveArgs: Encodable { let target_post: UUID }
+        do {
+            try await client.rpcVoid(
+                function: "remove_my_post",
+                arguments: RemoveArgs(target_post: id)
+            )
+        } catch let error as SupabaseError {
+            if case .forbidden(let message) = error,
+               message.contains("post_not_found_or_not_owned") {
+                throw BackendError.postNotFound
+            }
+            throw error
+        }
+
+        var next = state
+        if let index = next.myPosts.firstIndex(where: { $0.id == id }) {
+            next.myPosts[index] = next.myPosts[index].withStatus(.removed)
+        }
+        // 取り消した文面を翌日以降まで縛る理由は無い（同じお題への再投稿は
+        // サーバー側の posts_one_per_prompt が防ぐので、これで穴は開かない）。
+        next.lastPostBody = nil
+        try? store.save(next)
+        state = next
+    }
+
+    // MARK: - 規約への同意（F53）
+
+    /// 端末に記録する。サーバー側 `users.terms_version` / `terms_accepted_at` にも
+    /// 反映するが、そちらの失敗は同意そのものを妨げない（同意は本人と端末の間で
+    /// 成立していればよく、集計・照会の仕組みは作らない。置いた前提42）。
+    func recordTermsAcceptance(version: String, at date: Date) async throws {
+        var next = state
+        next.termsAcceptance = TermsAcceptance(version: version, acceptedAt: date)
+        try store.save(next)
+        state = next
+
+        guard let user = state.user else { return }
+        struct TermsUpdate: Encodable {
+            let terms_version: String
+            let terms_accepted_at: Date
+        }
+        _ = try? await client.updateVoid(
+            table: "users",
+            filters: ["id": "eq.\(user.id.uuidString)"],
+            body: TermsUpdate(terms_version: version, terms_accepted_at: date),
+            select: "id"
+        )
+    }
+
+    func termsAcceptance() async throws -> TermsAcceptance? {
+        state.termsAcceptance
     }
 
     // MARK: - 世界タイムライン（F06 / F11 / F12）
@@ -983,6 +1073,9 @@ private struct PostRow: Decodable {
     let created_at: Date
     let expires_at: Date
     let decorations: [PostDecoration]?
+    /// `posts.status`（F49 / F50）。`world_timeline` は visible 行しか返さないので
+    /// そちらでは常に nil のままでよく、自分の回答を取り直す経路でだけ意味を持つ。
+    let status: String?
 
     func toPost() -> Post {
         Post(
@@ -995,7 +1088,8 @@ private struct PostRow: Decodable {
             bodyLanguage: body_language ?? "und",
             createdAt: created_at,
             expiresAt: expires_at,
-            decorations: decorations ?? []
+            decorations: decorations ?? [],
+            status: status.flatMap(PostStatus.init(rawValue:)) ?? .visible
         )
     }
 }

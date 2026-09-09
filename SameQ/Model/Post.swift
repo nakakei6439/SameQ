@@ -1,5 +1,18 @@
 import Foundation
 
+/// 回答の状態（F49 / F50）。サーバーの `posts.status` と同じ3値。
+///
+/// `world_timeline` ビューは `status = 'visible'` だけを返すので、
+/// `hidden` / `removed` になった瞬間に全ユーザーの画面から消える。
+enum PostStatus: String, Codable, Equatable, Sendable {
+    /// 通常。表示期限内なら他のユーザーから読める。
+    case visible
+    /// 運営または通報の自動対処で非表示にした（F50）。
+    case hidden
+    /// 投稿者本人が削除した（F49）。運営が `visible` に戻すことはしない。
+    case removed
+}
+
 /// お題への回答（F04 / F10 / F29 / F30）。
 /// 表示に必要な投稿者情報（絵文字・ニックネーム）は取得時に埋めて返す。
 /// `bodyLanguage` は翻訳可否の判定にのみ使う内部情報で、画面には一切出さない。
@@ -20,6 +33,8 @@ struct Post: Codable, Identifiable, Equatable, Sendable {
     /// 本体（`body`）とは独立に保存されるので、装飾非対応の環境では無視するだけで
     /// 本文を完全に復元できる。
     let decorations: [PostDecoration]
+    /// 回答の状態（F49 / F50）。既定は `.visible`。
+    let status: PostStatus
 
     init(
         id: UUID,
@@ -31,7 +46,8 @@ struct Post: Codable, Identifiable, Equatable, Sendable {
         bodyLanguage: String,
         createdAt: Date,
         expiresAt: Date,
-        decorations: [PostDecoration] = []
+        decorations: [PostDecoration] = [],
+        status: PostStatus = .visible
     ) {
         self.id = id
         self.promptID = promptID
@@ -43,12 +59,45 @@ struct Post: Codable, Identifiable, Equatable, Sendable {
         self.createdAt = createdAt
         self.expiresAt = expiresAt
         self.decorations = decorations
+        self.status = status
     }
 
-    /// `date` の時点でまだ見えるか（F10）。期限ちょうどは「期限切れ」として扱う。
+    /// schemaVersion 8 以前に保存された `Post` 用のフォールバックデコーダ。
+    /// `status` を持たない古い state.json は、すべて `.visible` として読む
+    /// （`Report.postExpiresAt` と同じ手当て）。
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        promptID = try container.decode(String.self, forKey: .promptID)
+        authorID = try container.decode(UUID.self, forKey: .authorID)
+        authorEmoji = try container.decode(String.self, forKey: .authorEmoji)
+        authorNickname = try container.decodeIfPresent(String.self, forKey: .authorNickname)
+        body = try container.decode(String.self, forKey: .body)
+        bodyLanguage = try container.decode(String.self, forKey: .bodyLanguage)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        expiresAt = try container.decode(Date.self, forKey: .expiresAt)
+        decorations = try container.decodeIfPresent([PostDecoration].self, forKey: .decorations) ?? []
+        status = try container.decodeIfPresent(PostStatus.self, forKey: .status) ?? .visible
+    }
+
+    /// `date` の時点でまだ見えるか（F10 / F49 / F50）。期限ちょうどは「期限切れ」として扱う。
+    /// 削除・非表示になった回答は、期限に関係なく誰にも見せない。
     func isVisible(at date: Date) -> Bool {
+        status == .visible && isWithinDisplayPeriod(at: date)
+    }
+
+    /// `date` の時点でまだ表示期限内か。**状態は見ない。**
+    ///
+    /// 「見せてよいか」（`isVisible`）と「期限が来たか」は別の問いで、
+    /// 保持期間の掃除（`LocalBackend.pruneExpired`）が使うのはこちら。
+    /// 削除された回答を「期限切れ」と混同すると、その回答に対する通報の記録まで
+    /// 早期に消えてしまい、安全ログの30日保持（F34）が壊れる。
+    func isWithinDisplayPeriod(at date: Date) -> Bool {
         date < expiresAt
     }
+
+    /// 投稿者本人が削除した回答か（F49）。今日のお題画面の表示を分けるのに使う。
+    var isRemovedByAuthor: Bool { status == .removed }
 
     /// 表示に使える投稿者名。未設定なら nil（絵文字のみ表示）。
     var displayNickname: String? {
@@ -87,7 +136,8 @@ struct Post: Codable, Identifiable, Equatable, Sendable {
             bodyLanguage: bodyLanguage,
             createdAt: createdAt,
             expiresAt: expiresAt,
-            decorations: decorations
+            decorations: decorations,
+            status: status
         )
     }
 
@@ -112,7 +162,25 @@ struct Post: Codable, Identifiable, Equatable, Sendable {
             bodyLanguage: bodyLanguage,
             createdAt: createdAt,
             expiresAt: expiresAt,
-            decorations: decorations
+            decorations: decorations,
+            status: status
+        )
+    }
+
+    /// 状態だけを差し替えたコピー。ローカル保存の更新に使う（F49）。
+    func withStatus(_ newStatus: PostStatus) -> Post {
+        Post(
+            id: id,
+            promptID: promptID,
+            authorID: authorID,
+            authorEmoji: authorEmoji,
+            authorNickname: authorNickname,
+            body: body,
+            bodyLanguage: bodyLanguage,
+            createdAt: createdAt,
+            expiresAt: expiresAt,
+            decorations: decorations,
+            status: newStatus
         )
     }
 }

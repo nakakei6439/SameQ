@@ -328,6 +328,11 @@ private final class ForceOfflineBackend: Backend, @unchecked Sendable {
     func submitPost(promptID: String, body: String, decorations: [PostDecoration], isPlus: Bool) async throws -> Post {
         try await underlying.submitPost(promptID: promptID, body: body, decorations: decorations, isPlus: isPlus)
     }
+    func removeMyPost(id: UUID) async throws { try await underlying.removeMyPost(id: id) }
+    func recordTermsAcceptance(version: String, at date: Date) async throws {
+        try await underlying.recordTermsAcceptance(version: version, at: date)
+    }
+    func termsAcceptance() async throws -> TermsAcceptance? { try await underlying.termsAcceptance() }
     func timelinePosts(promptID: String) async throws -> [Post] { try await underlying.timelinePosts(promptID: promptID) }
     func nextTimelinePost(promptID: String, excluding: Set<UUID>, autoMarkViewed: Bool) async throws -> TimelineDraw {
         try await underlying.nextTimelinePost(promptID: promptID, excluding: excluding, autoMarkViewed: autoMarkViewed)

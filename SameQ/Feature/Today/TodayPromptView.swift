@@ -12,6 +12,9 @@ import SwiftUI
 struct TodayPromptView: View {
     @Environment(AppSession.self) private var session
     @State private var draft: String = ""
+    /// 自分の回答の削除の確認ダイアログ（F49）。
+    @State private var showsRemoveAnswerConfirmation = false
+    @State private var isRemovingAnswer = false
     @FocusState private var isEditorFocused: Bool
 
     /// 現在のモードに応じた文字数上限（F04 / F29）。
@@ -68,6 +71,26 @@ struct TodayPromptView: View {
             Button(L10n.Common.ok, role: .cancel) { session.alertMessage = nil }
         } message: {
             Text(session.alertMessage ?? "")
+        }
+        // 自分の回答の削除（F49）。「もう一度回答できない」ことは押す前に必ず伝える
+        // （置いた前提1）。アカウント削除（SettingsView）と同じ確認の作りにする。
+        .confirmationDialog(
+            L10n.Today.deleteDialogTitle,
+            isPresented: $showsRemoveAnswerConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(L10n.Today.deleteDialogConfirm, role: .destructive) {
+                guard !isRemovingAnswer else { return }
+                isRemovingAnswer = true
+                Task {
+                    _ = await session.removeMyPost()
+                    isRemovingAnswer = false
+                }
+            }
+            .accessibilityIdentifier("today.myAnswer.deleteConfirm")
+            Button(L10n.Common.cancel, role: .cancel) {}
+        } message: {
+            Text(L10n.Today.deleteDialogMessage)
         }
     }
 
@@ -216,6 +239,47 @@ struct TodayPromptView: View {
     }
 
     private func answeredSection(myPost: Post) -> some View {
+        // 自分で取り消した回答は、本文もいいね数も出さない（F49）。
+        // 入力欄には戻さない——同じお題への再回答はできないため（置いた前提1）。
+        // 「世界の回答を読む」だけは残す（回答したという事実は消えないので、
+        // その日の世界の言葉を読む権利は失わない）。
+        if myPost.isRemovedByAuthor {
+            return AnyView(removedAnswerSection)
+        }
+        return AnyView(answeredSectionBody(myPost: myPost))
+    }
+
+    private var removedAnswerSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Theme.inkTertiary)
+                    Text(L10n.Today.removedTitle)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Theme.ink)
+                        .accessibilityIdentifier("today.myAnswer.removed")
+                }
+                Text(L10n.Today.removedBody)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(22)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cardBackground()
+
+            Button(session.isPreparingTimeline ? L10n.Today.preparingTimeline : L10n.Today.openTimeline) {
+                Task { await session.openTimeline() }
+            }
+            .buttonStyle(PrimaryButtonStyle(enabled: !session.isPreparingTimeline))
+            .disabled(session.isPreparingTimeline)
+            .accessibilityIdentifier("today.openTimeline")
+        }
+    }
+
+    private func answeredSectionBody(myPost: Post) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(L10n.Today.yourAnswer)
@@ -266,6 +330,18 @@ struct TodayPromptView: View {
             .buttonStyle(PrimaryButtonStyle(enabled: !session.isPreparingTimeline))
             .disabled(session.isPreparingTimeline)
             .accessibilityIdentifier("today.openTimeline")
+
+            // 自分の回答の取り消し（F49・Apple ガイドライン 1.2「投稿を即座に
+            // フィードから消せること」）。誤タップで消えると取り返しがつかないので、
+            // 目立たない位置・控えめな見た目にしたうえで確認をはさむ。
+            Button(isRemovingAnswer ? L10n.Today.deletingAnswer : L10n.Today.deleteAnswer) {
+                showsRemoveAnswerConfirmation = true
+            }
+            .buttonStyle(QuietButtonStyle())
+            .foregroundStyle(Theme.inkTertiary)
+            .disabled(isRemovingAnswer)
+            .frame(maxWidth: .infinity)
+            .accessibilityIdentifier("today.myAnswer.delete")
         }
     }
 

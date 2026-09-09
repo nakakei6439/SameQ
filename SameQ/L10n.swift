@@ -127,6 +127,21 @@ enum L10n {
         static let agreeLabel: String = useEnglish
             ? "I agree to the Terms of Use and Privacy Policy"
             : "利用規約とプライバシーポリシーに同意します"
+        /// ゼロトレランス条項の要約（F52）。規約本文は高さ150ptのスクロール
+        /// ボックスに収まるので、条文の中だけに置くと読まれない。同意欄のすぐ上に
+        /// 常時出して、スクロールしなくても目に入るようにする。
+        static let zeroToleranceSummary: String = useEnglish
+            ? "SameQ has zero tolerance for objectionable content and abusive users. We review reports within 24 hours, remove offending posts and suspend the accounts responsible."
+            : "SameQ は、不適切な投稿と他の利用者への迷惑行為を一切許容しません。通報は24時間以内に確認し、違反した投稿は削除、その投稿者のアカウントは停止します。"
+
+        // MARK: 規約改定時の再同意（F53）
+        static let termsUpdateTitle: String = useEnglish
+            ? "The Terms of Use have changed"
+            : "利用規約が新しくなりました"
+        static let termsUpdateBody: String = useEnglish
+            ? "Please read the updated Terms of Use and agree to continue using SameQ."
+            : "内容をご確認のうえ、同意していただくと引き続きご利用いただけます。"
+        static let termsUpdateAgree: String = useEnglish ? "Agree and continue" : "同意して続ける"
 
         static let emojiTitle: String = useEnglish
             ? "Pick one mark\nthat's yours"
@@ -184,6 +199,24 @@ enum L10n {
     // MARK: Today
 
     enum Today {
+        // MARK: 自分の回答の削除（F49）
+        static let deleteAnswer: String = useEnglish ? "Delete this answer" : "この回答を削除する"
+        static let deletingAnswer: String = useEnglish ? "Deleting…" : "削除しています…"
+        static let deleteDialogTitle: String = useEnglish
+            ? "Delete this answer?"
+            : "この回答を削除しますか？"
+        /// 「もう一度回答できない」ことは、押す前に必ず伝える（置いた前提1）。
+        static let deleteDialogMessage: String = useEnglish
+            ? "It will disappear from everyone's feed right away.\nYou won't be able to answer today's prompt again."
+            : "すべての人の画面から、すぐに見えなくなります。\n今日のお題には、もう一度回答することはできません。"
+        static let deleteDialogConfirm: String = useEnglish ? "Delete" : "削除する"
+        static let removedTitle: String = useEnglish
+            ? "You deleted your answer"
+            : "この回答は削除しました"
+        static let removedBody: String = useEnglish
+            ? "It's gone from everyone's feed. You can still read the world's answers today."
+            : "すべての人の画面から消えました。今日の世界の回答は、このまま読み続けられます。"
+
         static let promptLabel: String = useEnglish ? "TODAY'S PROMPT" : "今日のお題"
         static let composerPlaceholder: String = useEnglish
             ? "Try answering in your own words"
@@ -289,6 +322,11 @@ enum L10n {
         static let body: String = useEnglish
             ? "The operator has suspended this account. You can't access today's prompt or the timeline."
             : "運営がこのアカウントの利用を停止しました。今日のお題にも世界の回答にも入れません。"
+        /// 停止された利用者にとって、ここが運営に異議を伝える唯一の経路になる
+        /// （置いた前提41 / Apple ガイドライン 1.2「アプリ内の連絡先」）。
+        static let contactHint: String = useEnglish
+            ? "If you believe this is a mistake, please contact us."
+            : "心当たりがない場合は、運営までご連絡ください。"
     }
 
     // MARK: Safety sheet (Report / Block)
@@ -374,6 +412,31 @@ enum L10n {
         static let legalSection: String = useEnglish ? "LEGAL & PRIVACY" : "規約・プライバシー"
         static let legalTerms: String = useEnglish ? "Terms of Use" : "利用規約"
         static let legalPrivacy: String = useEnglish ? "Privacy Policy" : "プライバシーポリシー"
+        /// 規約に同意した日（F53）。いつ同意したかを本人が確認できるようにする。
+        static func legalAcceptedOn(_ date: String) -> String {
+            useEnglish ? "Agreed on \(date)" : "\(date) に同意しました"
+        }
+
+        // MARK: お問い合わせ（F51 / Apple ガイドライン 1.2「アプリ内の連絡先」）
+        static let supportSection: String = useEnglish ? "SUPPORT" : "サポート"
+        static let supportContact: String = useEnglish ? "Contact us" : "お問い合わせ"
+        static let supportTitle: String = useEnglish ? "Contact us" : "お問い合わせ"
+        static let supportDescription: String = useEnglish
+            ? "If you find objectionable content or a user behaving abusively, please tell us here. We review every report within 24 hours. Bugs and feedback are welcome too."
+            : "不適切な投稿や、迷惑行為をする利用者を見つけたときは、こちらからお知らせください。運営が24時間以内に確認します。不具合やご意見もこちらへどうぞ。"
+        static let supportAddressLabel: String = useEnglish ? "Email" : "メールアドレス"
+        static let supportCopy: String = useEnglish ? "Copy" : "コピー"
+        static let supportCopied: String = useEnglish ? "Copied" : "コピーしました"
+        static let supportCompose: String = useEnglish ? "Write an email" : "メールを作成する"
+        /// メールアプリが無い端末向け（シミュレータや Mail を削除した端末）。
+        /// 連絡先そのものは常に画面に出したままにする（置いた前提41）。
+        static let supportMailUnavailable: String = useEnglish
+            ? "No mail app was found on this device. Please copy the address above and write to us from your email service."
+            : "この端末ではメールアプリが見つかりませんでした。上のアドレスをコピーして、お使いのメールサービスからご連絡ください。"
+        static let supportReportHint: String = useEnglish
+            ? "You can also report a single answer from the \"...\" button on that answer."
+            : "回答ごとの通報は、その回答の「⋯」からも行えます。"
+        static let supportMailSubject: String = useEnglish ? "[SameQ] Support" : "[SameQ] お問い合わせ"
 
         static let notificationSection: String = useEnglish ? "NOTIFICATIONS" : "通知"
         static let notificationHeadlineOn: String = useEnglish
@@ -456,6 +519,15 @@ enum L10n {
 
     enum Plus {
         static let navTitle: String = "Plus"
+
+        // MARK: 購入画面の規約リンク（F54 / Apple ガイドライン 3.1.2）
+        /// 自動更新サブスクリプションは、購入画面そのものに規約とプライバシーへの
+        /// 機能するリンクを置くことが求められる。
+        static let legalTerms: String = useEnglish ? "Terms of Use" : "利用規約"
+        static let legalPrivacy: String = useEnglish ? "Privacy Policy" : "プライバシーポリシー"
+        static let autoRenewNote: String = useEnglish
+            ? "This is an auto-renewing subscription. It renews unless canceled at least 24 hours before the end of the current period. Manage or cancel it in Settings > Apple Account > Subscriptions."
+            : "自動更新のサブスクリプションです。期間終了の24時間前までに解約しない限り自動的に更新されます。管理と解約は、端末の「設定」→ Apple Account →「サブスクリプション」から行えます。"
 
         static let heroTitle: String = useEnglish
             ? "More expression with Plus"
@@ -594,6 +666,17 @@ enum L10n {
         static let meaninglessBody: String = useEnglish
             ? "A post made of the same character repeated isn't allowed."
             : "同じ文字を並べただけの投稿はできません。"
+        // F48。どの語に当たったかは書かない（前提36）。書き換えれば通る手掛かりに
+        // なるうえ、その語を本人の画面に映し返すことになるため。
+        static let prohibitedBody: String = useEnglish
+            ? "This post can't be sent because it contains wording prohibited by the Terms of Use."
+            : "利用規約で禁止されている表現が含まれているため、この回答は投稿できません。"
+        static let prohibitedNickname: String = useEnglish
+            ? "This nickname can't be used because it contains wording prohibited by the Terms of Use."
+            : "利用規約で禁止されている表現が含まれているため、このニックネームは使えません。"
+        static let postNotFound: String = useEnglish
+            ? "This answer has already been deleted."
+            : "この回答はすでに削除されています。"
         static func rateLimited(_ actionName: String, _ retryAfter: Int) -> String {
             useEnglish
                 ? "\(actionName) too fast. Please wait \(retryAfter)s and try again."

@@ -68,7 +68,7 @@ final class PersistedStateMigrationTests: XCTestCase {
 
     func test_emptyState_hasCurrentSchemaVersion() {
         XCTAssertEqual(PersistedState.empty.schemaVersion, PersistedState.currentSchemaVersion)
-        XCTAssertEqual(PersistedState.currentSchemaVersion, 8)
+        XCTAssertEqual(PersistedState.currentSchemaVersion, 9)
     }
 
     /// スプリント17（F41）: スキーマバージョン 7 の既存ファイル（`languageEncounters`

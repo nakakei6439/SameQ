@@ -232,6 +232,21 @@ struct SupabaseClient: Sendable {
         return array
     }
 
+    /// 返り値を使わない RPC 用（`remove_my_post(target_post)` 等）。
+    /// `returns void` の関数は PostgREST が `null` を返すので、`rpc(...) -> T` では
+    /// デコードに失敗する。ここでは本文を読まずにステータスだけ検証する。
+    func rpcVoid<Args: Encodable>(
+        function: String,
+        arguments: Args
+    ) async throws {
+        let url = restBaseURL.appendingPathComponent("rpc/\(function)")
+        var request = makeRestRequest(url: url, method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try encodeJSON(arguments)
+        let (data, response) = try await performRequest(request)
+        try validate(response: response, data: data)
+    }
+
     /// 引数なし RPC 用 (`delete_my_account()` 等)。空の JSON `{}` を送る。
     func rpcVoid(
         function: String

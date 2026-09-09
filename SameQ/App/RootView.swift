@@ -42,6 +42,18 @@ struct RootView: View {
         }
         .fontDesign(.rounded)
         .environment(session)
+        // 規約が改定されたら、既存の利用者にも読ませて同意を取り直す（F53・置いた前提42）。
+        // 閉じる手段を持たない `fullScreenCover` にして、同意するまで投稿させない。
+        // 初回設定中（`user == nil`）は `refreshTermsAcceptance()` が false を保つので
+        // ここは出ず、オンボーディングの規約画面が担当する。
+        .fullScreenCover(isPresented: Binding(
+            get: { session.needsTermsReconsent },
+            set: { _ in }
+        )) {
+            TermsUpdateView()
+                .fontDesign(.rounded)
+                .environment(session)
+        }
         // 翻訳セッションの供給元（F18 / F22）。画面が切り替わっても常駐させておく必要があるので、
         // 表示中の画面と同じ階層ではなく背景として1つだけ持たせる。
         .background(TranslationHostView(translator: session.translator))

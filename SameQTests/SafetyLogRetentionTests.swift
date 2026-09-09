@@ -152,14 +152,15 @@ final class SafetyLogRetentionTests: XCTestCase {
         XCTAssertEqual(decoded.postExpiresAt, expectedFallback, "postExpiresAt 欠落時は createdAt + 28h")
     }
 
-    /// schemaVersion 8 の永続化ファイルは 8 で保存される。
+    /// 永続化ファイルは現行の schemaVersion で保存される。
     /// スプリント12 で 6 → 7（`supabaseAuth`）、スプリント17 で 7 → 8
-    /// （`languageEncounters`）にバンプ。
-    func testSchemaVersionBumpedToEight() {
+    /// （`languageEncounters`）、スプリント20 で 8 → 9（`Post.status` /
+    /// `termsAcceptance`）にバンプ。
+    func testSchemaVersionBumpedToNine() {
         let store = LocalStore(fileName: "schema-version-test-state.json")
         try? store.save(.empty)
         let loaded = store.load()
         XCTAssertEqual(loaded.schemaVersion, PersistedState.currentSchemaVersion)
-        XCTAssertEqual(loaded.schemaVersion, 8, "schemaVersion を 8 にバンプ（F41）")
+        XCTAssertEqual(loaded.schemaVersion, 9, "schemaVersion を 9 にバンプ（F49 / F53）")
     }
 }
