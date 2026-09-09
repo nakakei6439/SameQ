@@ -72,24 +72,37 @@
 4. 各作業単位が完了したら、このファイルの該当チェックボックスと「現在の状態」を**即座に**更新してコミットする。
 
 ### ⚠️ generator の起動方法（重要）
-generator（MiniMax-M3）は **Agent ツール経由の自動呼び出しでは MiniMax-M3 に接続できません**。
+generator（MiniMax-M3）は **Agent ツール経由の自動呼び出しでは MiniMax-M3 に接続できません**
+（サブエージェントは同一プロセスで動き、Claude Code にはサブエージェント単位で
+エンドポイント／認証を差し替える仕組みが無い。親が OAuth なら `api.anthropic.com` に
+`MiniMax-M3` を投げて 404）。
 
 **最も簡単な起動方法（推奨）:**
 ```bash
 gen
 ```
-`~/.local/bin/gen` というショートカットスクリプトが env 変数をすべて自動で設定します。
-
-**フルコマンドで起動する場合:**
+`~/.local/bin/gen` が env 変数をすべて自動で設定する。**このスクリプトが正典。**
+フルコマンドを手で書くときも `~/.local/bin/gen` の中身と一字一致させること
+（過去に `[im]` サフィックスや窓2変数の欠落でハマった）:
 ```bash
 env -u ANTHROPIC_API_KEY -u CLAUDE_CODE_AUTH_TOKEN \
   ANTHROPIC_BASE_URL='https://api.minimax.io/anthropic' \
   ANTHROPIC_AUTH_TOKEN="$MINIMAX_API_KEY" \
-  ANTHROPIC_MODEL="MiniMax-M3 [im]" \
-  CLAUDE_CODE_AUTO_COMPACT_WINDOW="1000000" \
+  ANTHROPIC_MODEL="MiniMax-M3" \
+  CLAUDE_CODE_MAX_CONTEXT_TOKENS=1000000 \
+  CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT=1 \
+  CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000 \
   claude --agent generator
 ```
-理由は `~/.claude/agents/generator.md` の冒頭を参照。
+- `ANTHROPIC_MODEL` にサフィックス（` [im]` 等）を付けない。`-p` モードで `--agent` の
+  システムプロンプトが読まれず、実作業ゼロで exit 0 になる。
+- 窓2変数（`CLAUDE_CODE_MAX_CONTEXT_TOKENS` / `CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT`）
+  は CC 2.1.259+ の未知モデル 200k 窓強制を外すため必須。
+- コーディネーターセッションから 1 回だけ回すときは、上記に
+  `-p "<指示>" --permission-mode bypassPermissions --output-format text` を足し、
+  `Bash` ツールの `run_in_background: true` で起動する（`&` や `nohup` は使わない）。
+
+理由の詳細は `~/.claude/agents/generator.md` の冒頭と `~/.claude/plans/planner-calm-quiche.md` §3。
 
 ### 🌙 夜間無人実行（残りスプリントの全自動ループ）
 `scripts/autoloop.sh` が `.product/state.json` の `status` を見て、generator（MiniMax-M3・非対話）と

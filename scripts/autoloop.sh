@@ -199,7 +199,10 @@ while [ "$iteration" -lt "$MAX_ITERATIONS" ]; do
         with_timeout "$TIMEOUT_SECONDS" stdbuf -oL -eL env -u ANTHROPIC_API_KEY -u CLAUDE_CODE_AUTH_TOKEN \
           ANTHROPIC_BASE_URL='https://api.minimax.io/anthropic' \
           ANTHROPIC_AUTH_TOKEN="$MINIMAX_API_KEY" \
-          ANTHROPIC_MODEL="MiniMax-M3 [im]" \
+          ANTHROPIC_MODEL="MiniMax-M3" \
+          CLAUDE_CODE_MAX_CONTEXT_TOKENS=1000000 \
+          CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT=1 \
+          CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000 \
           claude --agent generator -p \
             "PROGRESS.md と .product/state.json を読んで、現在のスプリントの実装または修正を行い、self-review.md を書いてください。" \
           --permission-mode bypassPermissions \
