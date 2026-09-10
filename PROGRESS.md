@@ -27,11 +27,27 @@
   （**UPLOAD SUCCEEDED、Delivery UUID `78353976-7223-45a9-abfa-7a976b90ef5f`**）まで完了。
   ASC API キーは `AuthKey_BR882VJ4P8.p8` / Issuer `4a7eba90-53ca-4945-ae45-78facdf6f085`。Web版規約（`nakakei6439.github.io`、commit `83f85a3`）も
   アプリと同じ14条構成に日英で同期し、公開反映を実URLで確認済み。
-  **残り（ASC の GUI 手作業）**: 年齢レーティングを 18+ に／「App情報 → 使用許諾契約」にカスタム EULA を登録／
-  説明文（ja / en-US）に規約・プライバシーのリンクを追記（**API は `GET_COLLECTION` 不可で
-  ローカライズ ID を列挙できず自動化できない**）／**ASC 上のバージョン文字列を 1.0.2 → 1.0.3 に変更**
-  （しないと build 8 を選択できない）／App Review Notes の貼り付け（**通報・ブロックへのタップ手順を
-  必ず含める**。2回目のリジェクトはここに到達できなかったのが原因）／Resolution Center への返信。
+  **ASC 側の作業も完了し、2026-09-10 09:19 JST に審査へ再提出済み**
+  （submission `3216eae6-b83d-4b7a-a717-dc54a440e219` / `WAITING_FOR_REVIEW` / 3項目）。
+  実施内容: バージョン文字列 1.0.2 → 1.0.3／年齢レーティングを 18+（`ageRatingOverrideV2 = EIGHTEEN_PLUS`。
+  算出値は 13+ のままだが App Store に出るのは上書き値）／カスタム EULA を全175地域に登録／
+  説明文（ja / en-US）の Apple 標準 EULA リンクを自前の規約・プライバシーのリンクへ差し替え／
+  App Review Notes を 1.2 対応の内容に全面書き換え（3,020字。通報・ブロックへのタップ手順を明記。
+  2回目のリジェクトはレビュアーがそこへ到達できなかったのが原因）／Resolution Center へ返信。
+  **提出時にハマった点（次回のために記録）**:
+  (1) 説明文の更新は ASC API では自動化できない（`appStoreVersionLocalizations` が `GET_COLLECTION` 不可で
+      ローカライズ ID を列挙できない）。GUI 必須。
+  (2) **バージョン文字列を 1.0.2 → 1.0.3 に変えた瞬間、旧提出（`8e7b3e06`）内のアプリ項目が
+      自動的に `REMOVED` になり、そのページからの「App Reviewに再提出」が「予期しないエラー」で失敗する。**
+      さらにその失敗でバージョンが `DEVELOPER_REJECTED` に落ちた。
+  (3) サブスク2件が旧提出に閉じ込められ、サブスク側の「審査用に追加」がグレーアウトして動かせなくなる。
+      **解決策: 旧提出を API で取り下げる**（`PATCH /v1/reviewSubmissions/{id}` に `{"canceled": true}`）。
+      これでサブスクが解放され、「審査用に追加」が押せるようになる。
+  (4) **サブスクは ASC API から提出物に追加できない**。`reviewSubmissionItems` の有効なリレーションは
+      `appStoreVersion` / `appEvent` / `appCustomProductPageVersion` のみで、subscription 用が無い。GUI 必須。
+  (5) ブラウザのテキストエリアへ長文を貼ると文字が欠落することがある（App Review Notes で3回発生。
+      毎回違う位置が欠ける）。**VS Code のエディタからコピーすると再現しなくなった**。
+      貼り付け後は必ず全文を目視確認すること。
   文面とチェックリストは `docs/app-review-notes-1.2-ugc.md`、日次の通報対応手順は
   `docs/moderation-runbook.md`。
   **既知の未解決**: 既存UIテスト4件が失敗（3件はスプリント18のヘッダー改修＝前提22 に追随していない
