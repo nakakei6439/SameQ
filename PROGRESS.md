@@ -1,3 +1,85 @@
+- 2026-09-22: **App Store 4度目のリジェクト（Guideline 1.2）と、その調査**（コーディネーター。
+  ユーザー指示により途中からハーネスを使わず直接作業）。
+  **リジェクト**: 11日間 `WAITING_FOR_REVIEW` だった `1.0.3 (8)` が 04:47 JST に
+  `UNRESOLVED_ISSUES` へ。バージョンは `REJECTED`、提出3アイテムのうち App バージョンのみ
+  `REJECTED`、**サブスクは `READY_TO_SUBMIT` に解放**（9/10 のようなロックは起きていない）。
+  build 8 は `VALID` のまま（期限 2026-12-08）。**前回作った `tools/asc-status.sh` が初回の本番で
+  この遷移を検知した**。理由は **Guideline 1.2 のみで、3.1.2 は解消**。ただし文面は
+  **定型8項目の丸ごと貼り付け**で、どれが未達かの指摘が無い（＝レビュアーが確認できなかった
+  ときの典型）。リジェクト本文は ASC API に出ないため Gmail（`from:apple`）から取得した。
+  年齢レーティングは `ageRatingOverrideV2: EIGHTEEN_PLUS` が正しく入っており原因ではない。
+  **対応**: Resolution Center へ「8項目のどれが未達か教えてほしい」と返信・送信済み
+  （[`docs/resolution-center-reply-1.2-round2-paste-ready.txt`](docs/resolution-center-reply-1.2-round2-paste-ready.txt)、
+  本文3,692字／上限4,000字）。**再提出はしない**（回答次第で直す対象が変わるため）。
+  **提出済み App Review Notes の誤りを発見・訂正**: 「Tap "..." on any answer」は事実と違い、
+  実際は画面右上ヘッダーの `ellipsis.circle`（回答カード上には何も無い。回答は1件ずつ表示なので
+  「any answer」に相当するリストが存在しない）。ボタン名も `Read answers from the world`
+  （実際は `Read the world's answers`）、`Settings > Blocked users`（実際は `BLOCKED PEOPLE`）が誤り。
+  返信で自分から訂正した。
+  **スプリント21（F13 / F14・前提44）**: 通報・ブロックの導線をヘッダー右上から**回答カードの
+  直下**へ移設。`TimelineView.safetyRow(post:)` を新設し、`flag` アイコン＋テキスト
+  （`L10n.Timeline.moreLabel`＝`Report or block` / `通報・ブロック`）を `Theme.inkTertiary` で表示。
+  `topBar` の跡地は `Color.clear.frame(width: 64, height: 32)` で埋めて見出しの中央揃えを維持。
+  `accessibilityIdentifier("timeline.more")` は1つのまま（既存UIテストの曖昧参照を避ける）。
+  **検証**: ユニット 263/263、SprintFour 7/7、SprintSixteen 6/6、新規 SprintTwentyOne 5/6 通過。
+  日本語のスクリーンショットでラベルと中央揃えを目視確認（`~/Desktop/SameQ-sprint21-20260922/`）。
+  **P1（要検証・審査ブロッカーの可能性）**: 英語ロケールでタイムラインが
+  `No new answers right now` になり、他人の回答が1件も出ない。仕組みは、翻訳できなかった投稿を
+  `AppSession.swift:1041` が**表示せずスキップ**し（原文フォールバックが無い）、全件スキップで
+  `.exhausted` に落ちること。ダウンロードを試みる経路自体は存在する
+  （`openTimeline()` → `prepareTimelineLanguagesIfNeeded()` → `prepareTranslation()`。
+  OS の確認シートが `fullScreenCover` を閉じる実機バグを避けるため、開く前に実行する設計）。
+  ただし確認シートの許可が要る・1言語60秒／全体90秒で打ち切り・失敗した言語はクールダウン、
+  という条件があり、揃わなければ空になる。さらに**運営回答5体ぶんは
+  `body_language = 'ja'` 決め打ちで本文も全件日本語**（`20260905000003_...sql:188-194`）なので、
+  翻訳が成立しないと運営回答も含めてコンテンツがゼロになる。
+  **ただしシミュレータでの観測は本番の証拠にならない**（シミュレータは翻訳フレームワーク自体が
+  使えず `.unsupported` の別分岐に入っている可能性が高い）。実機の英語端末・モデル削除状態・
+  本番サーバーでの再現が要る。**なお「Apple の自動翻訳が使えない」は
+  調査途中の誤った表現で、観測したのはシミュレータでの失敗のみ**。実機では設計どおり動くはずで、
+  端末内翻訳はこのアプリの肝のまま。真の問題は**コールドスタートの窓**で、モデル未取得の端末が
+  初めてタイムラインを開くとき、`openTimeline()` → `prepareTimelineLanguagesIfNeeded()` →
+  `prepareTranslation()` の成否が (1) OS の確認シートの許可 (2) 1言語60秒・全体90秒の予算
+  (3) 回線、というアプリ外の要因に依存する。揃わなければその回は全件スキップされ空に見える。
+  **修正方針（ユーザー判断・2026-09-22）**: F19（翻訳を意識させない）と F20（非対応言語のスキップ）は
+  どちらも必須仕様なので**スキップは変えない**。代わりに**どの端末言語でも翻訳なしで読める回答が
+  必ず存在する状態**を作る。(a) 運営回答を日本語5件＋英語5件にする（英語は既存5ペルソナの声で
+  書き下ろし。日本語版の翻訳ではない）、(b) `SeedCatalog.resize()` の `bodyLanguage: "ja"` 決め打ちを
+  端末言語に合わせる（開発・テスト・スクショが英語で成立しないバグ）、(c) 1件も表示していないのに
+  `exhaustedBody` が「この問いの回答はすべて読みました」と言うバグを直す。実機での再現確認は
+  修正の前提条件ではなく、修正後の確認に格下げする。
+  **記録の訂正**: 2026-09-09/10 のエントリで「既存UIテスト4件の失敗は、3件がスプリント18の
+  ヘッダー改修に追随していない古いアサーション、1件が本番サーバー依存のE2E」と書いたが**誤り**。
+  実際は `SprintFiveAcceptanceTests` の test02〜test05 の4件で、いずれも「アラート本文に日本語と
+  英語の**両方**が含まれること」を要求しているのに対し、実装（`L10n.swift:646`）は
+  `useEnglish ? 英文 : 和文` と**片方だけ**を返すため、単一ロケールでは構造的に通らない。
+  今回の変更とは無関係。
+- 2026-09-21: **App Store `1.0.3 (8)` が11日間「審査待ち」から動かない件の調査と対策**（コーディネーター）。
+  2026-09-10 09:19 JST に提出した submission `3216eae6-b83d-4b7a-a717-dc54a440e219` が
+  `WAITING_FOR_REVIEW` のまま `IN_REVIEW` に移らない。ASC API（`openssl` + python3 標準ライブラリで
+  ES256 JWT を自作。この Mac には `pyjwt` も `cryptography` も入っていない）で全項目を確認した結果、
+  **こちら側に不備は無い**: 提出アイテム3件すべて `READY_FOR_REVIEW`／バージョン `1.0.3`
+  （`23e28f87-0994-4573-abfa-8c3ac5620619`）`WAITING_FOR_REVIEW`／build 8
+  （`78353976-7223-45a9-abfa-7a976b90ef5f`）`VALID`・期限切れなし（2026-12-08まで）・
+  `usesNonExemptEncryption: false`／appInfo `700ab65d…` `WAITING_FOR_REVIEW`・
+  `appStoreAgeRating: SEVENTEEN_PLUS`（18+上書き反映済み）／サブスク `Monthly Plus`
+  （`6805429721`）`WAITING_FOR_REVIEW`・審査用スクショ `assetDeliveryState: COMPLETE`・
+  価格と無料トライアル設定済み。外部状況として2026年は審査待ちの長期化報告が多く、9月は新OS
+  リリースでキューが圧縮される時期。7日超は「バックログ入り＝問い合わせる価値あり」の領域。
+  **対応方針（ユーザー確定）**: 提出は**取り下げない**（順番待ちを失わない＋前回 9/9-9/10 に
+  取り下げで踏んだ「予期しないエラー → `DEVELOPER_REJECTED` 落ち → サブスクのロック」を再発させない）。
+  Contact Us（App Review Status）と Resolution Center の2経路から状況照会を出し、3〜4営業日
+  動かなければ Expedited Review を1回だけ申請する。**審査待ち中は ASC を触らない**（バージョン・
+  説明文・スクショ・年齢レーティング・サブスクのローカライズの編集、新ビルドのアップロードを禁止）。
+  照会文面は [`docs/app-review-status-inquiry-paste-ready.txt`](docs/app-review-status-inquiry-paste-ready.txt)
+  （Contact Us 用の長文・Resolution Center 用の短文・貼り付け時の注意の3部構成）。
+  **⚠️ 申し送り（再提出するときに直す項目）**: サブスクのローカライズ（ja / en-US）が
+  `PREPARE_FOR_SUBMISSION` のままで、親のサブスクが `WAITING_FOR_REVIEW` なのと**状態が不一致**。
+  審査待ち中に保存し直すとサブスクが提出から外れる恐れがあるため今は放置。取り下げ→再提出を
+  決めたときは、(1) ローカライズを GUI で保存し直す → (2) `PATCH /v1/reviewSubmissions/{id}` に
+  `{"canceled": true}` → (3) サブスクの「審査用に追加」→ バージョンと一緒に再提出、の順で行う。
+  **監視**: `tools/asc-status.sh`（読み取り専用・GET のみ）で submission / items / version / build /
+  サブスクの状態を取得し、`.tmp/asc-status-last.json` と差分が出たら macOS 通知を出す。
 - 2026-09-09/10: App Store 3度目リジェクト対応 = スプリント20（コーディネーターが直接実装）。
   Apple が `1.0.2 (7)` を **Guideline 1.2（ユーザー生成コンテンツ）と 3.1.2（サブスクリプション）**
   の2件でリジェクト（Submission ID `8e7b3e06-9aa8-4eee-adc9-3756a7f69468`）。1.2 は匿名投稿がある

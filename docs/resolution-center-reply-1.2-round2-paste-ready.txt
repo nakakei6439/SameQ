@@ -1,0 +1,65 @@
+================================================================
+Resolution Center 返信（Guideline 1.2 / 4度目のリジェクト）
+Submission ID: 3216eae6-b83d-4b7a-a717-dc54a440e219
+本文 3692 字（App Review の返信欄は 4000 字上限）
+※この区切り線と下の注意書きは貼り付けないこと
+================================================================
+
+Thank you for the review.
+
+All eight precautions listed under Guideline 1.2 are implemented in build 8. The message we received repeats the full list rather than naming a specific item, so we cannot tell which one was found missing. Could you please tell us which of the eight could not be verified? We will fix it immediately.
+
+Meanwhile, we think our own App Review Notes gave the wrong location for the Report and Block controls, and we would like to correct that here.
+
+Our notes said to tap "..." on an answer. That was wrong, and we are sorry for sending the reviewer to the wrong place. SameQ shows other users' answers one at a time rather than as a scrolling list, so there is no control on the answer card itself. Report and Block are behind the circled ellipsis button in the top right corner of the header.
+
+The exact sequence, with the labels as they appear on screen in English:
+
+1. Complete onboarding. Agreeing to the Terms of Use with the checkbox is required before an account is created.
+2. On the Today screen, type any text into the answer field and submit it.
+3. Tap the button labelled "Read the world's answers".
+4. The screen is titled THE WORLD'S ANSWERS and shows one answer at a time.
+5. Tap the circled ellipsis button in the TOP RIGHT CORNER. Its accessibility label is "Report or block this reply".
+6. A sheet titled "About this reply" opens, containing "Report this reply" and "Block this person".
+
+Other users' answers stay locked until you submit your own answer for the day. This is the core rule of the app, not a defect: everyone answers the same prompt before anyone can read. It does mean Report and Block cannot be reached until step 2 is done. Answers from the SameQ operator are posted every day, so there is always at least one answer to act on.
+
+The remaining precautions, with their locations:
+
+- Age rating 18+: set in App Store Connect for this version.
+- Terms with a zero-tolerance clause: the onboarding checkbox is mandatory. The terms state that we have no tolerance for objectionable content or abusive users, that we review reports within 24 hours, and that we remove violating posts and suspend the accounts responsible. Readable anytime under Menu > Settings > Terms of Use, in English and Japanese.
+- Filtering: every answer and nickname is checked against an English/Japanese blocklist on the device and again on our server, so a modified client cannot bypass it. You can verify this by typing profanity into the answer field.
+- Flagging: "Report this reply" from the sheet in step 6. Pick a reason and send. The answer is hidden from your feed immediately.
+- Blocking: "Block this person" from the same sheet. Blocked people are listed under Menu > Settings, in the section headed BLOCKED PEOPLE, where they can be unblocked.
+- Removing your own post immediately: on the Today screen, below your own answer, "Delete this answer". It leaves every user's feed immediately.
+- Acting on reports within 24 hours: an answer reported by three users is hidden automatically, or on one report if the text matches our blocklist. An author with three auto-hidden answers is suspended automatically. We also review the moderation queue manually every day.
+- Contact information in the app: Menu > Settings > "Contact us", the first row. It shows nakakei6439@gmail.com as selectable text and offers a button that opens a pre-filled email. The same contact is shown on the screen a suspended user sees.
+
+We are glad to send a screen recording of the Report and Block flow. Please also tell us if you would prefer these controls to be reachable without answering first; we can change that if it is required to pass review.
+
+Thank you for your time.
+
+================================================================
+貼り付け時の注意
+================================================================
+
+1. 返信欄は 4000 字上限。本文は 3692 字（余裕 308 字）。
+   加筆するときは超えないか確認すること。
+
+2. VS Code でこのファイルを開いてコピーすること。
+   ブラウザのテキストエリアに長文を貼ると文字が欠落することがある
+   （App Review Notes の投入時に3回発生。毎回違う位置が欠けた）。
+   貼り付けたあとは必ず全文を目視で確認する。
+
+3. 上下の区切り線とこの注意書きは貼り付けない。本文だけを送る。
+
+4. この返信は「どの項目が未達だったか」を聞くことが主目的。
+   当て推量でビルドを作り直す前に、根拠を取りに行くための1通。
+
+5. 文中で「ノーツの記載が誤っていた」と認めている。これは事実
+   （実装は画面右上のヘッダーにある ellipsis.circle で、
+   回答カード上には無い）。隠して押し切るとレビュアーが再現できず
+   5度目のリジェクトになるため、正しい場所を明示している。
+
+6. 手順 5〜6 は現行の build 8 の配置を前提にしている。
+   通報導線の改修後に再提出するときは、ここを書き直すこと。

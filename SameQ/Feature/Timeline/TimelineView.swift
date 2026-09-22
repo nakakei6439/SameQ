@@ -30,6 +30,7 @@ struct TimelineView: View {
                 loadingState
             case .post(let post):
                 cardStack(post: post)
+                safetyRow(post: post)
                 actionBar(post: post)
             case .empty:
                 endState(
@@ -96,22 +97,12 @@ struct TimelineView: View {
 
             Spacer()
 
-            // 通報・ブロック（F13 / F14）。回答が出ているときだけ押せる。
-            // 出ていないときも同じ幅を占めて、中央の見出しがずれないようにする。
-            Button {
-                safetyTarget = session.timelineContent.post
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 19, weight: .medium))
-                    .foregroundStyle(Theme.inkSecondary)
-                    .frame(width: 64, height: 32, alignment: .trailing)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .opacity(session.timelineContent.post == nil ? 0 : 1)
-            .disabled(session.timelineContent.post == nil)
-            .accessibilityIdentifier("timeline.more")
-            .accessibilityLabel(Text(L10n.Timeline.moreAccessibility))
+            // 通報・ブロックの入口は回答本体の近く（`safetyRow`）に移した
+            // （スプリント21：レビュアーが「…」の小さな灰色アイコンに気づけず、
+            // 審査で4度目のリジェクトを受けたため）。ここには何も置かないが、
+            // `timeline.close` と同じ幅の透明な余白を保って、見出しの中央揃えを崩さない。
+            Color.clear
+                .frame(width: 64, height: 32)
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
@@ -263,9 +254,42 @@ struct TimelineView: View {
         )
     }
 
+    /// 通報・ブロックの入口（F13 / F14）。カードのすぐ下、82pt のいいねボタンより先に
+    /// 目に入る位置に置く（スプリント21）。
+    ///
+    /// もともとは画面上部の「…」アイコンだけだったが、隅の小さな灰色アイコンで
+    /// テキストラベルも無く、App Store 審査（Guideline 1.2）で4度リジェクトされる
+    /// 一因になった（前提44）。アイコン＋短いテキストにして、回答本体のすぐ下という
+    /// スクロール不要の位置へ動かした。トーンはいいねボタンと張り合わない落ち着いた
+    /// 灰色文字のみで、赤字・警告色は使わない（受け入れ条件5 / F40 と同じ方針）。
+    private func safetyRow(post: Post) -> some View {
+        HStack {
+            Spacer()
+            Button {
+                safetyTarget = post
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "flag")
+                        .font(.system(size: 13, weight: .medium))
+                    Text(L10n.Timeline.moreLabel)
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                }
+                .foregroundStyle(Theme.inkTertiary)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("timeline.more")
+            .accessibilityLabel(Text(L10n.Timeline.moreAccessibility))
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 6)
+    }
+
     /// カードの下の操作。いいねだけ（並行タスク：UI調整で✕「次の人へ」ボタンを撤去）。
     /// 次の人へ進む操作はスワイプのみになったので、その導線を文言で示す。
-    /// 「前へ」は置かない（置いた前提5）。通報・ブロックは上部の ⋯ から。
+    /// 「前へ」は置かない（置いた前提5）。通報・ブロックは `safetyRow`（カードのすぐ下）から。
     private func actionBar(post: Post) -> some View {
         let isLiked = session.isLiked(post.id)
         return VStack(spacing: 10) {

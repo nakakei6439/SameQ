@@ -1,0 +1,50 @@
+================================================================
+[1] Contact Us > App Review > App Review Status 用（長い方）
+    https://developer.apple.com/contact/app-store/?topic=appreview
+    ※この区切り線は貼り付けないこと
+================================================================
+
+Hello,
+
+I am writing to ask about a submission that has not changed state for more than eleven days.
+
+App name: SameQ
+Apple ID: 6805425491
+Bundle ID: com.nakakei6439.SameQ
+Version: 1.0.3 (build 8)
+Submission ID: 3216eae6-b83d-4b7a-a717-dc54a440e219
+Submitted: September 10, 2026
+
+The submission has been in Waiting for Review since the day it was submitted and has never moved to In Review. As far as I can see in App Store Connect, everything on my side is in order: the build is in the Valid state and does not expire until December 8, 2026, all three items in the submission are Ready for Review, and there are no unanswered messages in Resolution Center.
+
+This version was prepared specifically in response to the previous rejection under Guideline 1.2 and Guideline 3.1.2. All eight precautions required for apps with user-generated content are implemented in build 8: a filter for objectionable content on both the device and the server, the ability for a user to delete their own content, a report control and a block control on every other user's answer, a published zero-tolerance clause in the terms with a commitment to act on reports within 24 hours, and a contact address inside the app. The age rating has been raised to 18+, a custom EULA has been added for all territories, and the subscription purchase screen now links to our terms and privacy policy. The App Review Notes for this build describe the exact sequence of taps needed to reach the report and block controls, because those controls are intentionally locked until the user has answered the day's prompt.
+
+Could you please check the status of this submission and let me know whether anything further is required from me? This is the first release of the app, so any guidance would be very welcome.
+
+Thank you for your time.
+
+
+================================================================
+[2] Resolution Center の既存スレッドへの追記用（短い方）
+    ※この区切り線は貼り付けないこと
+================================================================
+
+Hello,
+
+A quick follow-up on submission 3216eae6-b83d-4b7a-a717-dc54a440e219 for SameQ (Apple ID 6805425491), version 1.0.3 (build 8).
+
+The submission was made on September 10, 2026 and has remained in Waiting for Review ever since, without moving to In Review. The build is Valid and not expired, and all three items in the submission are Ready for Review, so I do not believe anything is outstanding on my side.
+
+All of the Guideline 1.2 precautions and the Guideline 3.1.2 fix from the previous review are included in this build, and the App Review Notes explain how to reach the report and block controls.
+
+Could you let me know the status, or tell me if you need anything else from me? Thank you.
+
+
+================================================================
+[3] 貼り付け時の注意（PROGRESS.md「ハマった点 (5)」）
+================================================================
+
+ブラウザのテキストエリアに長文を貼ると、文字が欠落することがある
+（App Review Notes の投入時に3回発生。毎回違う位置が欠けた）。
+このファイルを VS Code で開いてコピーすると再現しなくなった。
+貼り付けたあとは必ず全文を目視で確認すること。

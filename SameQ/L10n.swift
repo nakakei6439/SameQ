@@ -299,6 +299,11 @@ enum L10n {
         static let moreAccessibility: String = useEnglish
             ? "Report or block this reply"
             : "この回答を通報またはブロック"
+
+        // スプリント21（F13 / F14）: 通報・ブロックの入口に添える画面表示用の短いラベル。
+        // `moreAccessibility` は VoiceOver 用の長い説明文なので、画面上には別途この短い
+        // 文言を出す（レビュアーが文字列を目で探して辿れるようにする＝前提44）。
+        static let moreLabel: String = useEnglish ? "Report or block" : "通報・ブロック"
     }
 
     // MARK: Waiting
