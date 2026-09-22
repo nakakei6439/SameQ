@@ -281,6 +281,17 @@ enum L10n {
             ? "When someone in the world answers, their reply will appear here one by one."
             : "世界の誰かが答えると、ここに1件ずつ出てきます。"
 
+        // スプリント21: 1件も表示できずに終端へ達したときの文言。
+        // `exhaustedTitle` / `exhaustedBody` は「すべて読みました」と言い切るので、
+        // 1件も見せていないときに出すと事実と違う（`TimelineContent.notReadableYet`）。
+        // F19 を守り、翻訳の存在が分かる表現（「翻訳できませんでした」等）は使わない。
+        static let notReadableYetTitle: String = useEnglish
+            ? "No answers available right now"
+            : "いま読める回答がありません"
+        static let notReadableYetBody: String = useEnglish
+            ? "Try looking again in a little while."
+            : "少し時間をおいて、もう一度のぞいてみてください。"
+
         static let exhaustedTitle: String = useEnglish
             ? "No new answers right now"
             : "今は新しい回答がありません"

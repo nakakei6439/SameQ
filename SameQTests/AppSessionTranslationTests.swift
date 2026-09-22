@@ -148,8 +148,11 @@ final class AppSessionTranslationTests: XCTestCase {
         XCTAssertEqual(post.id, translatable.id, "非対応言語の回答は一度も表示されてはいけない")
 
         await session.advanceTimeline()
-        if case .exhausted = session.timelineContent {} else {
-            XCTFail("残りは非対応言語だけなので読み切りになるはず: \(session.timelineContent)")
+        // スプリント21: 1件も表示できずに終端へ達したときは `.exhausted`（＝すべて読んだ）
+        // ではなく `.notReadableYet`。`.exhausted` の文面は「この問いの回答はすべて
+        // 読みました」と言い切るので、見せていないのにそれを出すと事実と違う。
+        if case .notReadableYet = session.timelineContent {} else {
+            XCTFail("残りは非対応言語だけなので notReadableYet になるはず: \(session.timelineContent)")
         }
 
         let viewed = try await backend.viewedPostIDs()
@@ -209,10 +212,11 @@ final class AppSessionTranslationTests: XCTestCase {
         await session.waitForPendingTimelineOpen()
 
         // 唯一の候補がモデル未ダウンロードで、ダウンロードの試み（セッション要求）自体が
-        // 解決されないので、読み切り扱いになるはず（固まったり、OSのシートを待つ経路には
-        // 一切入らない）。
-        if case .exhausted = session.timelineContent {} else {
-            XCTFail("モデル未ダウンロードの回答しか無いので読み切りになるはず: \(session.timelineContent)")
+        // 解決されないので、終端表示になるはず（固まったり、OSのシートを待つ経路には
+        // 一切入らない）。スプリント21: 1件も表示していないので `.exhausted`（すべて読んだ）
+        // ではなく `.notReadableYet`。
+        if case .notReadableYet = session.timelineContent {} else {
+            XCTFail("モデル未ダウンロードの回答しか無いので notReadableYet になるはず: \(session.timelineContent)")
         }
 
         let viewed = try await backend.viewedPostIDs()

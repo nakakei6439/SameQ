@@ -39,6 +39,15 @@ struct TimelineView: View {
                     detail: L10n.Timeline.emptyBody,
                     identifier: "timeline.empty"
                 )
+            case .notReadableYet:
+                // 候補はあったが、この巡回では1件も表示できなかった。
+                // 「すべて読みました」とは言わない（スプリント21）。
+                endState(
+                    symbol: "🌱",
+                    title: L10n.Timeline.notReadableYetTitle,
+                    detail: L10n.Timeline.notReadableYetBody,
+                    identifier: "timeline.notReadableYet"
+                )
             case .exhausted:
                 endState(
                     // 🌫️ はシミュレータのフォントで欠け表示になるので使わない

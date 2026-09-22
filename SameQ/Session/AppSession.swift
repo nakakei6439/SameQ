@@ -42,6 +42,15 @@ final class AppSession {
         case empty
         case exhausted
 
+        /// 候補はあったが、この巡回では1件も表示できずに終わった状態。
+        ///
+        /// `.exhausted` と分けているのは文言のため。`.exhausted` は
+        /// 「この問いの回答はすべて読みました」と言い切る文面なので、1件も見せていない
+        /// ときにそれを出すと**事実と違うことを画面に出す**ことになる（F20 のスキップが
+        /// 全件に及んだときに実際に起きていた）。挙動は `.exhausted` と同じ終端表示で、
+        /// 変えているのは文言だけ。
+        case notReadableYet
+
         var post: Post? {
             if case .post(let post) = self { return post }
             return nil
@@ -1017,6 +1026,9 @@ final class AppSession {
         timelineContent = .loading
         do {
             var skippedThisDraw: Set<UUID> = []
+            // この巡回で「翻訳が確定せず表示を見送った」投稿が1件でもあったか。
+            // 終端に達したときの文言を分けるためだけに使う（挙動は変えない）。
+            var deferredAnyPost = false
             draw: while true {
                 switch try await backend.nextTimelinePost(
                     promptID: prompt.id,
@@ -1053,15 +1065,17 @@ final class AppSession {
                         // クールダウン判定は `Translator` 側で効くので、過剰に
                         // 再試行する心配は無い。
                         try? await backend.recordLanguageEncounter(languageCode: post.bodyLanguage)
+                        deferredAnyPost = true
                         if !permanent {
                             skippedThisDraw.insert(post.id)
                         }
                         continue draw
                     }
                 case .empty:
-                    timelineContent = .empty
+                    // 候補が最初から無いのか、見送った結果なのかで文言を分ける。
+                    timelineContent = deferredAnyPost ? .notReadableYet : .empty
                 case .exhausted:
-                    timelineContent = .exhausted
+                    timelineContent = deferredAnyPost ? .notReadableYet : .exhausted
                 }
                 break draw
             }

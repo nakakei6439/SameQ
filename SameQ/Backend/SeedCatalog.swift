@@ -395,9 +395,10 @@ enum SeedCatalog {
     /// 件数指定があるときは、同梱シードの実データ（多言語）は使わず**全件を機械的に作る**
     /// （スプリント06で追加）。`-SameQAnswerCount` はタイムライン取得ルール・既読・BAN・
     /// 通報連打制限など（F11〜F17）の検証に使う起動引数で、翻訳（F18〜F22）の検証とは
-    /// 役割が別。機械生成は常に端末言語と同じ「ja」で作るので、翻訳を挟まず
-    /// スキップも発生しない（＝件数どおりに必ず表示される）。翻訳そのものの検証は
-    /// `-SameQAnswerCount` を付けない同梱シードそのまま（多言語）で行う。
+    /// 役割が別。機械生成は**端末言語と同じ言語**で作るので、翻訳を挟まずスキップも
+    /// 発生しない（＝件数どおりに必ず表示される）。以前は端末言語に関係なく `"ja"` 固定
+    /// だったため、英語端末では全件が翻訳待ちになりスキップされて「回答0件」になっていた。
+    /// 翻訳そのものの検証は `-SameQAnswerCount` を付けない同梱シードそのまま（多言語）で行う。
     ///
     /// ID は起動ごとに変わらない決め打ちなので、アプリを再起動しても「同じ回答」として
     /// 既読の判定ができる（F12 の検証に必要）。本文には通し番号を入れてあり、
@@ -427,7 +428,7 @@ enum SeedCatalog {
                     authorEmoji: emoji,
                     authorNickname: nickname,
                     body: "\(sentence)（#\(promptSlot + 1)-\(number)）",
-                    bodyLanguage: "ja",
+                    bodyLanguage: generatedBodyLanguage,
                     createdAt: startsAt.addingTimeInterval(span * Double(number % 100) / 200),
                     expiresAt: endsAt
                 )
@@ -442,7 +443,23 @@ enum SeedCatalog {
         return UUID(uuidString: string) ?? UUID()
     }
 
-    private static let generatedSentences = [
+    /// 機械生成に使う文例。端末言語に合わせて選ぶ。
+    ///
+    /// 以前は日本語プールだけを持ち、`bodyLanguage` も `"ja"` 決め打ちだった。その結果
+    /// **英語端末では生成した回答が全件「翻訳が要る投稿」になり、モデル未取得だと
+    /// `drawNextPost` に全部スキップされてタイムラインが空になっていた**
+    /// （`-SameQAnswerCount` を使う UI テスト・スクショ撮影が英語で成立しなかった原因）。
+    /// 端末言語と同じ言語で作れば翻訳を挟まず、件数どおりに必ず表示される。
+    private static var generatedSentences: [String] {
+        L10n.isJapanese ? generatedSentencesJa : generatedSentencesEn
+    }
+
+    /// `generatedSentences` と対になる言語コード。`Post.bodyLanguage` に入れる。
+    private static var generatedBodyLanguage: String {
+        L10n.isJapanese ? "ja" : "en"
+    }
+
+    private static let generatedSentencesJa = [
         "朝の電車で、知らない人が席を譲っていた",
         "コーヒーをこぼしたけど、誰も見ていなかった",
         "犬が信号をちゃんと待っていた",
@@ -452,6 +469,21 @@ enum SeedCatalog {
         "洗濯物がよく乾いた日だった",
         "階段を1段飛ばしで上がれた",
         "рядом сидящий человек тихо напевал",
+        "The rain stopped exactly when I stepped outside"
+    ]
+
+    /// 英語端末用。件数は日本語版と同じ10件に揃える（`(promptSlot + number) % count` の
+    /// 決定的な採番がロケールで変わらないようにするため）。
+    private static let generatedSentencesEn = [
+        "Someone gave up their seat on the morning train",
+        "I spilled my coffee and nobody saw it",
+        "A dog waited for the light to change, properly",
+        "A short message from my mother made me tear up",
+        "The ice cream I ate at midnight was unreasonably good",
+        "I caught myself using a coworker's favourite phrase",
+        "It was a good drying day for the laundry",
+        "I made it up the stairs two at a time",
+        "The person next to me was humming something quietly",
         "The rain stopped exactly when I stepped outside"
     ]
 
