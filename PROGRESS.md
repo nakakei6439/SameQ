@@ -1,3 +1,42 @@
+- 2026-09-23: **残件の棚卸しと、スプリント22（手作り運営回答480件）の本番反映**（コーディネーター）。
+  **棚卸しの結果**: (a) スプリント22 が generator の実装＋自己評価で止まっていた（evaluator 未実施・
+  未コミット・本番未適用）。(b) **App Store の合成スクショ差し替えはすでに完了済みだった** —
+  ASC API（GET のみ）で 1.0.3（`23e28f87…`）を見たところ ja（`af5868bb…`）/ en-US（`603fd301…`）とも
+  `APP_IPHONE_67` に 01〜05.png が5枚ずつ `COMPLETE` で入っており、旧 `APP_IPHONE_65` セットは無い。
+  2026-09-07 に 1.0.2 が REJECTED の隙に差し替えた内容が 1.0.3 に引き継がれていた。メモリの索引行だけが
+  古かったので実態に合わせて更新した。(c) Apple からの返答は**まだ無い**（Gmail `from:apple newer_than:5d`
+  で、9/22 04:47 JST のリジェクト通知が最後）。方針どおり再提出はしない。(d) お題プール v2（日英2列）は
+  999件中100件のパイロットまで。**未着手**。
+  **スプリント22（evaluator 合格 → 本番適用）**: `official_answers` テーブルを新設し 48お題 × 5ペルソナ ×
+  日英 = 480件を投入。`ensure_official_answers()` は「その日のお題に手書きが10件揃えば使い、揃わなければ
+  従来のカテゴリ方式へフォールバック」。ペルソナ→著者UUID は 9/22 の添字事故を繰り返さないため
+  **配列添字ではなくペルソナ名＋言語の `case` 式**。`world_timeline` に `is_official` を**末尾**へ追加
+  （`CREATE OR REPLACE VIEW` は既存列の途中に挿入できない）。
+  **evaluator の検証**: 条件9/9。480行がマイグレーション内 INSERT ↔ TSV ↔ DB 投入後 COPY の三者でバイト
+  不一致0（絵文字・`''` エスケープ・日英混在、NFD 混入なし）。48お題を総当たり実行して480件生成し
+  author_id/body/lang の不一致0。**fallback 経路は diff だけでなく挙動で実証** — 新関数の8カテゴリ80行と、
+  同じDBに 20260922000002 を再適用した旧関数の80行が md5 完全一致（951日ぶんの挙動は不変）。
+  9件→fallback・0件→fallback も実測。RLS は `select` 1本のみ。`SupabaseBackend.swift:579` は `*` ではなく
+  明示列リストで `is_official` を要求せず、`PostRow` は未知キーを無視し列順に非依存なので壊れない。
+  **検証の限界（隠さない）**: 本機に Docker が無く **`supabase db reset` は通せていない**。隔離した
+  Homebrew PostgreSQL 16.15 に `auth.uid()` スタブと Supabase ロールを立て、全22本を `ON_ERROR_STOP=1` で
+  順番適用する代替検証（PostgREST 経由の公開・実JWT・Supabase 既定権限は未検証）。
+  報告は [`.product/sprints/22-official-answers/eval.md`](.product/sprints/22-official-answers/eval.md)。
+  **本番反映**: README 更新（スプリント21・実機修正5件・運営回答の作り替え3段階・審査の現状まで反映）→
+  commit `32de840` → push → `supabase db push --linked`。適用後の本番 SELECT で
+  `official_answers` 480行 / distinct prompt_text 48 / 件数が10でないお題 0 / 重複 0 /
+  `world_timeline.is_official` 存在 / `relrowsecurity = t` / ポリシーは
+  `official_answers_select_all:SELECT:{authenticated}` の1本のみ / 既存 `posts` 176件（visible 175）が
+  そのまま、を確認。`select public.ensure_official_answers();` を本番で実行してもエラー無く、
+  その日の運営回答は10件のまま（重複投入なし）。
+  **効果が見えるのは先**: 今日のお題「誰にも言っていないけれど本当は少し気になっていることは？」は
+  48お題に**含まれない**ためフォールバック経路。手書きが実際に出るのは **今後400日で24日だけ（約6%）**、
+  **最初は 2026-10-16**（次が 10-21 / 10-22 / 10-27 / 11-02）。適用直後に運営回答が変わらないのは仕様。
+  **残件**: (1) Apple の返答待ち。返答後に版数を上げた新ビルド（実機修正3件は build 8 に入っていない。
+  `Info.plist` は今も `1.0.3 (8)`）。再提出時はサブスクのローカライズが `PREPARE_FOR_SUBMISSION` のまま
+  親と不一致な件の手順（9/21 のエントリ）を踏むこと。(2) お題プール v2 の残り約899件の英訳（前提29 の
+  変更を伴う**未決**論点）。(3) `is_official` 列は追加したが Swift はまだ選択していないため、運営投稿の
+  言語重複表示の修正は次のスプリント待ち。
 - 2026-09-22: **App Store 4度目のリジェクト（Guideline 1.2）と、その調査**（コーディネーター。
   ユーザー指示により途中からハーネスを使わず直接作業）。
   **リジェクト**: 11日間 `WAITING_FOR_REVIEW` だった `1.0.3 (8)` が 04:47 JST に
