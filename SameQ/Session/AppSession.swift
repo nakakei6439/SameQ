@@ -869,7 +869,13 @@ final class AppSession {
     /// ダウンロード確認シートが出たとしても、それに巻き込まれて閉じる `fullScreenCover` が
     /// 存在しない（attempt 3 の致命的症状の再発防止。詳細は `Translator` クラス冒頭のコメント）。
     func openTimeline() async {
-        guard let prompt, myPost != nil, !isPreparingTimeline else { return }
+        // `!isTimelinePresented` が無いと、すでに開いている状態で再度呼ばれるたびに
+        // `drawNextPost()` が走り、**画面に出ないまま1件ずつ既読になって消える**。
+        // 実機で踏んだ事故（2026-09-22）: 削除処理が返らず UI が固まったユーザーが
+        // 「Read the world's answers」を連打し、その日の回答5件が7秒で全部消費された
+        // （表示は一度もされていない）。連打は「反応しないボタン」に対する自然な操作なので、
+        // 押せてしまう以上ここで止める。
+        guard let prompt, myPost != nil, !isPreparingTimeline, !isTimelinePresented else { return }
         await prepareTimelineLanguagesIfNeeded(promptID: prompt.id)
         timelineContent = .loading
         isTimelinePresented = true

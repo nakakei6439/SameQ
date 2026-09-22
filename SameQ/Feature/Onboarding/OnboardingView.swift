@@ -99,7 +99,11 @@ struct OnboardingView: View {
                 conceptRow("🌍", L10n.Onboarding.conceptE1)
                 conceptRow("✍️", L10n.Onboarding.conceptE2)
                 conceptRow("👋", L10n.Onboarding.conceptE3)
-                conceptRow("🌫️", L10n.Onboarding.conceptE4)
+                // 🌫️（U+1F32B + FE0F）は端末のフォントに無く、実機で豆腐（□）になる。
+                // `TimelineView.endState` にも同じ注意書きがあるのにここだけ残っていた。
+                // オンボーディングはレビュアーが最初に見る画面なので、単一コードポイントで
+                // 確実に描画される絵文字にする。
+                conceptRow("🍃", L10n.Onboarding.conceptE4)
             }
             .padding(20)
             .cardBackground()

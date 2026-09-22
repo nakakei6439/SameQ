@@ -299,6 +299,7 @@ struct SupabaseClient: Sendable {
 
     func anonymousSignUp() async throws -> AuthSession {
         var request = URLRequest(url: authBaseURL.appendingPathComponent("/signup"))
+        request.timeoutInterval = Self.requestTimeoutSeconds
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(apiKey, forHTTPHeaderField: "apikey")
@@ -320,6 +321,7 @@ struct SupabaseClient: Sendable {
     /// `POST /auth/v1/token?grant_type=refresh_token` でアクセストークンを更新する。
     func refreshToken(refreshToken: String) async throws -> AuthSession {
         var request = URLRequest(url: authBaseURL.appendingPathComponent("/token"))
+        request.timeoutInterval = Self.requestTimeoutSeconds
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(apiKey, forHTTPHeaderField: "apikey")
@@ -375,9 +377,18 @@ struct SupabaseClient: Sendable {
         return url
     }
 
+    /// 1リクエストあたりの待ち時間の上限。
+    ///
+    /// 既定の `URLSession.shared` は `timeoutIntervalForRequest` が60秒だが、接続が
+    /// 半端に生きていると実質返ってこないことがある。実機で、削除リクエストが返らず
+    /// UI が「削除しています…」のまま固まる事故を踏んだ（2026-09-22。サーバー側の削除自体は
+    /// 成功していた）。呼び出し側は `await` が返る前提で書かれているので、ここで必ず切る。
+    static let requestTimeoutSeconds: TimeInterval = 20
+
     /// REST リクエストの雛形を作る（共通ヘッダー）。
     private func makeRestRequest(url: URL, method: String) -> URLRequest {
         var request = URLRequest(url: url)
+        request.timeoutInterval = Self.requestTimeoutSeconds
         request.httpMethod = method
         request.setValue(apiKey, forHTTPHeaderField: "apikey")
         if let token = tokenProvider() {
@@ -395,7 +406,10 @@ struct SupabaseClient: Sendable {
             case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed, .internationalRoamingOff:
                 throw SupabaseError.offline
             case .timedOut:
-                throw SupabaseError.transport("タイムアウトしました")
+                // 利用者から見れば「つながらない」と同じ。`transport` に流すと詳細文言が
+                // 日本語固定のまま英語端末にも出てしまうので、ローカライズ済みの
+                // `offline`（Can't connect. Please check your network.）に寄せる。
+                throw SupabaseError.offline
             case .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed:
                 throw SupabaseError.offline
             default:
