@@ -1,8 +1,14 @@
 {
-  "currentSprint": "18",
-  "attempt": 2,
+  "currentSprint": "22",
+  "attempt": 1,
   "status": "passed",
   "history": [
+    {
+      "sprint": "22",
+      "attempt": 1,
+      "result": "passed",
+      "evalNote": "eval.md — 合格。基準1〜5すべて閾値クリア（条件9/9、適用エラー0、データ整合100%、回帰7/7、使用性4）。検証は Docker 不在のため supabase db reset ではなく、隔離した Homebrew PostgreSQL 16.15 + auth.uid() スタブに全22本を ON_ERROR_STOP=1 で適用（generator と同じ限界。PostgREST/実JWT/Supabaseデフォルト権限は未検証）。本番DBへの書き込みは一切なし。主な実測: (1) 480行を TSV と機械照合しバイト不一致0（マイグレーション内INSERT・DB投入後のCOPY出力の両方で照合）、DB内の全本文・prompt_text は NFC で NFD 混入なし、マイグレーション3回再適用で480行維持。(2) persona→UUID は行ループ+case 式で配列添字への依存ゼロ。48お題を総当たり実行し480件生成、author_id/body/body_language の不一致0。users テーブルの実体（…0001 ケータ/…0006 Keita 他）とも完全一致。(3) custom(10件)→custom経路、9件→fallback、0件→fallback を実測。両経路とも2回目は inserted=0。(4) fallback の同一性をテキスト diff だけでなく挙動で実証: 新関数で8カテゴリ80行を取得 → 同DBに 20260922000002 を再適用して旧関数で80行取得 → md5 比較で完全一致（951日ぶんの非48お題の挙動は不変）。(5) world_timeline は is_official が11列目（末尾）、WHERE 7条件・security_invoker=off・grant すべて不変。Swift 側 SupabaseBackend.swift:579 は明示列リスト（* ではない）で is_official を要求せず、PostRow は素の Decodable で未知キーを無視し列順にも非依存 → 壊れない。(6) RLS: relrowsecurity=t、SELECT ポリシー1本（TO authenticated, USING true）のみ、insert/update/delete ポリシー0。回帰: F05 未回答0件 / F06・F11 回答後10件かつ自分は出ない / F13 ブロックで9件 / F14 通報で8件 / 期限切れ0件 / fallback 旧関数と同一 / ensure_todays_prompt 不変。加えてスプリント20の禁止語トリガーで480件すべてが弾かれず status=visible、本文長は最大166文字で CHECK(1..2000)内。本番適用シミュレーション: 20260922000002 までの状態＋実データ（posts 11件）に新マイグレーション1本だけを適用 → APPLY OK、既存posts保持、official_answers 480行、world_timeline 11列、認証ユーザーから運営10件が is_official=t。重要な運用注意: 今日のお題（プール添字238）は48お題に含まれず、本番適用直後も fallback のまま出る（バグではない）。手作り回答が出るのは今後400日で24日のみ、最初は 2026-10-16。改善提案: (高) 48お題が滅多に引かれない期待値ズレ→プールの重み付け検討、(中) is_official を使う Swift 側スプリントまでユーザー体感の変化は48日ぶんの文面のみ、(低) official_answers の明示 grant（既存テーブルと同じ流儀なので今回は不問）。未評価: supabase db reset（Supabase CLI 経由）の適用確認、PostgREST 経由の公開と実JWTでの auth.uid()。"
+    },
     {
       "sprint": "18",
       "attempt": 2,

@@ -1,0 +1,25 @@
+SameQ is a fully anonymous app: no sign-up form, no username/password. An anonymous account is created automatically during onboarding, so there is no demo account to provide. There is no chat, no DMs, no following, no search, no image uploads. Once a day everyone gets the same prompt, writes one short text answer, and only then can read other users' answers one at a time. Answers disappear after 24-36 hours.
+
+How to reach the Report/Block controls:
+1. Complete onboarding (accept the terms, pick an emoji).
+2. On the Today screen, type any text and tap Submit.
+3. Tap "Read answers from the world".
+4. Tap "..." on any answer. Report and Block are both there. Other users' answers only unlock after you answer yourself - this is the app's core rule, not a bug. Operator-labeled answers ("SameQ運営") are always present, so this is verifiable even on a slow day.
+
+== Guideline 1.2 - all eight precautions ==
+1. Age rating: set to 18+.
+2. Terms agreement: onboarding requires an explicit checkbox before an account is created. Terms state near the top that we have zero tolerance for objectionable content/abusive users, review reports within 24h, remove violating posts and suspend responsible accounts. A one-line summary is shown above the checkbox. Available in English and Japanese: Menu > Settings > Terms of Use.
+3. Filtering: every answer and nickname is checked against a blocklist (JA/EN) on-device and again on our server (DB trigger), so a modified client can't bypass it. Try typing profanity into the answer field.
+4. Flagging: "..." on any answer > Report > choose reason > Submit. Disappears from your feed immediately.
+5. Blocking: same "..." menu > Block. Manage at Settings > Blocked users.
+6. Removing your own post: Today screen > under your answer > "Delete this answer". Confirmation states you can't answer the same prompt again. Leaves everyone's feed immediately.
+7. Acting within 24h: a post reported by 3 different users is auto-hidden (1 report if text matches our blocklist). An author with 3 auto-hidden posts is auto-suspended. We also manually review the moderation queue at least daily. Written procedure: docs/moderation-runbook.md in our repo.
+8. Contact: Menu > Settings > Contact us (first row). Shows nakakei6439@gmail.com as selectable/copyable text, plus a button to open a prefilled email. Same contact on the account-suspended screen.
+
+== Guideline 3.1.2 ==
+Custom EULA is now registered in App Store Connect. The App Description (all locales) links to Terms of Use and Privacy Policy. The in-app Plus purchase screen (Menu > Plus) also links to both documents and states auto-renewal terms.
+Terms: https://nakakei6439.github.io/sameq/terms.html
+Privacy: https://nakakei6439.github.io/sameq/privacy.html
+
+== Also included (from prior review) ==
+Auto-renewable subscription "SameQ Plus (Monthly)" (com.nakakei6439.SameQ.plus.monthly) is included for review. Reachable via the "Plus" button in the top bar or the banner on the Today screen. 1-month free trial, then ¥480/month.

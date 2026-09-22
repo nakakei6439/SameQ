@@ -1,0 +1,13 @@
+Thank you for the detailed review.
+
+We have implemented all eight precautions listed under Guideline 1.2 in 1.0.3 (8), and resolved Guideline 3.1.2. The App Review Notes for this build contain a point-by-point list with the exact steps to verify each one inside the app.
+
+Two notes that may help the review:
+
+First, SameQ is not an anonymous chat app. There are no direct messages, no conversations, no following and no image uploads. Once a day everyone answers the same prompt with one short text, and answers disappear after 24-36 hours. The only content a user can create is short text, an emoji avatar and an optional nickname.
+
+Second, other users' answers are intentionally locked until you submit your own answer for the day. This means the Report and Block controls can only be reached after answering. The App Review Notes describe the exact sequence of taps.
+
+We have set the age rating to 18+, the terms now state explicitly that we have no tolerance for objectionable content or abusive users and that we act on reports within 24 hours, answers and nicknames are filtered on the device and on the server, users can delete their own answer at any time, and a contact address is available in the app under Menu > Settings > Contact us.
+
+Thank you for your time.

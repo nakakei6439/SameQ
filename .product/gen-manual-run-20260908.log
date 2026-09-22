@@ -1,0 +1,10 @@
+⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors
+[claude-code:unrecognized_model] {"model":"MiniMax-M3","query_source":"sdk"}
+完了報告:
+
+- **お題プール**: 1,083 件 (既存 48 完全保持 + 新規 1,035、Q の基準・安全フィルタ済み)
+- **運営回答**: 5,415 件 (5 ペルソナ × 1,083 全件) — 先頭 50 件は手書き高品質、残り 1,033 件はルールベース生成
+- **変更/追加**: `SameQ/Backend/PromptCatalog.swift` (1,196 行)、`SameQTests/PromptGenerationTests.swift` (+2 件)、新規 `supabase/migrations/20260908000001_sprint19_*.sql` (658 KB)
+- **バイト一致**: Swift `candidatePool` ↔ SQL `v_pool` ↔ draft `final-pool.txt` を Python で検証、`Match: True` (1,083 件)
+- **MANIFEST.md**: `SameQ/.product/prompt-pool-draft/MANIFEST.md` (15 KB) — 件数/カテゴリ内訳、シャッフルシード、進捗、spec 受入条件の自己評価、既知の弱点、次セッション手順
+- **厳守**: `supabase db push` / `db query` / `git commit/push` / `README変更` / デプロイは **一切実行せず**。下書きとコード改変のみ

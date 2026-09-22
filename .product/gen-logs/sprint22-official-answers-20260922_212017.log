@@ -1,0 +1,11 @@
+New migration file is in place (untracked, not committed per instructions — commit only when asked).
+
+## 完了報告
+
+スプリント22（手作り運営回答480件の投入）を実装しました。
+
+- **成果物**: `supabase/migrations/20260923000001_official_answers_table.sql`（1本）
+- **受け入れ条件**: 9/9 達成（テーブル作成・RLS・480行の冪等投入・本文完全一致・`ensure_official_answers()` のcustom/fallback分岐・ペルソナ名からUUIDを引く実装・冪等性・`world_timeline.is_official`）
+- **検証環境の注意**: 本機に Docker が未インストールで `supabase db reset` が使えなかったため、Homebrew の生 PostgreSQL に Supabase相当のスタブ（`auth.uid()`・ロール）を作り、全21+1本のマイグレーションを順番適用して検証しました（詳細と限界は self-review.md に明記）。この過程で `world_timeline` の列順序に関する実装ミス（`CREATE OR REPLACE VIEW` は列を途中に挿入できない制約）を1件検出・修正済みです。
+
+詳細は `.product/sprints/22-official-answers/self-review.md` を参照してください。evaluator の呼び出しをお願いします。
