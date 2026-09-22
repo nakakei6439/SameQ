@@ -452,7 +452,10 @@ actor SupabaseBackend: Backend {
                     prompt_id: promptID,
                     author_id: user.id,
                     body: trimmed,
-                    body_language: Locale.current.language.languageCode?.identifier ?? "und"
+                    // 端末言語ではなく**本文そのもの**から判定する。日本語端末から英語で
+                    // 投稿されたものを `ja` と記録すると、英語端末の読み手が ja→en の翻訳に
+                    // かけてしまい、結果が壊れるかスキップされて表示されなくなる。
+                    body_language: BodyLanguageDetector.detect(trimmed)
                 ),
                 // `posts` テーブルの実スキーマには `author_emoji` /
                 // `author_nickname` / `decorations` カラムが無い

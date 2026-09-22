@@ -291,7 +291,8 @@ actor LocalBackend: Backend {
             authorEmoji: user.emoji,
             authorNickname: user.displayNickname,
             body: trimmed,
-            bodyLanguage: Locale.current.language.languageCode?.identifier ?? "und",
+            // 端末言語ではなく本文から判定する（`SupabaseBackend` と同じ理由）。
+            bodyLanguage: BodyLanguageDetector.detect(trimmed),
             createdAt: now,
             // 表示期限はお題の終了時刻に揃える（置いた前提2 / F10）。
             expiresAt: prompt.endsAt,
