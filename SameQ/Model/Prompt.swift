@@ -15,16 +15,24 @@ struct Prompt: Codable, Identifiable, Equatable, Sendable {
     let endsAt: Date
     /// お題原文の言語。`Post.bodyLanguage` と同じく、翻訳可否の判定にのみ内部利用する（F22）。
     let language: String
+    /// 手書きの英語原文（あれば）。日本語以外の端末では機械翻訳を優先し、翻訳が
+    /// `.unavailable` のときだけこれを予備として表示する（スプリント23）。
+    /// 後方互換のため optional。旧バージョンでエンコードされたデータや
+    /// `text_en` を持たないソースをデコードしても失敗しないよう、
+    /// `decodeIfPresent` で読む（`Codable` の自動合成が optional プロパティを
+    /// 欠損キー扱いで許容する挙動に依存）。
+    let textEn: String?
 
     /// 標準の有効期間（置いた前提2）。
     static let defaultDuration: TimeInterval = 28 * 60 * 60
 
-    init(id: String, text: String, startsAt: Date, endsAt: Date, language: String = "ja") {
+    init(id: String, text: String, startsAt: Date, endsAt: Date, language: String = "ja", textEn: String? = nil) {
         self.id = id
         self.text = text
         self.startsAt = startsAt
         self.endsAt = endsAt
         self.language = language
+        self.textEn = textEn
     }
 
     /// `date` の時点で有効か。終了時刻ちょうどは「終了済み」として扱う。

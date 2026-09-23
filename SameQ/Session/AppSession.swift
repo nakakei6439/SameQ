@@ -706,6 +706,7 @@ final class AppSession {
         let promptID = prompt.id
         let text = prompt.text
         let language = prompt.language
+        let textEn = prompt.textEn
         promptTranslationTask = Task { @MainActor [weak self] in
             guard let self else { return }
             let outcome = await self.translator.translate(text, sourceLanguageCode: language)
@@ -718,7 +719,14 @@ final class AppSession {
                 // 置いた前提2）ので、恒久的な失敗・一時的な失敗のどちらでも原文へフォールバック
                 // する（決定を維持。「準備中…」を出し続けると F19「2回目以降は待たない」と
                 // 矛盾するため。attempt 2 の self-review に判断理由を記載）。
-                self.promptDisplayText = text
+                //
+                // スプリント23: 全言語（英語端末含む）で機械翻訳を優先し、それが
+                // `.unavailable` のときだけ手書きの英語原文（`textEn`）を予備として使う。
+                // `textEn` が無いお題（旧データ・未移行分）は従来どおり日本語原文へ
+                // フォールバックする。日本語端末では `syncPromptTranslation` 自体が
+                // 呼ばれる前に `translate` が `sourceCode == targetLanguageCode` で
+                // 即座に `.text(text)` を返すため、この分岐に入らない（影響なし）。
+                self.promptDisplayText = textEn ?? text
             }
             self.lastTranslatedPromptID = promptID
         }

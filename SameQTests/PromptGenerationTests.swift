@@ -49,7 +49,13 @@ final class PromptGenerationTests: XCTestCase {
     }
 
     /// スプリント19 / F46: 既存の約 48 件（受け入れ条件 5 / Sprint09 で手書き）が
-    /// 改変なく新プールに含まれていること（後方互換性）。
+    /// 新プールに含まれていること（後方互換性）。
+    ///
+    /// スプリント23で候補プールの誤字・脱字・不自然な助詞を修正した（意味・並び順は不変。
+    /// `.product/prompt-pool-v2/pool-final.tsv` を参照）。48件のうち5件がこの修正対象
+    /// だったため、それらは修正後の文言に更新している（「改変なく」ではなくなったが、
+    /// 誤字修正はスプリント23のスコープであり、後方互換の意図（同じお題が同じ意味で
+    /// 残っている）自体は保たれている）。
     func testCandidatePoolContainsOriginal48Prompts() {
         let originals = [
             "今日、思わず笑ってしまったことは何ですか？",
@@ -71,10 +77,10 @@ final class PromptGenerationTests: XCTestCase {
             "いま、少しだけ楽しみになっていることは何ですか？",
             "いま、誰かと共有したい音をひとつ挙げるとしたら？",
             "いま、好きな食べ物をひとつだけ挙げるとしたら何ですか？",
-            "いま、好きな音をひとつだけ挙げるととしたら？",
-            "いま、好きな景色をひとつだけ挙げるととしたら？",
-            "いま、好きな季節をひとつだけ挙げるととしたら？",
-            "いま、好きな時間をひとつだけ挙げるととしたら？",
+            "いま、好きな音をひとつだけ挙げるとしたら？",        // スプリント23で「ととしたら」の重複を修正
+            "いま、好きな景色をひとつだけ挙げるとしたら？",      // 同上
+            "いま、好きな季節をひとつだけ挙げるとしたら？",      // 同上
+            "いま、好きな時間をひとつだけ挙げるとしたら？",      // 同上
             "小さい頃、よく遊んだ遊びは何ですか？",
             "小さい頃、好きな食べ物はどんなものでしたか？",
             "子供の頃、誰の言葉を一番覚えていますか？",
@@ -91,7 +97,7 @@ final class PromptGenerationTests: XCTestCase {
             "この一年で、はじめて知った自分の好みはありますか？",
             "この一年で、やり直したい小さな選択はありますか？",
             "ここ数日の中で、ふと目を閉じたときに浮かんだ色は？",
-            "最近、好きなった匂いはありますか？",
+            "最近、好きになった匂いはありますか？",              // スプリント23で「に」の脱落を修正
             "最近、ふと食べたくなった味はありますか？",
             "最近、読んでみたいと思った本や言葉はありますか？",
             "最近、はじめて聞いた音で気にいったものはありますか？",
@@ -104,7 +110,7 @@ final class PromptGenerationTests: XCTestCase {
         for original in originals {
             XCTAssertTrue(
                 PromptCatalog.candidatePool.contains(original),
-                "既存の 48 件が改変なく含まれている必要がある（後方互換）: \(original)"
+                "既存の 48 件が（誤字修正後の文言で）含まれている必要がある（後方互換）: \(original)"
             )
         }
     }
@@ -485,6 +491,144 @@ final class PromptGenerationTests: XCTestCase {
     }
 
     // MARK: 受け入れ条件 4（`PersistedState.discardedCandidatesCount` の流れ）
+
+    // MARK: スプリント23（text_en / SQL との同期）
+
+    /// `PromptCatalog.candidatePool` / `candidatePoolEn` が
+    /// `supabase/migrations/20260923000002_prompt_text_en.sql` の `v_pool_ja` /
+    /// `v_pool_en` と件数・並びとも完全一致することを、SQL ファイルを直接パースして確認する。
+    ///
+    /// この2つがずれると、サーバー側の自動生成（`ensure_todays_prompt()`）とローカル生成
+    /// （`PromptGenerator`）で日ごとに違うお題・違う英語予備文が出てしまう（過去にも
+    /// スプリント19でこの同期を明示的に求められた経緯がある）。ここでは Swift 単体テストの
+    /// 範囲で機械的に同期を固定する。
+    ///
+    /// `#filePath` はこのテストファイル自身の絶対パス（コンパイル時に確定）。
+    /// `SameQTests/PromptGenerationTests.swift` から2階層上がリポジトリルート。
+    /// CI や別マシンでソース配置が変わると壊れうるが、現状このリポジトリの
+    /// テストに他の同種の前例（ファイル直読み）が無いため、ここでは最小限の割り切りとする。
+    func testCandidatePoolAndCandidatePoolEnMatchSqlMigrationArrays() throws {
+        let testFileURL = URL(fileURLWithPath: #filePath)
+        let repoRoot = testFileURL
+            .deletingLastPathComponent() // SameQTests
+            .deletingLastPathComponent() // リポジトリルート
+        let migrationURL = repoRoot
+            .appendingPathComponent("supabase/migrations/20260923000002_prompt_text_en.sql")
+        guard let sql = try? String(contentsOf: migrationURL, encoding: .utf8) else {
+            throw XCTSkip("マイグレーションファイルが見つからない（\(migrationURL.path)）。CI 等でパスが異なる場合はスキップ")
+        }
+
+        let jaArray = try Self.extractSqlStringArray(from: sql, arrayName: "v_pool_ja")
+        let enArray = try Self.extractSqlStringArray(from: sql, arrayName: "v_pool_en")
+
+        XCTAssertEqual(jaArray.count, PromptCatalog.candidatePool.count, "件数が一致しない（ja）")
+        XCTAssertEqual(enArray.count, PromptCatalog.candidatePoolEn.count, "件数が一致しない（en）")
+        XCTAssertEqual(jaArray, PromptCatalog.candidatePool, "並びが一致しない（ja）")
+        XCTAssertEqual(enArray, PromptCatalog.candidatePoolEn, "並びが一致しない（en）")
+    }
+
+    /// attempt 2（eval-1.md P2）: 上のテストは `v_pool_ja` / `v_pool_en`（今後の新規お題用の
+    /// 配列）しか見ておらず、既存 `prompts` 行を書き換える backfill の
+    /// `with v(old_ja, new_ja, en) as (values (...), ...)` リストは対象外だった。
+    /// 英訳を直すときに backfill 側だけ古いままでも検出されない、という P2 の指摘どおりの
+    /// 抜け穴を塞ぐため、backfill リストの `new_ja` / `en` 列も
+    /// `.product/prompt-pool-v2/pool-final.tsv` と完全一致することを確認する。
+    ///
+    /// （`old_ja` 列は意図的に比較しない。backfill の目的は「旧い誤字入り ja から
+    /// 新しい ja へ」の変換なので、`old_ja` は `text_ja_old` 列と一致するはずだが、
+    /// ここでのポイントは「新しい値が正しく反映されているか」であり `new_ja` / `en` の
+    /// 2列で十分。`old_ja` まで見ると誤字修正そのものの回帰検知と重複するため絞った）。
+    func testBackfillValuesListMatchesPoolFinalTsv() throws {
+        let testFileURL = URL(fileURLWithPath: #filePath)
+        let repoRoot = testFileURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let migrationURL = repoRoot
+            .appendingPathComponent("supabase/migrations/20260923000002_prompt_text_en.sql")
+        let tsvURL = repoRoot
+            .appendingPathComponent(".product/prompt-pool-v2/pool-final.tsv")
+        guard let sql = try? String(contentsOf: migrationURL, encoding: .utf8) else {
+            throw XCTSkip("マイグレーションファイルが見つからない（\(migrationURL.path)）")
+        }
+        guard let tsv = try? String(contentsOf: tsvURL, encoding: .utf8) else {
+            throw XCTSkip("pool-final.tsv が見つからない（\(tsvURL.path)）")
+        }
+
+        let backfillTriples = try Self.extractBackfillValues(from: sql)
+        XCTAssertEqual(backfillTriples.count, 999, "backfill の values 行数が999件でない")
+
+        let tsvRows = tsv.split(separator: "\n", omittingEmptySubsequences: true).map {
+            $0.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+        }
+        XCTAssertEqual(tsvRows.count, 999, "pool-final.tsv が999行でない")
+
+        for (index, (row, triple)) in zip(tsvRows, backfillTriples).enumerated() {
+            guard row.count == 4 else {
+                XCTFail("pool-final.tsv の列数が4でない行がある（行 \(index)）")
+                continue
+            }
+            let (_, _, expectedNewJa, expectedEn) = (row[0], row[1], row[2], row[3])
+            XCTAssertEqual(triple.newJa, expectedNewJa, "backfill の new_ja が一致しない（pos \(index)）")
+            XCTAssertEqual(triple.en, expectedEn, "backfill の en が一致しない（pos \(index)）")
+        }
+    }
+
+    /// backfill の `with v(old_ja, new_ja, en) as (values (...), (...), ...)` から
+    /// 各行の `(old_ja, new_ja, en)` の3つ組を抜き出す。
+    private static func extractBackfillValues(from sql: String) throws -> [(oldJa: String, newJa: String, en: String)] {
+        guard let startRange = sql.range(of: "with v(old_ja, new_ja, en) as (") else {
+            throw XCTSkip("backfill の CTE 宣言が見つからない")
+        }
+        let afterStart = sql[startRange.upperBound...]
+        // CTE を閉じる行（`)`だけの行）の直後に `update public.prompts p` が続く箇所を探す。
+        guard let endRange = afterStart.range(of: "\n)\nupdate public.prompts p") else {
+            throw XCTSkip("backfill の CTE 終端が見つからない")
+        }
+        let body = String(afterStart[..<endRange.lowerBound])
+
+        // `('...', '...', '...')` の3つ組を、シングルクォートのエスケープ（`''`）に
+        // 対応した形で抜き出す。
+        let field = "'((?:[^']|'')*)'"
+        let pattern = "\\(\\s*\(field)\\s*,\\s*\(field)\\s*,\\s*\(field)\\s*\\)"
+        let regex = try NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators])
+        let nsRange = NSRange(body.startIndex..., in: body)
+        let matches = regex.matches(in: body, options: [], range: nsRange)
+        return matches.compactMap { match -> (String, String, String)? in
+            guard let r1 = Range(match.range(at: 1), in: body),
+                  let r2 = Range(match.range(at: 2), in: body),
+                  let r3 = Range(match.range(at: 3), in: body) else { return nil }
+            func unescape(_ s: Substring) -> String {
+                String(s).replacingOccurrences(of: "''", with: "'")
+            }
+            return (unescape(body[r1]), unescape(body[r2]), unescape(body[r3]))
+        }
+    }
+
+    /// `create or replace function ... as $$ ... v_pool_ja text[] := array[ '...', '...' ]; ... $$`
+    /// の形から、指定した変数名の配列リテラルの中身（SQL のシングルクォート文字列のリスト）
+    /// を抜き出す。SQL パーサではなく、この1ファイルの既知の書式専用の簡易パーサ。
+    private static func extractSqlStringArray(from sql: String, arrayName: String) throws -> [String] {
+        guard let declRange = sql.range(of: "\(arrayName) text[] := array[") else {
+            throw XCTSkip("\(arrayName) の宣言が見つからない")
+        }
+        let afterDecl = sql[declRange.upperBound...]
+        guard let closeRange = afterDecl.range(of: "\n    ];") else {
+            throw XCTSkip("\(arrayName) の配列終端 `];` が見つからない")
+        }
+        let body = afterDecl[..<closeRange.lowerBound]
+
+        // SQL のシングルクォート文字列リテラル（`''` はエスケープされたクォート1文字）を
+        // すべて拾う。`(?:[^']|'')*` は「クォート以外」または「クォート2連続」の繰り返し。
+        let pattern = "'((?:[^']|'')*)'"
+        let regex = try NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators])
+        let bodyString = String(body)
+        let nsRange = NSRange(bodyString.startIndex..., in: bodyString)
+        let matches = regex.matches(in: bodyString, options: [], range: nsRange)
+        return matches.compactMap { match -> String? in
+            guard let range = Range(match.range(at: 1), in: bodyString) else { return nil }
+            return String(bodyString[range]).replacingOccurrences(of: "''", with: "'")
+        }
+    }
 
     /// `LocalBackend` 経由で `discardedCandidatesCount` が取得できる
     ///（受け入れ条件 4「破棄された記録が残る」の読み取り経路）。

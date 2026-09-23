@@ -124,7 +124,15 @@ enum SeedCatalog {
                 text: promptText,
                 startsAt: startsAt,
                 endsAt: endsAt,
-                language: promptLanguage
+                language: promptLanguage,
+                // スプリント23: カタログの textEn をそのまま Prompt.textEn に流す。
+                // 上の `promptText`/`promptLanguage` 決定ロジック（2026-09-04 adhoc、
+                // シミュレータでは Apple Translation が全ペア未対応なので端末が
+                // 非日本語なら textEn を直接採用する）はそのまま残すので、
+                // ここで `.text`/`.language` が既に英語に差し替わっていても
+                // `textEn` は元のカタログ値をそのまま渡すだけで、`AppSession` 側の
+                // `.unavailable` フォールバックにも矛盾なく使える。
+                textEn: seedPrompt.textEn
             ))
 
             var promptPosts = seedPrompt.posts.map { seed in

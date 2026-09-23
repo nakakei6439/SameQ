@@ -313,11 +313,15 @@ actor SupabaseBackend: Backend {
             let text: String
             let starts_at: Date
             let ends_at: Date
+            // スプリント23: `text_en`（手書きの英語原文の予備）。既存スキーマには
+            // 無かった列なので `Prompt` と同じく optional で読む（列が無い/nullの
+            // 行が来ても decode に失敗しない）。
+            let text_en: String?
         }
         func fetchActiveRow() async throws -> PromptRow? {
             let rows: [PromptRow] = try await client.get(
                 table: "prompts",
-                select: "id,text,starts_at,ends_at",
+                select: "id,text,starts_at,ends_at,text_en",
                 filters: [
                     "starts_at": "lte.\(iso.string(from: now))",
                     "ends_at": "gt.\(iso.string(from: now))"
@@ -365,7 +369,8 @@ actor SupabaseBackend: Backend {
             text: row.text,
             startsAt: row.starts_at,
             endsAt: row.ends_at,
-            language: "ja"
+            language: "ja",
+            textEn: row.text_en
         )
         return .active(prompt)
     }

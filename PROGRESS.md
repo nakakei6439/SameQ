@@ -1,3 +1,49 @@
+- 2026-09-23: **スプリント23（お題プールに手書きの英語原文 text_en を追加）— evaluator 合格（attempt 2）・本番適用済み**。
+  **結果**: attempt 1 は英訳の質のみで不合格（文法崩れ・意味ずれ10件、「もし一日だけ」146件中124件を
+  "today" と訳して「一日限定」の含みが消えていた）。attempt 2 で修正（pos753 の重複語も追加修正、
+  ja は pos908「癒やされた」・pos963「みっつだけ」をコーディネーター判断で確定）、4か所（TSV / Swift /
+  SQL 配列 / backfill リスト）の同期テストを追加し、evaluator 合格（ユニット281/281、機械置換113件を全件目視、
+  ローカルPG16で冪等・48お題×10件）。報告は `.product/sprints/23-prompt-text-en/eval.md`。
+  **本番反映**: `supabase db push --linked` で `20260923000002` を適用。本番 SELECT で
+  `prompt_20260923` に `text_en`（"Right now, where in your body feels calm?"）が入り、運営回答10件、
+  `official_answers` 480行・キー48件がすべて新プールの ja と一致することを確認。
+  **リリース順の注意**: 新アプリは `prompts.text_en` を SELECT するので、本番に列が無い環境では起動時の
+  お題取得が失敗する（本番は適用済み）。**未確認**: 実機の英語端末で機械翻訳が text_en より優先される
+  ことは手動確認が必要。低優先の残件: 「for a day」が後置で「一時的に」とも読める約15件（pos3/440/623 等）、
+  同期テストが backfill の旧 ja 列を見ていない。以下は generator 実装時の記録。
+  **実装時点の状況**（evaluator 未実施・未コミット・サーバー未適用）。
+  **背景**: 上の2026-09-22エントリ「残る論点」どおり、日本語以外の端末で Apple Translation が
+  `.unavailable`（モデル未DL・非対応ペア・一時的失敗）のとき、お題本文が日本語原文のまま出てしまう
+  不具合があった。ユーザー決定: 全言語（英語端末含む）で機械翻訳を優先し、text_en は翻訳が
+  `.unavailable` のときの予備にのみ使う。
+  **データ**: 999件のプール全件に `.product/prompt-pool-v2/pool-final.tsv`（pos, text_ja_old,
+  text_ja, text_en）を作成。text_en は pos238〜337の100件（既存パイロット）はそのまま流用、残り
+  899件を同じ基準（18語以内・`?`終わり・Yes/No型書き出し禁止・重複なし）で新規作成。ja は誤字・
+  脱字・不自然な助詞のみ34行を修正（「〜挙げるととしたら？」の「と」重複24件、「おじいちゃん
+  おばあちゃんになれたら」等の脱落助詞、「好きなった」→「好きになった」等）。意味・並び順は不変。
+  pos474「好きな途」は「途中」に直すと pos265 と ja が重複するため意図的に未修正（自己評価に理由
+  記載）。機械チェック（語数・語尾・重複・Yes/No禁止）は999件全件で通過、グローバル重複0。
+  **サーバー**: 新マイグレーション `20260923000002_prompt_text_en.sql`
+  （`20260923000001_official_answers_table.sql` の上に積む）。`prompts.text_en` を追加、
+  `ensure_todays_prompt()` を ja修正版+en配列で再定義（添字アルゴリズム不変）、今日以降の
+  `prompts` 行を旧ja→新ja+text_enへ冪等backfill（過去の行は触らない）、`official_answers.
+  prompt_text`（日本語文がキー）のうち文言が変わった5件のキーも冪等更新。本番への
+  `supabase db push` はしていない（コーディネーター判断待ち）。
+  **アプリ**: `Prompt.textEn: String?` を追加（Codable後方互換）。`SupabaseBackend.promptState()`
+  の select に `text_en` を追加。`PromptCatalog.candidatePool`（ja修正版）と新設
+  `candidatePoolEn`（同じ添字の999件）。`PromptGenerator` が `textEn` を Prompt に設定。
+  `SeedCatalog` の既存 `textEn` をそのまま `Prompt.textEn` に流す（2026-09-04 adhocの
+  英語優先ロジックとは独立に共存）。`AppSession.syncPromptTranslation` の `.unavailable` 分岐を
+  `textEn ?? text` に変更。
+  **検証**: ユニット全件 275/275通過（新規6件: SQL⇔Swiftのja/en配列一致、`.unavailable`時
+  textEn表示/textEn無しはja表示、翻訳成功時は機械翻訳優先の3観点）。ローカルDB検証は本機に
+  Docker が無いためスプリント22と同じ代替手段（Homebrew PostgreSQL 16 + `auth.uid()`スタブに
+  全23本を`ON_ERROR_STOP=1`で適用）。SQL内の`v_pool_ja`/`v_pool_en`（999件）をデプロイ後の
+  関数定義から抽出し`pool-final.tsv`・Swift配列の3者が完全一致することを確認。backfillの
+  「今日以降のみ」「過去は不変」「2回適用で冪等」を実測。`official_answers`480行が5件の
+  キー更新後も維持され、`ensure_official_answers()`が更新後のキーで`source=custom
+  inserted=10`になることを確認。実機での「英語端末で機械翻訳が優先される」ことは自動化
+  できておらず手動確認が必要（詳細は自己評価）。
 - 2026-09-23: **残件の棚卸しと、スプリント22（手作り運営回答480件）の本番反映**（コーディネーター）。
   **棚卸しの結果**: (a) スプリント22 が generator の実装＋自己評価で止まっていた（evaluator 未実施・
   未コミット・本番未適用）。(b) **App Store の合成スクショ差し替えはすでに完了済みだった** —
@@ -156,9 +202,11 @@
   同じ注意書きがあるのにここだけ残っていた。レビュアーが最初に見る画面なので `🍃` に差し替え。
   **検証**: ユニット 271/271 を2回連続通過。`AppSessionTranslationTests` の終端状態アサーションが
   `LocalBackend` のランダム抽選順に依存して実行ごとに揺れていたのも、順番非依存に修正。
-  **残る論点**: 英語端末では**お題本文が日本語のまま**見える（前提29「お題は日本語のみで用意し、
-  変換は F22 の担当」どおりだが、モデル未取得の間は日本語で出る）。塞ぐならお題にも英語原文を
-  持たせることになり、前提29 の変更が要る。**未決**。
+  **残る論点（2026-09-23 スプリント23で対応。詳細は本ファイル最上部のエントリ参照）**: 英語端末では
+  **お題本文が日本語のまま**見える（前提29「お題は日本語のみで用意し、変換は F22 の担当」どおりだが、
+  モデル未取得の間は日本語で出る）。~~塞ぐならお題にも英語原文を持たせることになり、前提29 の変更が
+  要る。未決。~~ → 前提29 を更新し、お題プールに手書きの英語原文（text_en）を追加。翻訳が
+  `.unavailable` のときだけ予備として使う設計で解消（evaluator 合格・本番適用済み）。
 - 2026-09-21: **App Store `1.0.3 (8)` が11日間「審査待ち」から動かない件の調査と対策**（コーディネーター）。
   2026-09-10 09:19 JST に提出した submission `3216eae6-b83d-4b7a-a717-dc54a440e219` が
   `WAITING_FOR_REVIEW` のまま `IN_REVIEW` に移らない。ASC API（`openssl` + python3 標準ライブラリで

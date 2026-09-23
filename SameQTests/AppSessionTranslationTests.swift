@@ -640,4 +640,105 @@ final class AppSessionTranslationTests: XCTestCase {
             "クールダウンが明けていれば、再起動後の新しい Translator でも再試行できるはず（永久に読めなくなってはいけない）"
         )
     }
+
+    // MARK: - スプリント23: お題の text_en フォールバック（F22 / 前提29 の更新）
+
+    /// 翻訳が `.unavailable`（恒久的に非対応の言語ペア）のとき、`textEn` があれば
+    /// それを予備として表示する（日本語原文をそのまま出さない）。
+    ///
+    /// `Prompt.language` を疑似翻訳の「恒久的に非対応」マーカー（`zxx`）にすることで、
+    /// 端末言語（"en"）とは無関係に確定的に `.unavailable(permanent: true)` を再現する。
+    @MainActor
+    func testPromptFallsBackToTextEnWhenTranslationUnavailable() async throws {
+        let reference = Date()
+        let prompt = Prompt(
+            id: "p1",
+            text: "今日、思わず笑ってしまったことは何ですか？",
+            startsAt: reference.addingTimeInterval(-3600),
+            endsAt: reference.addingTimeInterval(Prompt.defaultDuration - 3600),
+            language: "zxx",
+            textEn: "What made you laugh today?"
+        )
+        let schedule = PromptSchedule(prompts: [prompt], posts: [])
+        let backend = LocalBackend(store: makeStore(), clock: AppClock(offset: 0), schedule: schedule, options: LaunchOptions())
+        let translator = Translator(fakeTranslate: true, preferredLanguageIdentifier: "en")
+        let session = AppSession(backend: backend, clock: AppClock(offset: 0), translator: translator)
+
+        await session.start()
+        await session.completeOnboarding(emoji: "🌙", nickname: nil)
+
+        var attempts = 0
+        while session.promptDisplayText == nil, attempts < 50 {
+            try await Task.sleep(nanoseconds: 20_000_000)
+            attempts += 1
+        }
+        XCTAssertEqual(
+            session.promptDisplayText, "What made you laugh today?",
+            "翻訳が恒久的に非対応でも textEn があればそれを予備として表示する（日本語原文へは落ちない）"
+        )
+    }
+
+    /// 翻訳が `.unavailable` で、かつ `textEn` が無い（nil）お題は、従来どおり日本語原文へ
+    /// フォールバックする（後方互換。text_en 未移行のお題を壊さない）。
+    @MainActor
+    func testPromptFallsBackToJapaneseWhenTranslationUnavailableAndNoTextEn() async throws {
+        let reference = Date()
+        let prompt = Prompt(
+            id: "p1",
+            text: "今日、思わず笑ってしまったことは何ですか？",
+            startsAt: reference.addingTimeInterval(-3600),
+            endsAt: reference.addingTimeInterval(Prompt.defaultDuration - 3600),
+            language: "zxx",
+            textEn: nil
+        )
+        let schedule = PromptSchedule(prompts: [prompt], posts: [])
+        let backend = LocalBackend(store: makeStore(), clock: AppClock(offset: 0), schedule: schedule, options: LaunchOptions())
+        let translator = Translator(fakeTranslate: true, preferredLanguageIdentifier: "en")
+        let session = AppSession(backend: backend, clock: AppClock(offset: 0), translator: translator)
+
+        await session.start()
+        await session.completeOnboarding(emoji: "🌙", nickname: nil)
+
+        var attempts = 0
+        while session.promptDisplayText == nil, attempts < 50 {
+            try await Task.sleep(nanoseconds: 20_000_000)
+            attempts += 1
+        }
+        XCTAssertEqual(
+            session.promptDisplayText, "今日、思わず笑ってしまったことは何ですか？",
+            "text_en が無いお題は従来どおり日本語原文へフォールバックする"
+        )
+    }
+
+    /// 機械翻訳が成功する（`.unavailable` にならない）ときは、`textEn` があっても
+    /// 機械翻訳の結果を優先して表示する（前提29の更新: 全言語で機械翻訳が最優先）。
+    @MainActor
+    func testPromptPrefersMachineTranslationOverTextEnWhenAvailable() async throws {
+        let reference = Date()
+        let prompt = Prompt(
+            id: "p1",
+            text: "今日、思わず笑ってしまったことは何ですか？",
+            startsAt: reference.addingTimeInterval(-3600),
+            endsAt: reference.addingTimeInterval(Prompt.defaultDuration - 3600),
+            language: "ja",
+            textEn: "What made you laugh today?"
+        )
+        let schedule = PromptSchedule(prompts: [prompt], posts: [])
+        let backend = LocalBackend(store: makeStore(), clock: AppClock(offset: 0), schedule: schedule, options: LaunchOptions())
+        let translator = Translator(fakeTranslate: true, preferredLanguageIdentifier: "en")
+        let session = AppSession(backend: backend, clock: AppClock(offset: 0), translator: translator)
+
+        await session.start()
+        await session.completeOnboarding(emoji: "🌙", nickname: nil)
+
+        var attempts = 0
+        while session.promptDisplayText == nil, attempts < 50 {
+            try await Task.sleep(nanoseconds: 20_000_000)
+            attempts += 1
+        }
+        XCTAssertEqual(
+            session.promptDisplayText, "[EN] 今日、思わず笑ってしまったことは何ですか？",
+            "機械翻訳が成功するなら textEn ではなく機械翻訳の結果を出す（英語端末でも機械翻訳優先）"
+        )
+    }
 }

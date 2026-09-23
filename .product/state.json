@@ -1,8 +1,14 @@
 {
-  "currentSprint": "22",
-  "attempt": 1,
+  "currentSprint": "23",
+  "attempt": 2,
   "status": "passed",
   "history": [
+    {
+      "sprint": "23",
+      "attempt": 1,
+      "result": "needs_fix",
+      "evalNote": "eval.md — 不合格。基準1のみ未達（条件1: pool-final.tsv の英訳の質）。基準2〜5はすべて閾値クリア（クラッシュ0・ユニット275/275・UI14/14+評価用UI7/7、Swift⇔SQL⇔TSV999/999一致、回帰4/4、使用性4）。不合格理由は英訳データの質のみで、サーバー・アプリのロジックは問題なし。指摘: (1) 英訳10件が文法崩れ・意味ずれ（pos1「意味不明」、pos460/531/786「冠詞a→an」、pos26/197/233「about yourself重複」、pos212/360「目的語欠落」、pos110「つらいをtenseと誤訳、pos55と同義になる」）。(2)「もし一日だけ」146件中124件が\"today\"を使っており「一日限定」の含みが変わっている。(3) ja修正2件（pos908「癒えた」は傷に使う語で文脈に合わない、pos963の語順）は推測に基づくためコーディネーター判断が必要（改善提案扱いで不合格理由ではない）。(4) 改善提案: 同期テストがbackfillのvaluesリストを見ておらず英訳修正時の書き換え漏れを検出できない。詳細: .product/sprints/23-prompt-text-en/eval.md"
+    },
     {
       "sprint": "22",
       "attempt": 1,

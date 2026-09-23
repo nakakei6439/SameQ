@@ -48,10 +48,15 @@ enum PromptGenerator {
     ///   - reference: 起動時の `clock.now`（`AppClock` 経由のオフセット後）。
     ///   - candidatePool: 採用候補のリスト（既定は `PromptCatalog.candidatePool`）。
     ///     テストで「全候補 unsafe」の状況を作るために差し替えられるように公開。
+    ///   - candidatePoolEn: `candidatePool` と同じ添字で引ける英語原文（既定は
+    ///     `PromptCatalog.candidatePoolEn`）。件数が `candidatePool` と一致しない・
+    ///     添字が範囲外の場合は安全側で `nil`（＝翻訳失敗時は日本語原文へ
+    ///     フォールバック）として扱う（スプリント23）。
     ///   - fallbackPool: フォールバック候補（既定は `PromptCatalog.fallbackPool`）。
     static func generate(
         reference: Date,
         candidatePool: [String] = PromptCatalog.candidatePool,
+        candidatePoolEn: [String] = PromptCatalog.candidatePoolEn,
         fallbackPool: [(id: String, text: String)] = PromptCatalog.fallbackPool
     ) -> GenerationResult {
         let utc = TimeZone(identifier: "UTC")!
@@ -61,6 +66,7 @@ enum PromptGenerator {
             dayKey: dayKey,
             dayIndex: dayIndex,
             candidatePool: candidatePool,
+            candidatePoolEn: candidatePoolEn,
             fallbackPool: fallbackPool
         )
     }
@@ -70,6 +76,7 @@ enum PromptGenerator {
         dayKey: String,
         dayIndex: Int,
         candidatePool: [String] = PromptCatalog.candidatePool,
+        candidatePoolEn: [String] = PromptCatalog.candidatePoolEn,
         fallbackPool: [(id: String, text: String)] = PromptCatalog.fallbackPool
     ) -> GenerationResult {
         var discarded: [DiscardedCandidate] = []
@@ -97,12 +104,16 @@ enum PromptGenerator {
             }
             let utc = TimeZone(identifier: "UTC")!
             let start = Self.startOfDay(forDayKey: dayKey, timeZone: utc)
+            // `candidatePoolEn` は本来 `candidatePool` と一字一句同じ添字で同期している
+            // 前提だが、テストが短縮版の配列を渡すこともあるので範囲外アクセスは避ける。
+            let candidateEn = candidatePoolEn.indices.contains(index) ? candidatePoolEn[index] : nil
             let prompt = Prompt(
                 id: "prompt_\(dayKey)",
                 text: candidate,
                 startsAt: start,
                 endsAt: start.addingTimeInterval(Prompt.defaultDuration),
-                language: "ja"
+                language: "ja",
+                textEn: candidateEn
             )
             return GenerationResult(prompt: prompt, discarded: discarded, usedFallback: false)
         }
