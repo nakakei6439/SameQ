@@ -580,12 +580,44 @@ actor SupabaseBackend: Backend {
         // 端末で Apple 翻訳が恒久 `.unavailable` を返して全投稿が読み飛ばされ、
         // タイムライン UI が `.exhausted` に張り付く（= 他人の回答が見えない）。
         // `decorations` は実機で装飾を復元するために必要。
+        // `is_official` は migration 20260923000001_official_answers_table.sql で
+        // `world_timeline` ビューに追加済み。運営投稿（5ペルソナ）は日本語・英語
+        // それぞれ別アカウントで毎日投稿されるため、絞り込まずに返すと端末内翻訳が
+        // 効く環境で同じペルソナのカードが2枚（日本語版・英語版）並んでしまう
+        // （2026-09-22 の設計は「読めない言語は F20 でスキップされる」前提だったが、
+        // 端末内翻訳が効くとその前提が崩れる）。一般ユーザーの投稿は対象外
+        // （F20 のスキップ・F22 の翻訳のまま変更しない）。
         let rows: [PostRow] = try await client.get(
             table: "world_timeline",
-            select: "id,prompt_id,author_id,author_emoji,author_nickname,body,body_language,created_at,expires_at,decorations",
+            select: "id,prompt_id,author_id,author_emoji,author_nickname,body,body_language,created_at,expires_at,decorations,is_official",
             filters: ["prompt_id": "eq.\(promptID)"]
         )
-        return rows.map { $0.toPost() }
+        let filtered = Self.filterOfficialRowsByDeviceLanguage(rows, isJapanese: L10n.isJapanese)
+        return filtered.map { $0.toPost() }
+    }
+
+    /// 運営投稿（`is_official == true`）を端末の表示言語に一致するものだけに絞り込む
+    /// 純粋関数。一般ユーザーの投稿（`is_official` が false / nil）はそのまま通す。
+    ///
+    /// `actor` の static メンバーは非分離（SE-0306）なので、`await` なしにテストから
+    /// 直接呼び出せる。ネットワーク往復を経由せず `PostRow` の配列だけで完結させる
+    /// ことで、`timelinePosts()` を経由せずにロジック単体をテストできるようにしている。
+    ///
+    /// - `is_official` が true でない（false / nil）投稿: 残す（対象外）
+    /// - `is_official` が true の投稿: `body_language` が端末言語（"ja" / "en"）と
+    ///   一致するものだけ残す
+    /// - `is_official` が true でも `body_language` が nil の投稿: 残す
+    ///   （取りこぼして運営回答がゼロになるより、安全側に倒す）
+    static func filterOfficialRowsByDeviceLanguage(
+        _ rows: [PostRow],
+        isJapanese: Bool
+    ) -> [PostRow] {
+        let deviceLanguage = isJapanese ? "ja" : "en"
+        return rows.filter { row in
+            guard row.is_official == true else { return true }
+            guard let language = row.body_language else { return true }
+            return language == deviceLanguage
+        }
     }
 
     func nextTimelinePost(
@@ -1070,7 +1102,10 @@ private struct Empty: Encodable {}
 /// `posts` テーブルは実スキーマに `author_emoji` / `author_nickname` /
 /// `decorations` を持たない（init migration）ので、それらを要求する経路は
 /// 別途 `state.user` から補完する（`myPost` / `submitPost` 参照）。
-private struct PostRow: Decodable {
+/// `internal`（`private` から変更）。`SupabaseBackend.filterOfficialRowsByDeviceLanguage`
+/// を `@testable import SameQ` からテストするために、行データを直接組み立てられる
+/// 必要がある。
+struct PostRow: Decodable {
     let id: UUID
     let prompt_id: String
     let author_id: UUID
@@ -1084,6 +1119,10 @@ private struct PostRow: Decodable {
     /// `posts.status`（F49 / F50）。`world_timeline` は visible 行しか返さないので
     /// そちらでは常に nil のままでよく、自分の回答を取り直す経路でだけ意味を持つ。
     let status: String?
+    /// `users.is_official`（migration 20260923000001）。運営5ペルソナ（日本語・英語
+    /// それぞれ別アカウント）の投稿かどうか。`world_timeline` を経由しない一部の
+    /// 取得経路（`myPost` 等）では SELECT しないため Optional。
+    let is_official: Bool?
 
     func toPost() -> Post {
         Post(
