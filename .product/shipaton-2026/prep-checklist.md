@@ -19,14 +19,14 @@
 | `hackernoon-article.md` | HackerNoon 記事の下書き（英語・約1,800語） | 画像の差し込み、**9/27 までに投稿** |
 | `assets/icon-1024.png` | アイコン 1024×1024 | なし |
 | `assets/01-today.png` `02-timeline.png` `05-plus.png` | スクショ 1179×2556、英語 UI、端末フレームなし | Devpost には 1 枚あればよい。`02-timeline` か `01-today` を推奨 |
-| `video-clips/full-take.mp4` | デモの通し収録（78.8秒・無音） | 台本どおりに編集して YouTube に公開 |
+| `SameQ-Shipaton-demo.mp4` | 完成版デモ動画（46秒・1080×1920・字幕と BGM 入り。実画面を `video-build/build.py` で編集） | YouTube に公開して URL を本文へ |
 | `video-script.md` | 編集指示・英語字幕・足りていないもの | — |
 
 ## 残タスク（ユーザー）
 - [x] 9/24: X の投稿14件を集めて #BuildInPublic 欄を埋めた。追加投稿の下書き4本は `buildinpublic-links.md`
 - [ ] 9/25: Shipaton（Devpost）の参加登録が済んでいるか確認する（HackerNoon の賞も登録が前提）
 - [ ] 9/26–27: HackerNoon のアカウント作成、記事の投稿（`#shipaton` タグ）
-- [ ] 9/27–28: 動画を編集して YouTube に公開
+- [ ] 9/27–28: 動画（編集済み）を YouTube に公開
 - [ ] 9/28–30: #Shipaton #BuildInPublic 付きの投稿を足す（公開の報告、審査の振り返り、記事の告知、提出の報告）
 - [ ] 9/29: Devpost に入力して提出
 
