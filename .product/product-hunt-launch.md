@@ -1,7 +1,7 @@
 # Product Hunt ローンチ — SameQ
 
-- **ローンチ予定日**: 未定（**App Store審査の承認待ち**。承認され次第、日付を確定する。PH は太平洋時間 00:01 公開 = JST 16:01）
-- **App Store**: 審査中のため未公開。承認後 `https://apps.apple.com/app/id6805425491` で確認できるはず（Apple ID: 6805425491）
+- **ローンチ日**: **2026-09-27（日）PT 00:01 = JST 16:01**（9/24 に決定。週末で競合が少なく、Shipaton 締切 10/1 より前）
+- **App Store**: 1.0.3 公開中。`https://apps.apple.com/us/app/sameq/id6805425491`（9/24 に 200 を確認。Apple ID: 6805425491）
 - **英語版アプリ名（App Store 実表記）**: `SameQ` / subtitle `One prompt. Strangers, daily.`
 - **ギャラリー画像**: `.product/producthunt/en/01-05` (2540×1520) + `.product/producthunt/thumbnail.png` (240×240)
 
@@ -44,7 +44,7 @@ Write one honest answer. Then the world unlocks.
 **採用案**
 
 ```
-SameQ: everyone in the world gets the same question once a day — you never know when. Write a short, honest answer, and only then can you read how one stranger, somewhere, answered the same thing.
+SameQ: once a day, at a random time, everyone in the world gets the same question. Write a short, honest answer — and only then can you read how strangers around the world answered the same thing.
 
 No profiles. No feeds. No follows. No likes to chase. No email or phone required — just an emoji you pick.
 
@@ -69,7 +69,7 @@ Communication
 
 | 欄 | 値 |
 |---|---|
-| Website / Link | `{{App Store の SameQ 公開URL — 審査承認後に確定}}` |
+| Website / Link | `https://apps.apple.com/us/app/sameq/id6805425491` |
 | フォールバック | `https://nakakei6439.github.io/sameq/` |
 
 ### Pricing
@@ -107,12 +107,13 @@ Hey Product Hunt 👋
 
 I built SameQ because I was tired of social media as a performance — curating a profile, chasing likes, watching a feed that never ends.
 
-SameQ strips that down to one thing: once a day, everyone in the world gets the same question. You write a short, honest answer — and only after that can you read how one stranger, somewhere, answered the same thing. No follows, no search, no ranking. Words fade after a while.
+SameQ strips that down to one thing: once a day, at a random time, everyone in the world gets the same question. You write a short, honest answer — and only after that can you read how strangers around the world answered the same thing. No follows, no search, no ranking. Words fade after a while.
 
 A few deliberate constraints:
 - Anonymous only — no email or phone number, ever
 - Every answer shows in your own language, automatically
 - SameQ Plus is optional (1-month free trial) for longer posts and text styling — the core app stays free forever
+- It's a small community, so a few answers each day come from the SameQ team's own characters. They're always labeled "(SameQ)", so you know which ones they are
 
 It's a solo project, and I'd love your feedback — especially on the "you can't peek until you answer" mechanic. Happy to answer any questions here!
 ```
@@ -121,22 +122,22 @@ It's a solo project, and I'd love your feedback — especially on the "you can't
 
 ## 3. ローンチ当日のチェックリスト
 
-- [ ] **前提**: App Store 審査が承認され、公開URLが確定している
-- [ ] ローンチ日を確定し、本ファイル冒頭・下記スケジュールを埋める
-- [ ] キャンペーンリンクを生成し、§1 の Links 表に記入
-- [ ] Topics をPHフォーム上のサジェストで実在確認してから確定
-- [ ] PH の Draft に全項目を入力（ギャラリーは1枚ずつ順番にアップロード — 一括だと順序が崩れる）
-- [ ] Submit / Schedule 前に、埋めたフォーム内容をユーザーに見せて確認を取る（一度きりの操作のため）
-- [ ] Scheduled launch date を確定日に設定
-- [ ] 公開後（JST 16:01 以降）に First comment を投稿
-- [ ] 確定した PH の URL を控える → 下の X 下書きに反映
+- [x] **前提**: App Store で公開済み・URL確定（9/24）
+- [x] ローンチ日を確定（9/27 JST 16:01）
+- [x] ~~キャンペーンリンク~~ → 使わない（App Store の URL をそのまま使用）
+- [x] Topics をPHフォーム上のサジェストで実在確認してから確定（Social Networking / iOS / Anonymous）
+- [x] PH の Draft に全項目を入力（9/24。タグは Social Networking / iOS / Anonymous、動画は Shipaton デモ、Pricing は Paid (with a free trial or plan)、Bootstrapped、solo maker）
+- [x] Submit / Schedule 前に、埋めたフォーム内容をユーザーに見せて確認を取った
+- [x] Scheduled launch date を 2026-09-27 12:01 AM PDT に設定（9/24 予約済み。PH 上で「Successfully Scheduled」を確認）
+- [x] First comment は Draft の「Write the first comment」欄に入力済み（公開と同時に PH が自動で投稿する）
+- [x] 確定した PH の URL を控える → 下の X 下書きに反映済み（`/posts/sameq`）
 - [ ] X で告知（§4）
 
 ---
 
 ## 4. X（Twitter）投稿下書き
 
-PH の投稿 URL: `https://www.producthunt.com/products/sameq`（未確定・要確認。PHはプロダクト名をスラッグ化するため、上記が濃厚だが投稿後に実URLで置き換えること）
+PH の投稿 URL: `https://www.producthunt.com/posts/sameq`（9/24 に予約して確定。編集画面は `/posts/sameq/edit`）
 
 > ⚠️ Draft作成時に確定した実URLに差し替えること。
 > 文字数は「Xの280カウント」基準（日本語1文字=2カウント、URLは一律23カウント）で実測済み。
@@ -147,12 +148,12 @@ PH のランキング対象は公開から24時間。ローンチ日確定後、
 
 | 順 | 案 | JST | PT | 狙い |
 |---|---|---|---|---|
-| 1 | **JA-1** | 公開+5分 | | 公開直後 |
-| 2 | **EN-1** | 公開+10分 | | 初動の票 |
-| 3 | **JA-2** | 公開+5時間 | | 日本のゴールデンタイム |
-| 4 | **EN-2** | 公開+8時間 | | 米東海岸の午前 |
-| 5 | **EN-3** | 公開+16時間 | | 米国の午後 |
-| 6 | **JA-3** | 公開+20時間 | | 締切4時間前 |
+| 1 | **JA-1** | 9/27 16:06 | 9/27 00:06 | 公開直後 |
+| 2 | **EN-1** | 9/27 16:11 | 9/27 00:11 | 初動の票 |
+| 3 | **JA-2** | 9/27 21:01 | 9/27 05:01 | 日本のゴールデンタイム |
+| 4 | **EN-2** | 9/28 00:01 | 9/27 08:01 | 米東海岸の午前 |
+| 5 | **EN-3** | 9/28 08:01 | 9/27 16:01 | 米国の午後 |
+| 6 | **JA-3** | 9/28 12:01 | 9/27 20:01 | 締切4時間前 |
 
 ---
 
@@ -169,7 +170,7 @@ PH のランキング対象は公開から24時間。ローンチ日確定後、
 匿名・自動翻訳・広告なし。
 
 応援よろしくお願いします🙏
-https://www.producthunt.com/products/sameq
+https://www.producthunt.com/posts/sameq
 ```
 
 #### JA-2 開発ストーリー
@@ -182,7 +183,7 @@ https://www.producthunt.com/products/sameq
 SNS疲れ、承認欲求、炎上——そういうのから離れて、ただ同じ問いに答えるだけの場所が欲しかった。
 
 1人で開発して、今日Product Huntでローンチしました。
-https://www.producthunt.com/products/sameq
+https://www.producthunt.com/posts/sameq
 ```
 
 #### JA-3 機能訴求
@@ -197,7 +198,7 @@ SameQ、あと少しでProduct Huntのランキング締切です⏰
 ・Plusは1ヶ月無料トライアル中
 
 まだの方はぜひ🙏
-https://www.producthunt.com/products/sameq
+https://www.producthunt.com/posts/sameq
 ```
 
 ---
@@ -216,7 +217,7 @@ A social app where you answer the same question as strangers worldwide — but y
 Anonymous. Auto-translated. No ads.
 
 Would love your support 🙏
-https://www.producthunt.com/products/sameq
+https://www.producthunt.com/posts/sameq
 ```
 
 #### EN-2 Maker story
@@ -229,7 +230,7 @@ Why I built SameQ:
 I wanted a place with no profile to curate, no feed to scroll, no likes to chase — just one honest answer to the same question everyone in the world gets, once a day.
 
 Built solo. Live on Product Hunt today.
-https://www.producthunt.com/products/sameq
+https://www.producthunt.com/posts/sameq
 ```
 
 #### EN-3 Feature highlight
@@ -244,7 +245,7 @@ A few hours left on SameQ's Product Hunt launch ⏰
 ✓ SameQ Plus: 1-month free trial
 
 Check it out 🙏
-https://www.producthunt.com/products/sameq
+https://www.producthunt.com/posts/sameq
 ```
 
 ---
@@ -268,8 +269,8 @@ X のカウント基準（日本語・絵文字1文字=2、Latin=1、URLは一�
 
 ## 5. 積み残し・要判断
 
-1. **App Store 審査の承認待ち**。ローンチ日・公開URL・PHのLinks欄は審査承認後に確定する。承認され次第、このファイルの冒頭とチェックリストを更新すること。
-2. **Topics 3件は未検証**。PHフォームのサジェストで実在名を確認してから確定する（`Social Network` / `iPhone` / `Communication` は仮案）。
-3. **PH投稿URLのスラッグは未確定**（`producthunt.com/products/sameq` と推測、実際にDraft作成後に確認して置き換える）。
+1. ~~App Store 審査の承認待ち~~ → 9/24 に解消。1.0.3 公開済み、ローンチ日 9/27 に確定。
+2. ~~Topics 3件は未検証~~ → 確定済み。PHフォームのサジェストで実在名を確認してから確定する（`Social Network` / `iPhone` / `Communication` は仮案）。
+3. ~~PH投稿URLのスラッグは未確定~~ → `producthunt.com/posts/sameq` で確定（9/24）。
 4. **PH個人アカウントでの投稿が必要**（会社アカウント不可）。ログイン・実際のフォーム入力・Submit操作はユーザー自身、またはコーディネーターが同席の上で本人の許可を得てから行う。
 5. ギャラリー画像のうち `04-lowcommitment.png`（お知らせ画面のスクリーンショット）は、見出し「Once a day. That's it.」との視覚的な結びつきがやや弱い。撮影素材の制約（今回は日英4カットのみ撮影済み）によるもの。差し替えたい場合は、お題未回答時の画面や実際の世界タイムライン（他人の回答を読む画面）を追加撮影すると強化できる。

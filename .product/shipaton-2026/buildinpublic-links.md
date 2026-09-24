@@ -83,3 +83,6 @@ JA:
 > 6 weeks, 1 developer, a planner/generator/evaluator agent harness, 23 sprints, 5 App Reviews.
 > Thanks to everyone who tried the beta.
 > #BuildInPublic
+
+## Product Hunt
+- 2026-09-27 00:01 PDT（JST 16:01）にローンチ予約済み: https://www.producthunt.com/posts/sameq
