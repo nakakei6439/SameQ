@@ -2,7 +2,7 @@
 
 > 締切: **2026-09-30 23:45 PDT = 日本時間 10/1 15:45**。目標は 9/29 中に提出。
 > 提出先: Devpost（https://revenuecat-shipaton-2026.devpost.com/）
-> 応募部門: **#BuildInPublic Award**（主軸）/ **RevenueCat Design Award** / **RevenueCat Peace Prize**
+> 応募部門: **#BuildInPublic Award**（主軸）/ **RevenueCat Design Award** / **RevenueCat Peace Prize** / **HAMM Award**（Grand Prize は自動で対象）
 > 別枠: **HackerNoon #Shipaton Writing Contest**（記事を `#shipaton` 付きで 9/30 までに公開）
 > 8/30 版の計画は破棄した（お題を AI で作らない、という前提が実態と違ったため）。
 

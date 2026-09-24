@@ -2,7 +2,7 @@
 
 > 2026-09-24 に全面改稿。8/30 版は「お題を AI で作らない／製品内 LLM ゼロ」を柱にしていたが実態と合わないため破棄。
 > 締切: **2026-09-30 23:45 PDT = 日本時間 10/1 15:45**。目標は 9/29 中に提出。
-> 応募部門: **#BuildInPublic Award / RevenueCat Design Award / RevenueCat Peace Prize**
+> 応募部門: **#BuildInPublic Award / RevenueCat Design Award / RevenueCat Peace Prize / HAMM Award**（Grand Prize は全作品が自動で対象）
 > 数字は 2026-09-24 に実測（コミット 197・スプリント 23・migration 23・Swift 約15,600行・テストファイル 53）。
 
 ---
@@ -141,6 +141,64 @@ profile, and post text is never sent to a translation server.
   notices it's missing creates it, so there's no cron job and no daily batch to break.
 - Moderation runs mostly on its own: blocklist on the device and the server, auto-hide after
   reports, auto-suspend for repeat offenders, and a short daily manual review.
+
+---
+
+## Category: HAMM Award
+
+> 価格と無料トライアルは 2026-09-24 に App Store Connect API で確認済み（米国 $2.99/月、日本 ¥500/月、1ヶ月無料トライアル）。
+> 【】の数字は 9/29 に RevenueCat のダッシュボード（Overview）で取り直して埋める。
+
+**Strategy: charge for more room to express yourself, never for access.**
+
+SameQ's core loop (answer today's question, unlock strangers' answers, read them in your
+language) is free, forever. Charging for the core loop would break the product: the more people
+answer, the more everyone gets to read. So the paywall never locks reading or answering.
+
+**SameQ Plus** sells *more room to express yourself*, which is what engaged users want once the
+daily habit forms:
+- Longer answers: up to 2,000 characters instead of 140
+- Text styling: bold/italic, "balloon" asides, and Plus-only stamps
+
+**Pricing.** One auto-renewing monthly plan: **$2.99/month** in the US (¥500 in Japan),
+set per territory in App Store Connect. No tiers and no annual plan at launch. One choice keeps the
+paywall simple and honest for a small, calm app.
+
+**Free trial.** Every new subscriber gets **one month free**, long enough to go through about
+30 daily questions and find out whether writing longer actually matters to them. The paywall reads
+the free-trial badge from the product's introductory offer through RevenueCat, so the offer shown
+always matches the one in App Store Connect.
+
+**Where the paywall shows up.** Only when you're already trying to write:
+- A soft "Want to write more?" card below your own answer, after you've posted
+- The Plus button in the header and the menu
+
+There are no interstitials, no paywall at launch, and no countdown timers.
+
+**How it's built.** `RevenueCatPlusService` implements a `PlusService` protocol: fetch by
+product ID, a single `plus` entitlement, purchase and restore. RevenueCat errors are mapped to
+calm messages (cancelled, network, other), so a failed purchase never shows a scary dialog. The
+paywall includes the auto-renewal terms and links to the Terms of Use and Privacy Policy
+(required by Guideline 3.1.2, which we got right on the second try).
+
+**Results so far (live since September 24, 2026).** Downloads: 【】. Trials started: 【】.
+Active subscriptions: 【】. Revenue: 【】. It's early. The launch was held up by five App Reviews,
+so this is less than a week of data. The model is built to last: no per-message costs (no
+translation API, no runtime AI calls), so even a small number of subscribers covers the
+Supabase bill.
+
+---
+
+## Grand Prize（全作品が自動で対象。「公開後の成長」の欄）
+
+> 9/29 に ASC（App Analytics）と RevenueCat から数字を取り、【】を埋める。
+
+SameQ went live on September 24, 2026 in 175 countries and regions after five App Reviews.
+Since launch: 【】 downloads, 【】 trials, 【】 countries with at least one answer.
+Growth work so far has been building in public on X (Japanese and English), an in-app
+announcement for each version, and a build log on HackerNoon. Every day's question also comes
+with answers from five labeled operator personas, so the first visitors from any country find
+something to read instead of an empty room.
 
 ---
 
