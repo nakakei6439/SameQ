@@ -77,7 +77,7 @@ terms, and links to the Terms and Privacy Policy.
 - Public beta on TestFlight: https://x.com/nakakei6439/status/2094252470927257663
 - Stuck in App Review: https://x.com/nakakei6439/status/2096362463340228625
 - Approved: https://x.com/nakakei6439/status/2102877623382888782
-- HackerNoon build log: TODO（公開したら URL を貼る）
+- HackerNoon build log: TODO（9/24 提出済み・編集部の確認待ち。公開されたら URL を貼る）
 - （9/25 以降に足す投稿の URL もここへ）
 
 **How building in public helped**

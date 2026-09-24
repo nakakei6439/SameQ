@@ -25,7 +25,7 @@
 ## 残タスク（ユーザー）
 - [x] 9/24: X の投稿14件を集めて #BuildInPublic 欄を埋めた。追加投稿の下書き4本は `buildinpublic-links.md`
 - [ ] 9/25: Shipaton（Devpost）の参加登録が済んでいるか確認する（HackerNoon の賞も登録が前提）
-- [ ] 9/26–27: HackerNoon のアカウント作成、記事の投稿（`#shipaton` タグ）
+- [x] 9/24: HackerNoon に記事を提出（タグ #shipaton-blogging-contest、編集部の確認待ち）
 - [x] 9/24: 動画を YouTube に公開 → https://youtube.com/shorts/HHfCszrPHQ8
 - [ ] 9/28–30: #Shipaton #BuildInPublic 付きの投稿を足す（公開の報告、審査の振り返り、記事の告知、提出の報告）
 - [ ] 9/29: Devpost に入力して提出
