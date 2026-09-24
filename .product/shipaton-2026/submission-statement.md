@@ -32,7 +32,7 @@ a short answer. **Only after you answer** can you read how strangers answered, o
 - **Everyone speaks your language.** Posts are translated on the device with Apple's
   Translation framework. Post text is never sent to a translation server, and there is no
   "translated" badge or "see original" button.
-- **Safe by default.** Report and block sit right under every answer. A blocklist is checked on
+- **Safe by default.** Report and block are always one tap away. A blocklist is checked on
   the device and again on the server. Reported posts are hidden automatically, and repeat
   offenders are suspended automatically.
 - **Never empty.** Five operator personas post clearly labeled answers every day, so the first
@@ -78,7 +78,10 @@ terms, and links to the Terms and Privacy Policy.
 - Stuck in App Review: https://x.com/nakakei6439/status/2096362463340228625
 - Approved: https://x.com/nakakei6439/status/2102877623382888782
 - HackerNoon build log: TODO（9/24 提出済み・編集部の確認待ち。公開されたら URL を貼る）
-- （9/25 以降に足す投稿の URL もここへ）
+- Launch day (EN): https://x.com/nakakei6439/status/2102955516893040997
+- Launch day (JA): https://x.com/nakakei6439/status/2102955672686194847
+- Demo video: https://youtube.com/shorts/HHfCszrPHQ8
+- （9/26 の予約投稿2本と HackerNoon は公開後に追加）
 
 **How building in public helped**
 
@@ -118,8 +121,8 @@ SameQ is designed mostly by what it leaves out.
 - **Safety that stays out of the way.** Report or block is one tap below any answer, with a
   visible label, and nothing is sent to the other person.
 
-Watch in the video: the locked timeline opening after you answer, a Japanese answer arriving in
-English, and the Plus paywall.
+Watch in the video: the timeline unlocking after you answer, one stranger's answer at a time, and
+the Plus paywall.
 
 ---
 
@@ -182,8 +185,7 @@ paywall includes the auto-renewal terms and links to the Terms of Use and Privac
 (required by Guideline 3.1.2, which we got right on the second try).
 
 **Results so far (live since September 24, 2026).** Downloads: 【】. Trials started: 【】.
-Active subscriptions: 【】. Revenue: 【】. It's early. The launch was held up by five App Reviews,
-so this is less than a week of data. The model is built to last: no per-message costs (no
+Active subscriptions: 【】. Revenue: 【】. It's early: the launch was held up by five App Reviews. The model is built to last: no per-message costs (no
 translation API, no runtime AI calls), so even a small number of subscribers covers the
 Supabase bill.
 
@@ -199,6 +201,20 @@ Growth work so far has been building in public on X (Japanese and English), an i
 announcement for each version, and a build log on HackerNoon. Every day's question also comes
 with answers from five labeled operator personas, so the first visitors from any country find
 something to read instead of an empty room.
+
+---
+
+## Notes for the judges（Devpost「Additional notes」欄に入力済み）
+
+How to try SameQ (the version on the App Store is 1.0.3):
+
+1. Answer first. SameQ hides everyone else's answers until you answer today's question. Type any short answer and submit it.
+2. Tap "Read the world's answers" to meet strangers' answers, one at a time. Answers from five labeled operator personas (e.g. "Robo (SameQ)") are posted every day, so there is always something to read.
+3. Translation follows your device language. On an English device, answers written in other languages show up in English. The first time, iOS may need a moment to download the translation model; the app shows "Preparing…" instead of the original text.
+4. SameQ Plus: open Plus from the header or the menu. The 1-month free trial unlocks every premium feature (2,000-character answers, text styling, stamps).
+5. Report / Block: in 1.0.3 it is the circled "..." at the top right of the answers screen. The next update (1.0.4) moves it right under each answer with a visible "Report or block" label; the demo video shows that newer layout.
+
+Built solo. Thanks for taking the time to try it.
 
 ---
 
