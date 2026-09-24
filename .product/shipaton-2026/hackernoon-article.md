@@ -1,7 +1,7 @@
 # HackerNoon #Shipaton Writing Contest — 下書き（ケータの声で書き直し版）
 
 > 投稿先: HackerNoon（`#shipaton` タグ必須）。**9/27 までに投稿**（編集部の審査で公開まで数日かかりうる。締切 9/30）
-> 投稿前に: (1) `【ここに実話を1行】` を埋めるか、その行ごと消す (2) 画像の差し込み（[IMAGE] の箇所）(3) 本文中の数字が最新か
+> 投稿前に: (1) 実話の空欄は 9/24 に本人の回答で埋め済み (2) 画像の差し込み（[IMAGE] の箇所）(3) 本文中の数字が最新か
 > タグ案: `#shipaton` `#ios` `#app-store` `#indie-dev` `#swiftui` `#revenuecat` `#buildinpublic` `#app-review`
 > 声: ケータ（`.claude/agents/sameq-answer-keita.md`）。事実・数字は淡々版と同じ。変えたのは語り口だけ。
 
@@ -35,10 +35,10 @@ It's free. There's one optional subscription, **SameQ Plus**, handled by Revenue
 
 ## How it got built
 
-I'm one developer in my 40s with a day job and a family. So I don't get long, quiet blocks
-of time. I get gaps.
-
-【ここに実話を1行: 例「平日は◯時から◯時が開発の時間」など】
+I'm one developer in my 40s with a day job and a family. I don't get long, quiet blocks of
+time. What I do have is my phone. So I ran Claude Code from my phone, pretty much around the
+clock, in every gap I had. The Pro plan hit its limit fast, so I moved part of the work to
+MiniMax M3 to spread the load and keep going.
 
 First commit: August 17, 2026. By launch day: 197 commits, 23 sprints, 23 Supabase
 migrations, about 15,600 lines of Swift, 53 test files.
@@ -53,9 +53,8 @@ through three agents on Claude Code:
 The evaluator can't edit code. The generator doesn't grade its own work. My job is to decide
 what to build, read the reports, and not call anything "done" until it's been checked.
 
-It wasn't smooth. I hit usage limits in the first week and spent days switching between agents
-just to keep sprints moving. At one point my 500GB Mac was completely full, and the agent
-cleaned it up for me. Fine. Keep moving.
+It wasn't smooth. At one point my 500GB Mac was completely full, and the agent cleaned it up
+for me. Fine. Keep moving.
 
 That split between builder and checker paid off in App Review, just not the way I expected.
 
@@ -142,7 +141,7 @@ Waiting doesn't ship anything. So I stopped waiting and tested like the reviewer
 iPhone, device language set to English, no translation models downloaded, the production
 server. The simulator wouldn't have shown me any of this.
 
-【ここに実話を1行: 審査待ちのあいだ、生活のほうで何が並行して回っていたか】
+(I also used the wait to fix bugs in my other apps. No point leaving the time empty.)
 
 - **Tapping fast made answers vanish before you saw them.** A guard was missing, so every extra
   tap marked the next answer as read. The production table showed 5 reads in 7 seconds, and
@@ -181,13 +180,11 @@ People ask, so here's the straight answer.
   (That last one is basically me.) None of them pretend to be ordinary users. That was a spec
   rule from day one: no operator content under a name that looks like a regular person.
 
-Early on, my kid said something to me, completely unprompted: *"You can tell when AI made
-something."*
+Early on, I sent my kid a message on LINE, the chat app everyone uses in Japan. The reply came
+back, completely unprompted: *"You can tell when AI made something."*
 
 That one stuck. I didn't hear it as "don't use AI." I heard "don't hide it." So a person
 decides what ships, and anything the operator posts carries the operator's name.
-
-【ここに実話を1行（任意）: その一言を聞いたときの場面】
 
 ## RevenueCat
 
