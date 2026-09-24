@@ -216,7 +216,7 @@ A social app where you answer the same question as strangers worldwide — but y
 
 Anonymous. Auto-translated. No ads.
 
-Would love your support 🙏
+Would love your feedback 🙏
 https://www.producthunt.com/posts/sameq
 ```
 
@@ -244,7 +244,7 @@ A few hours left on SameQ's Product Hunt launch ⏰
 ✓ Auto-translated, read every answer in your language
 ✓ SameQ Plus: 1-month free trial
 
-Check it out 🙏
+I'd love to hear what you think.
 https://www.producthunt.com/posts/sameq
 ```
 
@@ -259,9 +259,9 @@ X のカウント基準（日本語・絵文字1文字=2、Latin=1、URLは一�
 | JA-1 | 215 | 65 |
 | JA-2 | 193 | 87 |
 | JA-3 | 184 | 96 |
-| EN-1 | 261 | 19 |
+| EN-1 | 262 | 18 |
 | EN-2 | 251 | 29 |
-| EN-3 | 214 | 66 |
+| EN-3 | 231 | 49 |
 
 > EN-1 は残り19文字とやや余裕が少ない。URL置き換え後に再計測を忘れないこと。
 
