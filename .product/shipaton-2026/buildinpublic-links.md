@@ -48,20 +48,30 @@ JA:
 > https://apps.apple.com/app/id6805425491
 > #Shipaton #個人開発 #BuildInPublic
 
-### 2. 審査の振り返り・スレッド（9/26）
-> What 4 App Store rejections taught me about shipping an anonymous social app 🧵
+### 2. 審査の振り返り（9/26 予約。X の Web 版はスレッドを予約できないので1投稿にまとめた）
+日本語: **9/26（金）21:00 JST**（X の文字数換算 258/280）
+> App Storeのリジェクト4回で学んだこと
 >
-> 1/ Rejection 1: "session expired" in onboarding. The fix was already in my code — just not in the build I submitted. Check which commit your archive came from.
+> 1. 審査に出したビルドのコミットを確かめる
+> 2. 審査員は「一番人がいない日」のユーザー
+> 3. Guideline 1.2は8項目を一度に揃える
+> 4. 審査メモは記憶でなくコードを見て書く
 >
-> 2/ Rejection 2: "we can't see other users' posts." My app hides everyone's answers until you answer. On a quiet day, the reviewer answered… and saw nothing. Now five labeled operator personas answer every day.
+> SameQ公開中🌍
+> https://apps.apple.com/jp/app/sameq/id6805425491
+> #Shipaton #個人開発
+
+英語: **9/26（金）22:00 JST**（米国西海岸 6:00 / 東海岸 9:00、274/280）
+> 4 App Store rejections, 4 lessons:
 >
-> 3/ Rejection 3: Guideline 1.2 — the 8-item checklist for user-generated content. I shipped all 8 in one build instead of guessing.
+> 1. Check which commit your build came from
+> 2. The reviewer is your user on your emptiest day
+> 3. Guideline 1.2: ship all 8 items at once
+> 4. Write review notes from the code
 >
-> 4/ Rejection 4: same guideline. My own review notes pointed to a button that didn't exist. I wrote them from memory. Now I pull every label from the code.
->
-> 5/ Then 13 days of silence. I spent them testing like the reviewer: real iPhone, English, production. Found a bug where fast taps burned through the day's answers (5 reads in 7 seconds).
->
-> 6/ Approved on day 14. Live now. #Shipaton #BuildInPublic
+> SameQ is live 🌍
+> https://apps.apple.com/us/app/sameq/id6805425491
+> #Shipaton #BuildInPublic
 
 ### 3. HackerNoon 記事の告知（記事公開後）
 > I wrote up the whole review saga — 5 reviews, what each rejection actually meant, and the bugs I found while waiting.
