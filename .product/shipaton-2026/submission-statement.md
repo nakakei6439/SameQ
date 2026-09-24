@@ -1,164 +1,153 @@
-# Devpost Submission Statement — SameQ for RevenueCat Shipaton 2026
+# Devpost Submission — SameQ (RevenueCat Shipaton 2026)
 
-> 提出前に Devpost フォームの字数・必須項目と突き合わせてから貼ること。
-> 文字数は Devpost 側の "Tell us more" フィールドが 5000 chars 程度は許容する想定だが、
-> 画像や動画フィールドは別なので本文は短めに意識する。
-
----
-
-## App name
-**SameQ**
-
-## Tagline (80 chars 以内)
-**One question a day. Write one honest answer — and the world unlocks.**
+> 2026-09-24 に全面改稿。8/30 版は「お題を AI で作らない／製品内 LLM ゼロ」を柱にしていたが実態と合わないため破棄。
+> 締切: **2026-09-30 23:45 PDT = 日本時間 10/1 15:45**。目標は 9/29 中に提出。
+> 応募部門: **#BuildInPublic Award / RevenueCat Design Award / RevenueCat Peace Prize**
+> 数字は 2026-09-24 に実測（コミット 197・スプリント 23・migration 23・Swift 約15,600行・テストファイル 53）。
 
 ---
 
-## Description (paste into Devpost form)
+## Name
+SameQ
 
-SameQ is an iOS app where, once a day, everyone in the world gets the same
-question. You write a short, honest answer. **Only after you write yours**
-can you read how one stranger, somewhere, answered the same thing.
+## Tagline
+One question a day. Answer it, and the world's answers unlock.
 
-There is no profile to curate, no feed to scroll, no one to follow, no
-likes to chase. The mechanic is the product: **you can't peek until you
-answer**. Words fade after a while. Every answer shows in your own
-language, automatically — we use Apple's on-device translation framework
-only, and never send post bodies to a server.
-
-Anonymity is total: no email, no phone, just an emoji you pick. The app
-is free, with one optional subscription — **SameQ Plus** (handled by
-RevenueCat) — for longer posts and text styling. The core experience
-stays free forever.
-
-### Why I built it
-
-I was tired of social media as performance: curating a profile, chasing
-likes, watching a feed that never ends. SameQ strips that down to one
-thing per day. I built the first version over 18 sprints as a solo
-developer, on an iPhone 17 Pro.
-
-The hardest call I made was: **don't generate the questions with AI.**
-
-My kid told me two things while I was working on this app, both
-unprompted:
-
-> "AI has no love."
-
-> "You can tell when generative AI made it."
-
-That crystallized something I'd been circling. The whole point of
-SameQ is that there's a person behind every question. If the questions
-are machine-generated, the answers feel anonymous in a bad way — not
-"the author stayed anonymous" but "nobody is here." So the question
-pool is curated by hand (with deterministic, fair rotation), and the
-roadmap includes a feature where the most-appreciated answerers
-periodically get to write the next day's question. **The prompt has
-the writer's fingerprint on it.** That's the contract.
-
-### Built with
-
-- **SwiftUI** + **Observation** (`@Observable`) — fully native, no third-party UI
-- **Supabase** — Postgres + Auth + Row Level Security + Edge Functions; 12 migrations so far
-- **RevenueCat** — `RevenueCat_Purchases` SDK (purchases-ios 5.87.1) for the Plus subscription
-- **Apple Translation** — on-device, no external translation API, no server-side translation
-- **Xcode 17F113 / iOS 26.5 SDK** — minimum deployment target iOS 18.0
-- **No LLM is used in the product.** Everything the user sees is curated or user-generated.
-
-### RevenueCat integration
-
-`RevenueCatPlusService` (or its `StoreKitPlusService` / `FakePlusService`
-test-only variants) configures `Purchases` with a sandboxed API key.
-The single entitlement is `plus`, mapped to a monthly subscription
-product with a 1-month free trial (`PlusIntroductoryOfferTests` verify the
-trial length, intro offer eligibility, and post-trial renewal).
-
-Paywall surface:
-- `PlusView` shows the intro offer, manage-subscription deep link into
-  iOS Settings, and the legal text (terms / privacy)
-- Trial state is checked at app launch and on view appearance; cached
-  state is restored when the SDK is offline (so a Plus user never falls
-  back to free on a flaky network — `attempt 4` of the `refreshPlusEntitlement`)
-
-### The dark corners (what I learned the hard way)
-
-1. **Constraints create the product.** No follow, no like, no profile,
-   no search — these aren't missing features, they're the design.
-   Every "should I add this?" question gets answered by "would this
-   feel like a like-chase if I did?"
-2. **The hardest part is the question pool.** I tried every shortcut:
-   Edge Functions, fixed catalogs, "smart" rotation. The only thing
-   that worked was committing to a hand-curated, fairly-rotated,
-   visible-to-anyone pool, and being honest about it.
-3. **Auto-translation must be invisible.** Showing a "translated"
-   badge or a "view original" button puts the language back in the
-   user's face. SameQ's UI shows only the user's own language, and the
-   server never sees a post body — translation happens on device.
-4. **The launch-day bug taught me to design for the "between days"**.
-   Prompts run on a 28-hour cycle to absorb timezone variance, but the
-   day-boundary gap is real. The self-healing migration I shipped on
-   2026-08-30 (the day this statement was drafted) fixed a silent-fail
-   in the server-side "fill today's prompt" routine that was the
-   underlying cause of a TestFlight feedback report.
-
-### What's next
-
-- Like-ranking question curation (the feature my kid's quote made me
-  commit to building)
-- More languages: I want to support every iPhone language eventually
-- A version of the app that ships the question of the day as a
-  Home Screen widget, so the question finds the user instead of the
-  other way around
-
-### Tech by the numbers
-
-- ~5,000 lines of Swift across the `SameQ/` target
-- 12 Supabase migrations, 6 of which ship server-side enforcement
-- 100+ unit tests + UI tests across 22 test files
-- 0 LLM calls in the product
-- 1 developer (me)
-
----
-
-## Links to include in Devpost form
-
-| フィールド | 値 |
+## Links
+| 欄 | 値 |
 |---|---|
-| App Store URL (when live) | `https://apps.apple.com/app/id6805425491` |
-| TestFlight build (during Shipaton) | `https://testflight.apple.com/join/xv7kJFRm` |
-| GitHub (private during Shipaton) | (Devpost 側で non-public OK か確認) |
-| Demo video (when ready) | YouTube unlisted or Devpost direct upload |
+| App Store | https://apps.apple.com/us/app/sameq/id6805425491 （9/24 に配信国を設定し、米国・日本とも 200 を確認） |
+| Video | （YouTube 公開後に貼る。2分未満） |
+| Judge access | SameQ Plus has a 1-month free trial, so judges can try every premium feature at no cost. |
 
-## What I'm asking Devpost / RevenueCat
+## Description
 
-I'm not looking for a winner badge — I'm looking for early users who
-read the mechanic and either love it or tell me it's wrong. The former
-are the people SameQ is for. The latter are the people I learn from.
+SameQ is an iOS app where everyone in the world gets the same question once a day. You write
+a short answer. **Only after you answer** can you read how strangers answered, one at a time.
 
-If you try it, please send me a one-sentence reaction. I read every
-TestFlight feedback and every App Store review.
+- **Answer first, then read.** The database enforces this, not just the UI: the timeline
+  returns nothing until you've answered today's question.
+- **No profile, follow, search, ranking, or replies.** You are an emoji and a nickname. Answers
+  disappear when the day's question ends.
+- **Everyone speaks your language.** Posts are translated on the device with Apple's
+  Translation framework. Post text is never sent to a translation server, and there is no
+  "translated" badge or "see original" button.
+- **Safe by default.** Report and block sit right under every answer. A blocklist is checked on
+  the device and again on the server. Reported posts are hidden automatically, and repeat
+  offenders are suspended automatically.
+- **Never empty.** Five operator personas post clearly labeled answers every day, so the first
+  person to answer on a quiet day still has something to read.
 
-— Keita Nakagawa (中川景太)
-Tokyo, 2026-08-30
+Free to use. **SameQ Plus** (RevenueCat) is a monthly subscription with a one-month free trial.
+It gives you 2,000-character answers instead of 140, and text styling. The core loop stays free.
+
+## How it was built
+
+Solo developer. First commit August 17, 2026; live on the App Store September 24 after five
+reviews. I built it with a three-role agent setup on Claude Code: a planner writes the spec,
+a generator builds one sprint at a time, and an evaluator runs the app and grades each sprint
+against acceptance criteria. The evaluator never edits code, and the generator never grades its
+own work. I decide what ships.
+
+**Where AI is and isn't used:** the app makes no AI calls at runtime. Today's question is picked
+by a deterministic Postgres function. The 999-question pool was drafted with AI before launch,
+then reviewed in batches and checked by script. Operator answers come from five personas, each
+labeled with its name plus "(SameQ)". One of them openly says it's an AI. None of them pretend to
+be ordinary users.
+
+## Built with
+SwiftUI (iOS 18+), Supabase (Postgres, anonymous Auth, Row Level Security, RPC functions),
+RevenueCat (purchases-ios 5.87.0), Apple Translation framework, NaturalLanguage framework.
+
+## RevenueCat integration
+`RevenueCatPlusService` implements a `PlusService` protocol. The paywall doesn't know which
+backend it's using, and StoreKit and fake versions sit behind the same protocol for tests. It
+fetches `com.nakakei6439.SameQ.plus.monthly` by product ID and reads the `plus` entitlement.
+RevenueCat errors become friendly messages (cancelled, network, other), and Restore is supported.
+The paywall shows the free-trial badge from the product's introductory offer, the auto-renewal
+terms, and links to the Terms and Privacy Policy.
+
+---
+
+## Category: #BuildInPublic Award
+
+**Social links**（全14件の一覧は `buildinpublic-links.md`）
+- X profile: https://x.com/nakakei6439
+- Day 1 — first try at an agent harness: https://x.com/nakakei6439/status/2089309411353501751
+- Public beta on TestFlight: https://x.com/nakakei6439/status/2094252470927257663
+- Stuck in App Review: https://x.com/nakakei6439/status/2096362463340228625
+- Approved: https://x.com/nakakei6439/status/2102877623382888782
+- HackerNoon build log: TODO（公開したら URL を貼る）
+- （9/25 以降に足す投稿の URL もここへ）
+
+**How building in public helped**
+
+I posted from day one, in Japanese and English: my first attempt at a planner/generator/evaluator
+agent harness, running into usage limits, switching models to keep sprints going, the public
+TestFlight beta, and the weeks stuck in App Review. Building in public forced me to write down
+what went wrong while it was still happening, and that record is how the app got fixed.
+
+- **TestFlight feedback → a real bug.** Testers reported "no question right now" at certain
+  hours. Tracing it led to a silent failure in the database function that creates each day's
+  question (an overlap constraint), fixed in v1.0.2 on August 30.
+- **Five App Reviews, logged in the open.** Every rejection and every reply to the reviewer is
+  written up in the repo. That's how I caught that my own review notes pointed the reviewer to a
+  button that didn't exist.
+- **Explaining the app out loud changed it.** Writing "the reviewer is your user on your
+  emptiest day" led to operator answers, so nobody opens an empty timeline. Explaining the
+  answer-first lock led to moving Report/Block right under each answer.
+- **Honesty about AI.** Saying publicly where AI is and isn't used became a rule in the product:
+  anything the operator posts carries the operator's name.
+
+---
+
+## Category: RevenueCat Design Award
+
+SameQ is designed mostly by what it leaves out.
+
+- **The lock is the product.** Other people's answers stay hidden until you write yours, so you
+  answer honestly instead of copying the room. Then answers appear one at a time. You can't
+  scroll back, so each one gets your full attention.
+- **Translation you never notice.** No language picker, no badge, no "see original." Answers
+  show a brief "preparing…" state instead of flashing the original language, so strangers simply
+  appear to speak your language. Even nicknames are transliterated into your script.
+- **Nothing to chase.** No follower counts, no rankings, no feed that never ends. Answers
+  disappear when the day's question ends.
+- **Calm by default.** One question a day, delivered at a random time, so it arrives like a
+  small surprise rather than a streak to protect.
+- **Safety that stays out of the way.** Report or block is one tap below any answer, with a
+  visible label, and nothing is sent to the other person.
+
+Watch in the video: the locked timeline opening after you answer, a Japanese answer arriving in
+English, and the Plus paywall.
+
+---
+
+## Category: RevenueCat Peace Prize
+
+**Impact.** Most social apps sort people into audiences and feeds. SameQ puts one stranger in
+front of you, answering the same question you just answered, in your own language. You can't
+find their profile, follow them, or argue with them. You just see that someone far away thought
+about the same thing today. It's a small, daily counter to feeds that make the world feel
+hostile and divided.
+
+It's also built to be safe for people who don't want to be found: no email, no phone number, no
+profile, and post text is never sent to a translation server.
+
+**Feasibility and scale.** It's cheap and robust enough to run for years:
+- No AI calls or translation API at runtime, so cost doesn't grow per message. Translation runs
+  on each user's device.
+- Each day's question comes from a self-healing database function. The first client that
+  notices it's missing creates it, so there's no cron job and no daily batch to break.
+- Moderation runs mostly on its own: blocklist on the device and the server, auto-hide after
+  reports, auto-suspend for repeat offenders, and a short daily manual review.
 
 ---
 
 # 提出前セルフチェック
-
-- [ ] App Store で `apps.apple.com/app/id6805425491` が生きている
-- [ ] Demo video がリンク先から再生できる
-- [ ] Devpost フォームの文字数制限（5000 chars 前後）に収まっている
-- [ ] スクリーンショット 1〜3 枚が添付されている（Product Hunt 用の `.product/producthunt/en/*.png` を流用可）
-- [ ] RevenueCat の項目に「Subscribes via RevenueCat SDK 5.87.1」と記載
-- [ ] "Built solo" を明記（Built with 節の末尾）
-- [ ] 子の言葉は 1 箇所にのみ使う（多用しない、AI べた褒めにならないように）
-
-# Devpost フォームの「Built with」チェック候補
-
-Devpost 側で「Built with」をタグ / 自由記述で書く欄があれば:
-- SwiftUI / iOS / Supabase / RevenueCat / Apple Translation Framework
-
----
-
-_ドラフト作成: Mavis / 2026-08-30 21:30 JST_
-_提出時に Kids quote の利用方針を再検討してから投稿_
+- [ ] App Store URL が米国から開く（`curl -s -o /dev/null -w '%{http_code}' https://apps.apple.com/us/app/id6805425491` が 200）
+- [ ] 動画: 2分未満・YouTube/Vimeo で公開・実機かシミュレータで動くアプリが映っている
+- [ ] アイコン 1024×1024 / スクショ 1179×2556（端末フレームなし）を添付
+- [ ] #BuildInPublic のリンク TODO をすべて埋めた
+- [ ] 審査員向けアクセス（1ヶ月無料トライアル）を記載
+- [ ] Devpost 各欄の文字数上限に収まっている
