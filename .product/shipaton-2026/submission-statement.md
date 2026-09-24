@@ -17,7 +17,7 @@ One question a day. Answer it, and the world's answers unlock.
 | 欄 | 値 |
 |---|---|
 | App Store | https://apps.apple.com/us/app/sameq/id6805425491 （9/24 に配信国を設定し、米国・日本とも 200 を確認） |
-| Video | （YouTube 公開後に貼る。2分未満） |
+| Video | https://youtube.com/shorts/HHfCszrPHQ8 （47秒） |
 | Judge access | SameQ Plus has a 1-month free trial, so judges can try every premium feature at no cost. |
 
 ## Description
