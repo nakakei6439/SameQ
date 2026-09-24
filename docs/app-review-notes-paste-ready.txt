@@ -1,35 +1,34 @@
-SameQ is a fully anonymous app: no sign-up form, no username/password. An anonymous account is created automatically during onboarding, so there is no demo account to provide. There is no chat, no DMs, no following, no search, no image uploads. Once a day everyone gets the same prompt, writes one short text answer, and only then can read other users' answers one at a time. Answers disappear after 24-36 hours.
+SameQ is fully anonymous: no sign-up, no username or password. An anonymous account is created during onboarding, so there is no demo account. There is no chat, no DMs, no following, no search, no image uploads. Once a day everyone gets the same prompt, writes one short answer, and only then can read others' answers one at a time. Answers disappear after 24-36 hours.
 
-== What changed in this build (1.0.3 build 9) ==
-We are sorry that the Report and Block controls were hard to find in the previous build. In build 8 they were behind a small unlabeled "..." icon in the top right corner of the header. In this build they sit directly below every answer, with a flag icon and the visible text label "Report or block". Our own notes for build 8 also described the wrong location, which we corrected in Resolution Center. The steps below match what is on screen in this build.
+== What changed in this build (1.0.4, build 11) ==
+In the version currently on the App Store (1.0.3, build 8), Report and Block sat behind a small unlabeled "..." icon in the top right of the header. In this build they sit directly below every answer, with a flag icon and the visible text label "Report or block". The Terms of Use (Article 7) have also been rewritten to describe that new location, so the in-app text and the screen now match.
 
 == How to reach the Report/Block controls ==
-1. Complete onboarding (agree to the Terms of Use with the checkbox, pick an emoji).
+1. Complete onboarding (accept the Terms of Use with the checkbox, pick an emoji).
 2. On the Today screen, type any text into the answer field and submit it.
-3. Tap the button labelled "Read the world's answers".
-4. The screen shows one answer at a time.
-5. Directly below the answer, tap "Report or block" (flag icon + text label).
-6. A sheet titled "About this reply" opens, containing "Report this reply" and "Block this person".
+3. Tap the button labelled "Read the world's answers". One answer shows at a time.
+4. Directly below the answer, tap "Report or block" (flag icon + text label).
+5. A sheet "About this reply" opens with "Report this reply" and "Block this person".
 
-Other users' answers stay locked until you submit your own answer for the day. This is the core rule of the app, not a defect: everyone answers the same prompt before anyone can read. It does mean Report and Block cannot be reached until step 2 is done. Answers from the SameQ team are posted every day, so there is always at least one answer to act on, in English on an English device.
+Other users' answers stay locked until you submit your own answer for the day. That is the core rule of the app, not a defect, so step 2 has to come first. The SameQ team posts answers in English every day, so there is always at least one answer to act on.
 
 == Guideline 1.2 - all eight precautions ==
 1. Age rating: set to 18+.
-2. Terms agreement: onboarding requires an explicit checkbox before an account is created. The terms state near the top that we have zero tolerance for objectionable content or abusive users, that we review reports within 24 hours, and that we remove violating posts and suspend the accounts responsible. A one-line summary is shown above the checkbox. Available in English and Japanese: Menu > Settings > Terms of Use.
-3. Filtering: every answer and nickname is checked against a blocklist (English/Japanese) on the device and again on our server (a database trigger), so a modified client cannot bypass it. You can verify this by typing profanity into the answer field.
+2. Terms agreement: onboarding requires an explicit checkbox before an account is created, with a one-line summary shown above it. The terms state near the top that we have zero tolerance for objectionable content or abusive users, review every report within 24 hours, and remove violating posts and suspend the accounts responsible. English and Japanese: Menu > Settings > Terms of Use.
+3. Filtering: every answer and nickname is checked against a blocklist (English/Japanese) on the device and again on our server (a database trigger), so a modified client cannot bypass it. Verify by typing profanity into the answer field.
 4. Flagging: "Report or block" below any answer > "Report this reply" > choose a reason > Submit. The answer disappears from your feed immediately.
-5. Blocking: same sheet > "Block this person". Blocked people are listed under Menu > Settings, in the section headed "BLOCKED PEOPLE", where they can be unblocked.
-6. Removing your own post: Today screen > below your own answer > "Delete this answer". The confirmation states you cannot answer the same prompt again. It leaves every user's feed immediately.
-7. Acting within 24h: an answer reported by 3 different users is auto-hidden (1 report is enough if the text matches our blocklist). An author with 3 auto-hidden answers is auto-suspended. We also review the moderation queue manually at least daily. Written procedure: docs/moderation-runbook.md in our repository.
-8. Contact: Menu > Settings > "Contact us" (first row). It shows nakakei6439@gmail.com as selectable, copyable text, plus a button that opens a pre-filled email. The same contact is shown on the screen a suspended user sees.
+5. Blocking: same sheet > "Block this person". Blocked people are listed under Menu > Settings, section "BLOCKED PEOPLE", where they can be unblocked.
+6. Removing your own post: Today screen > below your own answer > "Delete this answer". The confirmation states you cannot answer the same prompt again; it leaves every feed immediately.
+7. Acting within 24h: an answer reported by 3 different users is auto-hidden (1 report if the text matches our blocklist), and an author with 3 auto-hidden answers is auto-suspended. We also review the moderation queue manually at least daily (procedure: docs/moderation-runbook.md).
+8. Contact: Menu > Settings > "Contact us" (first row) shows nakakei6439@gmail.com as copyable text, plus a button that opens a pre-filled email. The same contact appears on the suspended-account screen.
 
 == Guideline 3.1.2 ==
-A custom EULA is registered in App Store Connect. The App Description (all locales) links to the Terms of Use and the Privacy Policy. The in-app Plus purchase screen (Menu > Plus) also links to both documents and states the auto-renewal terms.
+A custom EULA is registered in App Store Connect. The App Description (all locales) and the in-app Plus screen (Menu > Plus) both link to the Terms of Use and the Privacy Policy, and the Plus screen states the auto-renewal terms.
 Terms: https://nakakei6439.github.io/sameq/terms.html
 Privacy: https://nakakei6439.github.io/sameq/privacy.html
 
-== Subscription included for review ==
-Auto-renewable subscription "SameQ Plus (Monthly)" (com.nakakei6439.SameQ.plus.monthly) is included for review. Reachable via the "Plus" button in the top bar or the banner on the Today screen. 1-month free trial, then JPY 480/month.
+== Subscription (unchanged, already approved) ==
+"SameQ Plus (Monthly)" (com.nakakei6439.SameQ.plus.monthly) was approved with 1.0.3 and is unchanged here, so it is not included as a review item.
 
 == Note for a reviewer on an English device ==
-Prompts and the SameQ team's answers are available in English text, so nothing depends on the device having downloaded a translation model. If you see any Japanese text on an English device, please tell us where and we will fix it.
+Prompts and the SameQ team's answers have English source text, so nothing depends on a downloaded translation model. If you see any Japanese text, please tell us where and we will fix it.

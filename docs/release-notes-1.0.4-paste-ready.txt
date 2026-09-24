@@ -4,11 +4,13 @@
 
 ・通報とブロックの入り口を、回答のすぐ下に移しました。「通報・ブロック」という文字とアイコンで、いつでも見えるようになっています。
 
+・英語の端末でも、お題と画面の文字が英語で読めるようになりました。
+
 ・世界の回答を続けて開いたときに、回答が画面に出ないまま次へ進んでしまうことがあったのを直しました。
 
 ・回答を削除したあと、表示が戻らないことがあったのを直しました。
 
-・同じ人の回答が続けて並ばないようにしました。
+・運営からの回答が、日本語版と英語版で二重に並ばないようにしました。
 
 
 === English (en-US) — What's New in This Version ===
@@ -17,8 +19,10 @@ A few things are easier to use now.
 
 - Report and Block now sit directly below each answer, with a label and an icon so they are always visible.
 
+- On an English device, the daily question and the app's text now read in English, even when on-device translation is unavailable.
+
 - Fixed a case where opening the world's answers in quick succession could skip past an answer before it appeared.
 
 - Fixed a case where the screen could stay on "Deleting..." after removing your answer.
 
-- The same person no longer appears twice in a row.
+- Answers from the SameQ team no longer appear twice, once in Japanese and once in English.

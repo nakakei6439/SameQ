@@ -22,6 +22,12 @@ enum LegalText {
     /// 規約の版（F53）。**本文を変えたら必ずこの値も変える。**
     /// `PersistedState.termsAcceptance.version` がこれと違う利用者には、
     /// 起動時に再同意を求める（置いた前提42）。
+    ///
+    /// 例外（2026-09-24）: 第7条の通報導線の記述を実画面（回答の下の
+    /// 「通報・ブロック」）に合わせて訂正したが、利用者の権利義務を変える
+    /// 内容ではないため、この版は据え置く。全利用者に再同意を求めるほどの
+    /// 変更ではないというユーザー判断による。「最終更新日」は本文修正の
+    /// 事実を残すため 2026年9月24日 に更新している。
     static let version = "2026-09-09"
 
     /// 端末言語に応じた利用規約。
@@ -58,7 +64,7 @@ enum LegalText {
     (6) その他、運営が不適切と判断する内容
 
     第7条（通報と運営の対応）
-    1. 利用者は、他の利用者の回答を、その回答の「⋯」から通報できます。また、設定画面の「お問い合わせ」から運営に直接連絡できます。
+    1. 利用者は、他の利用者の回答の下にある「通報・ブロック」から、その回答を通報できます。また、設定画面の「お問い合わせ」から運営に直接連絡できます。
     2. 運営は、受け付けた通報を24時間以内に確認し、必要と判断した場合は当該投稿を削除し、その投稿を行った利用者のアカウントを停止します。
     3. 複数の利用者から通報を受けた投稿は、運営の確認を待たずに自動的に非表示となります。
 
@@ -85,7 +91,7 @@ enum LegalText {
     本サービスに関するお問い合わせは、nakakei6439@gmail.com までご連絡ください。
 
     運営者：Keita Nakagawa
-    最終更新日：2026年9月9日
+    最終更新日：2026年9月24日
     """
 
     // MARK: Terms of Use (English translation)
@@ -119,7 +125,7 @@ enum LegalText {
     (6) Post anything else we judge to be inappropriate
 
     Article 7 (Reporting and Our Response)
-    1. You can report another user's answer from the "..." menu on that answer. You can also contact us directly from Settings > Contact us.
+    1. You can report another user's answer from the "Report or block" button below that answer. You can also contact us directly from Settings > Contact us.
     2. We review every report we receive within 24 hours and, where we judge it warranted, we remove the offending content and suspend the account of the user who provided it.
     3. An answer reported by several users is hidden automatically, without waiting for our review.
 
@@ -146,7 +152,7 @@ enum LegalText {
     For any question about the Service, please contact nakakei6439@gmail.com.
 
     Operator: Keita Nakagawa
-    Last updated: September 9, 2026
+    Last updated: September 24, 2026
     """
 
     // MARK: プライバシーポリシー（日本語・正文）

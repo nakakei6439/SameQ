@@ -450,8 +450,8 @@ enum L10n {
             ? "No mail app was found on this device. Please copy the address above and write to us from your email service."
             : "この端末ではメールアプリが見つかりませんでした。上のアドレスをコピーして、お使いのメールサービスからご連絡ください。"
         static let supportReportHint: String = useEnglish
-            ? "You can also report a single answer from the \"...\" button on that answer."
-            : "回答ごとの通報は、その回答の「⋯」からも行えます。"
+            ? "You can also report a single answer from the \"Report or block\" button below that answer."
+            : "回答ごとの通報は、その回答の下にある「通報・ブロック」からも行えます。"
         static let supportMailSubject: String = useEnglish ? "[SameQ] Support" : "[SameQ] お問い合わせ"
 
         static let notificationSection: String = useEnglish ? "NOTIFICATIONS" : "通知"
@@ -498,8 +498,8 @@ enum L10n {
             ? "You haven't blocked anyone"
             : "ブロックしている人はいません"
         static let blockedEmptyBody: String = useEnglish
-            ? "From the ⋯ on a timeline reply, you can hide someone's replies."
-            : "タイムラインの ⋯ から、その人の回答を表示しないようにできます。"
+            ? "From the \"Report or block\" button below a timeline reply, you can hide someone's replies."
+            : "回答の下にある「通報・ブロック」から、その人の回答を表示しないようにできます。"
         static let blockedUnblockHint: String = useEnglish
             ? "Unblocking will make their replies appear again."
             : "解除すると、その人の回答がまた表示されるようになります。"
