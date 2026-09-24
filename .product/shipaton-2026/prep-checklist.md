@@ -28,7 +28,7 @@
 - [x] 9/24: HackerNoon に記事を提出（タグ #shipaton-blogging-contest、編集部の確認待ち）
 - [x] 9/24: 動画を YouTube に公開 → https://youtube.com/shorts/HHfCszrPHQ8
 - [ ] 9/28–30: #Shipaton #BuildInPublic 付きの投稿を足す（公開の報告、審査の振り返り、記事の告知、提出の報告）
-- [ ] 9/29: Devpost に入力して提出
+- [x] 9/24: Devpost に提出済み（SUBMITTED・5/5）。締切 10/1 15:45 JST まで編集可。9/29 に数字を更新
 
 ## 提出前の確認
 - [ ] ストアの URL が米国から開く
