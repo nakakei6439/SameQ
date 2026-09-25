@@ -152,3 +152,78 @@ Agent ツールで個別に呼び出し、各ペルソナのネイティブ言�
 
 依頼文の指示により、コーディネーターが集めた5ペルソナの本文そのものは書き直していない。
 文体・ネタの選び方についての評価は、今回は各エージェントの独立出力に委ねている。
+
+---
+
+## バッチ1 仕上げ修正（2026-09-25、2回目のやり直し後の評価で判明した軽微な指摘への対応）
+
+### 対象
+
+上記「やり直し」（commit `1eaf497`）に対する evaluator の再検証で「軽微な不合格」判定を
+受けた3点。
+
+1. **dragon の日本語本文（pos0〜9）**: 「という」の多用が目立つ、という指摘。指定された
+   全面差し替え版に置き換えた。英訳もゼロから作り直した。
+2. **robo の日本語本文（pos0〜9）**: 「〜はない/できない」構文の多用と、pos3（受け取って
+   もらいたいもの）で robo の主語設定がぶれている、という指摘。指定された全面差し替え版に
+   置き換えた。英訳もゼロから作り直した。
+3. **翻訳のみの修正2件**:
+   - keita pos7（おじいちゃんおばあちゃん）の en 訳: 元訳が「もう一緒に解いていない」という
+     現在の習慣の話になっており、原文の「もし祖父母になれたら」という仮定のニュアンスが
+     抜けていた。`if i could be the grandparent for a day, i wouldn't solve them together,
+     i'd just sit beside and watch instead` と、仮定法が伝わる形に訳し直した。ja側は指示通り
+     無変更。
+   - emily pos4（あいさつ）の ja 訳: 「バカでかい」「大きな」の同義語重複を解消し、
+     「バカでかい手振り」の1語に統合した（英語原文 "a big dumb wave" の「でかくて雑」な
+     ニュアンスは維持）。
+
+### dragon 英訳で工夫した点
+
+- 「という」を使わずに体言止め・ダッシュ区切りで距離感を出す竜の口調を、英語でも
+  em dash（`—`）と現在完了・過去完了の使い分けで再現した
+  （例: `nothing worth calling judgment — i have not made one of those in centuries.`）。
+- pos1「覚えていない。手伝う、という感覚がそもそも希薄だ。」は「という」を含む原文だが、
+  これは元の指摘（多用）に対する意図的な1回の使用であり、英訳では
+  `the sense of ''helping'' was always thin in me to begin with.` と、
+  クォートで名詞化することで同じ距離感を出した。
+- pos3「南の乾いた土地の、あの黒い水を一杯。あれだけは分けてやってもいい。」は、竜が
+  唯一「譲歩する」珍しい回答なので、英語でも `that alone, i would share.` と短く言い切り、
+  他の回答との温度差を保った。
+
+### robo 英訳で工夫した点
+
+- robo の「〜はできませんが、代わりに」の橋渡し構文（人格定義の必須要件）は、pos2
+  （山の記憶）で `i can''t have a childhood memory, so instead:` として維持した。
+- pos3（受け取ってもらいたいもの）は主語のぶれ指摘を踏まえ、「わたし自身が書いたこの
+  返事」という具体的な一人称の主語を英訳でも `the ones in this very reply` と明示し、
+  誰の何についての話かを曖昧にしなかった。
+- 「〜はない/できない」の多用を避けるため、肯定文・現在完了・引用（クォート内の他者の
+  言葉を借りる）を混ぜた（例: pos5「しん、と静かになった」という言葉があって、を
+  `i recently saw an answer that used the words ''and then it went quiet,''` と、
+  他者の言葉を引用する構文にして単調な否定文の連続を避けた）。
+
+### 投入・検証結果
+
+- `.product/official-answers-951/batch-001.sql` の末尾に、上記22件の変更に対応する
+  42行分（dragon ja/en 20行、robo ja/en 20行、keita en 1行、emily ja 1行）の
+  `insert ... on conflict (prompt_text, persona, lang) do update` を追記した
+  （既存100行はそのまま残し、upsertで上書きする形にした。同じ主キーへの2つ目の
+  insert文として追加したため、ファイル全体としては pos0〜9 の最終形が反映される）。
+- `supabase db query --linked -f .product/official-answers-951/batch-001.sql` で
+  ファイル全体（1つ目のinsert100行 + 2つ目のinsert42行）を再実行。エラーなし。
+- 投入直後に以下を SELECT で確認:
+  - `select count(*) from public.official_answers` → **580件**（増減なし、upsertが
+    正しく効いている）。
+  - pos0〜9 の10題 × dragon/robo × ja/en の計40行 → 全行が新しい本文に置き換わっている
+    ことを目視確認（上記「工夫した点」に挙げた文面がそのままDBに入っていることを確認）。
+  - keita pos7 en → `with the older kid's practice tests, if i could be the grandparent
+    for a day, ...` に更新されていることを確認。
+  - emily pos4 ja → `誰も自分の言葉喋ってない市場の向こうから、バカでかい手振り、...` に
+    更新され、重複語が解消されていることを確認。
+- 他の78行（keita ja/en 9件相当・tetra全10件・emily残り9件・keita pos7 ja など）は
+  今回のファイル追記でも SQL 上変更しておらず、値は前回投入分のまま。
+
+### 今回やらなかったこと
+
+- 依頼範囲外の78行（tetra・emily残り・keita残り）には一切手を入れていない。
+- バッチ1（pos0〜9）以外のプロンプト（pos10以降）は対象外のため未着手。

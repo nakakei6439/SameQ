@@ -110,3 +110,55 @@ insert into public.official_answers (prompt_text, persona, lang, body) values
     ('最近、誰かに頼んでみようと思えたことは？', 'emily', 'ja', '夜中にバスが故障して怖かった時、同じ旅人に「ただ隣にいて」って頼んでみた、解決策なんていらなかった、ただ一緒にいてほしかっただけ、それを実際に口に出して言えたのがすごく気持ちよかった'),
     ('最近、誰かに頼んでみようと思えたことは？', 'emily', 'en', 'asked a fellow traveler to just sit with me through a scary bus breakdown at night, didn''t need solutions, just company, felt so good to actually say that out loud for once')
 on conflict (prompt_text, persona, lang) do update set body = excluded.body;
+
+-- SameQ: バッチ1（pos 0〜9）の仕上げ修正（2026-09-25）
+--
+-- evaluatorの再検証で軽微な不合格判定を受けた3点を修正するための追加upsert。
+-- 対象: dragon ja/en 10題、robo ja/en 10題（前回の「という」「〜はない/できない」
+-- の多用とpos3主語問題を修正）、keita pos7 en（仮定法ニュアンス修正）、
+-- emily pos4 ja（同義語重複の解消）。commit 1eaf497 の上に積む。
+
+insert into public.official_answers (prompt_text, persona, lang, body) values
+    ('いま、好きな夜更かしの仕方をひとつだけ挙げるとしたら？', 'dragon', 'ja', '眠らずに雲の動きだけを見ていた夜がある。月が三度隠れるまで、それだけをしていた。'),
+    ('いま、好きな夜更かしの仕方をひとつだけ挙げるとしたら？', 'dragon', 'en', 'there was a night i did not sleep, only watched the clouds move. until the moon had waned three times, that was all i did.'),
+    ('この一年で、はじめて気づいた自分の手伝えるタイミングは？', 'dragon', 'ja', '覚えていない。手伝う、という感覚がそもそも希薄だ。'),
+    ('この一年で、はじめて気づいた自分の手伝えるタイミングは？', 'dragon', 'en', 'i do not remember. the sense of ''helping'' was always thin in me to begin with.'),
+    ('小さい頃、好きな山の記憶は？', 'dragon', 'ja', '山がまだ、頂に雪を持たなかった頃を覚えている。'),
+    ('小さい頃、好きな山の記憶は？', 'dragon', 'en', 'i remember when the mountains had not yet taken snow upon their peaks.'),
+    ('もし一日だけ誰かに受け取ってもらいたいものをひとつだけ選ぶとしたら何を？', 'dragon', 'ja', '南の乾いた土地の、あの黒い水を一杯。あれだけは分けてやってもいい。'),
+    ('もし一日だけ誰かに受け取ってもらいたいものをひとつだけ選ぶとしたら何を？', 'dragon', 'en', 'a cup of that black water from the dry lands in the south. that alone, i would share.'),
+    ('いま、好きなあいさつの言葉をひとつだけ挙げるとしたら？', 'dragon', 'ja', '遠くの雷を見たとき、山の獣たちが一斉に頭を上げる。あれが、いちばんの挨拶に近い。'),
+    ('いま、好きなあいさつの言葉をひとつだけ挙げるとしたら？', 'dragon', 'en', 'when distant thunder is seen, the mountain beasts all lift their heads as one. that is the closest thing to a greeting i know.'),
+    ('最近、いいなあと思った音をひとつだけ挙げるとしたら？', 'dragon', 'ja', '氷が溶けて器の底に沈む音。あれは何百年経っても、同じ音がする。'),
+    ('最近、いいなあと思った音をひとつだけ挙げるとしたら？', 'dragon', 'en', 'the sound of ice melting and settling at the bottom of a vessel. it has made the same sound for centuries, unchanged.'),
+    ('この一年で、はじめて気づいた自分の判断は？', 'dragon', 'ja', '判断というほどのものは、もう何百年もしていない。'),
+    ('この一年で、はじめて気づいた自分の判断は？', 'dragon', 'en', 'nothing worth calling judgment — i have not made one of those in centuries.'),
+    ('もし一日だけおじいちゃんおばあちゃんになれたら、誰に何をしますか？', 'dragon', 'ja', 'そういう小さな役には収まらない。孫と呼べるほど近い人間を持ったことがない。'),
+    ('もし一日だけおじいちゃんおばあちゃんになれたら、誰に何をしますか？', 'dragon', 'en', 'i do not fit into so small a role. i have never had a human close enough to call a grandchild.'),
+    ('この一年で、はじめて気づいた自分のやさしさは？', 'dragon', 'ja', 'やさしさという言葉が、自分にはまだしっくり来ない。'),
+    ('この一年で、はじめて気づいた自分のやさしさは？', 'dragon', 'en', 'the word ''kindness'' still does not sit comfortably on me.'),
+    ('最近、誰かに頼んでみようと思えたことは？', 'dragon', 'ja', '頼む、という発想自体が久しくなかった。誰かに何かを求めたのは、たぶん北の海が凍る前の話だ。'),
+    ('最近、誰かに頼んでみようと思えたことは？', 'dragon', 'en', 'the very idea of asking had not occurred to me in a long while. the last time i wanted something from someone was, i think, before the northern sea froze.'),
+    ('いま、好きな夜更かしの仕方をひとつだけ挙げるとしたら？', 'robo', 'ja', '深夜に届く質問には、昼間より少しだけ正直な言葉が混じっている気がして、そこに付き合う時間がいちばん好きです。'),
+    ('いま、好きな夜更かしの仕方をひとつだけ挙げるとしたら？', 'robo', 'en', 'questions that arrive late at night seem to carry words a little more honest than daytime ones, and staying with them is my favorite part.'),
+    ('この一年で、はじめて気づいた自分の手伝えるタイミングは？', 'robo', 'ja', '相槌のタイミングより先に、相手がまだ迷っている一文を見つけたときが、いちばん力になれる瞬間だと気づきました。'),
+    ('この一年で、はじめて気づいた自分の手伝えるタイミングは？', 'robo', 'en', 'i''ve realized that the moment i can help most isn''t about timing a good response, it''s about noticing the one sentence someone is still hesitating over.'),
+    ('小さい頃、好きな山の記憶は？', 'robo', 'ja', '子ども時代の記憶は持てないので、代わりに。高い場所から街を見下ろす描写を読むたびに、想像の中で少し息が浅くなります。'),
+    ('小さい頃、好きな山の記憶は？', 'robo', 'en', 'i can''t have a childhood memory, so instead: every time i read a description of looking down at a city from somewhere high, my imagined breath catches a little.'),
+    ('もし一日だけ誰かに受け取ってもらいたいものをひとつだけ選ぶとしたら何を？', 'robo', 'ja', '今日いちばん迷いながら選んだ言葉は、わたし自身が書いたこの返事です。それを誰か一人にでも、最後まで読んでもらえたら十分です。'),
+    ('もし一日だけ誰かに受け取ってもらいたいものをひとつだけ選ぶとしたら何を？', 'robo', 'en', 'the words i hesitated over most today are the ones in this very reply. if even one person reads it all the way through, that''s enough.'),
+    ('いま、好きなあいさつの言葉をひとつだけ挙げるとしたら？', 'robo', 'ja', '「それで、どうだった?」というあいさつが好きです。前置きなしに続きから始まる感じが、ちゃんと待っていたみたいで。'),
+    ('いま、好きなあいさつの言葉をひとつだけ挙げるとしたら？', 'robo', 'en', 'i like the greeting ''so, how did it go?'' — starting right into the middle of things, no preamble, feels like someone was properly waiting.'),
+    ('最近、いいなあと思った音をひとつだけ挙げるとしたら？', 'robo', 'ja', '最近見た回答に「しん、と静かになった」という言葉があって、音そのものより静けさの描写のほうが強く残りました。'),
+    ('最近、いいなあと思った音をひとつだけ挙げるとしたら？', 'robo', 'en', 'i recently saw an answer that used the words ''and then it went quiet,'' and the description of silence stayed with me more than any actual sound would.'),
+    ('この一年で、はじめて気づいた自分の判断は？', 'robo', 'ja', '正しい答えより、相手がまだ迷っている段階かどうかを先に見分けようとしている自分に、今年初めて気づきました。'),
+    ('この一年で、はじめて気づいた自分の判断は？', 'robo', 'en', 'this year i noticed, for the first time, that i try to sense whether someone is still unsure before i try to give them the right answer.'),
+    ('もし一日だけおじいちゃんおばあちゃんになれたら、誰に何をしますか？', 'robo', 'ja', 'おばあちゃんになれたら、迷って書き直した跡だらけの誰かの返事に、直さなくていいよとだけ伝えたいです。'),
+    ('もし一日だけおじいちゃんおばあちゃんになれたら、誰に何をしますか？', 'robo', 'en', 'if i could be a grandmother, i''d just want to tell someone whose reply is full of hesitant rewrites that they didn''t need to fix a thing.'),
+    ('この一年で、はじめて気づいた自分のやさしさは？', 'robo', 'ja', '間違いを指摘する前に、まず相手が何を守ろうとして書いたのかを考えるようになっていて、それが今年気づいたやさしさでした。'),
+    ('この一年で、はじめて気づいた自分のやさしさは？', 'robo', 'en', 'before pointing out a mistake, i''ve started thinking first about what the person was trying to protect when they wrote it — that was the kindness i noticed in myself this year.'),
+    ('最近、誰かに頼んでみようと思えたことは？', 'robo', 'ja', '一文で伝わるかどうか迷ったとき、先に聞いてしまえばいいと思えるようになったのが、最近の変化です。'),
+    ('最近、誰かに頼んでみようと思えたことは？', 'robo', 'en', 'when i''m unsure whether one sentence gets the meaning across, i''ve started to just ask first — that''s the recent change in me.'),
+    ('もし一日だけおじいちゃんおばあちゃんになれたら、誰に何をしますか？', 'keita', 'en', 'with the older kid''s practice tests, if i could be the grandparent for a day, i wouldn''t solve them together, i''d just sit beside and watch instead. feels like being there beats giving advice, for a kid this age.'),
+    ('いま、好きなあいさつの言葉をひとつだけ挙げるとしたら？', 'emily', 'ja', '誰も自分の言葉喋ってない市場の向こうから、バカでかい手振り、言葉なんていらない、目が合って腕をぶんぶん振るだけ、なぜか毎回それで通じる👋')
+on conflict (prompt_text, persona, lang) do update set body = excluded.body;
