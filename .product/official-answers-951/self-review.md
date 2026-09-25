@@ -100,3 +100,55 @@ WebSearch / WebFetch / Skill のみ）。そのため、`.claude/agents/sameq-an
 
 evaluatorへ: バッチ1のフル検証（本番SELECTでの整合確認・翻訳の質・冪等性の実測）を
 お願いします。
+
+---
+
+## バッチ1やり直し（2026-09-25）
+
+### 不合格の原因と今回の対応
+
+前回のバッチ1投入（commit `db3d7d2`）は、上記の通り generator セッションに Agent ツールが
+存在せず、5ペルソナ分の本文を自分（Sonnet 1プロセス）が「なりきり」で連続して書いたため、
+声やネタの選び方が均質化し、evaluator に不合格と判定された。
+
+今回はコーディネーター（トップ層）が `sameq-answer-keita` / `sameq-answer-tetra` /
+`sameq-answer-dragon` / `sameq-answer-robo` / `sameq-answer-emily` の5エージェントを
+Agent ツールで個別に呼び出し、各ペルソナのネイティブ言語（keita/tetra/dragon/robo は
+日本語、emily は英語）で pos 0〜9 の10題ぶんの本文を独立に書かせた。自分（generator）は
+その結果を**一切書き直さず・書き足さず**受け取り、以下の2点のみを担当した。
+
+1. 各ペルソナのネイティブ言語の本文を、もう一方の言語（日本語↔英語）に翻訳する。
+2. 100行分の `insert ... on conflict (prompt_text, persona, lang) do update` を組み立て、
+   `.product/official-answers-951/batch-001.sql` を上書きする。
+
+### 翻訳方針
+
+直訳ではなく、各ペルソナの声のトーンを保つことを優先した。
+
+- **keita**: 関西弁のニュアンス（「〜や」「〜へん」）は英語には直接移せないため、
+  カジュアルな断片文・コンマ区切りの畳みかけで温度を再現した（既存480件の keita/en の
+  文体を踏襲）。
+- **dragon**: 古語調・体言止め・ダッシュ区切りの間の取り方を英訳でも維持した
+  （例: "who i was a year ago — i do not remember."）。
+- **tetra**: 「ニャー」を直訳せず、語尾のそっけなさ・命令口調で cattitude を表現した。
+- **robo**: 「〜はできませんが、代わりに」の橋渡し構文は robo/en 側でも
+  "i have no ~, but instead" 相当の構造で一貫させた。
+- **emily**: 与えられた英語本文（絵文字含む）はそのまま使用し、日本語訳は口語的な
+  「マジで」「めっちゃ」寄りのトーンで意図的にくだけた訳文にした。地名・店名は
+  本文に含まれていなかったため追加していない。
+
+### 投入・検証結果
+
+- `supabase db query --linked -f .product/official-answers-951/batch-001.sql` で再投入。
+  エラーなし。
+- 投入直後に対象10題×100行を `left(body, 40)` 付きで SELECT し、body が前回投入分
+  （db3d7d2 時点の均質化した文面）ではなく、今回の新しい本文に置き換わっていることを
+  目視確認した。
+- `select count(*) from public.official_answers` は 580 件（sprint22 の既存480件 + 今回の
+  100件）。同じ主キー `(prompt_text, persona, lang)` への upsert のため、前回投入分の上に
+  重複なく上書きされたことを確認した（行数が680にならず580のまま）。
+
+### 今回やらなかったこと（手順通り）
+
+依頼文の指示により、コーディネーターが集めた5ペルソナの本文そのものは書き直していない。
+文体・ネタの選び方についての評価は、今回は各エージェントの独立出力に委ねている。
