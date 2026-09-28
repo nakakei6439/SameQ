@@ -143,3 +143,14 @@ insert into public.official_answers (prompt_text, persona, lang, body) values
     ('今日、思ったより気分よく進んだことは？', 'emily', 'en', 'packed my whole bag before the alarm even finished 😭 no scramble, no forgotten socks, just walked out the door like a functioning adult for once, weirdly proud of that'),
     ('今日、思ったより気分よく進んだことは？', 'emily', 'ja', 'アラームが鳴り終わる前にバッグを全部詰め終えた😭 バタバタもナシ、靴下の忘れ物もナシ、久しぶりにちゃんとした大人みたいに玄関出られた。なんか変に誇らしい')
 on conflict (prompt_text, persona, lang) do update set body = excluded.body;
+
+-- バッチ7再修正（emily pos64/71を完全に別の場面へ差し替え）
+--
+-- 直前の修正（屋台のおばちゃん／バッグ詰め）から、さらに別の場面に差し替える。
+-- 対応する日本語訳を新規作成。
+insert into public.official_answers (prompt_text, persona, lang, body) values
+    ('今日、誰かから受け取った温かみをひとつだけ挙げるとしたら？', 'emily', 'en', 'woke up in a tiny mountain guesthouse and the whole room was gold with sunrise, just pouring through a crack in the curtain, felt like the place was hugging me 🌄'),
+    ('今日、誰かから受け取った温かみをひとつだけ挙げるとしたら？', 'emily', 'ja', '山あいの小さな宿で目が覚めたら、部屋じゅうがカーテンの隙間から差し込む朝日で金色に染まってた。まるで宿そのものに抱きしめられてるみたいだった🌄'),
+    ('今日、思ったより気分よく進んだことは？', 'emily', 'en', 'tried to fix my own hostel bunk light with literally a hair clip and it WORKED, no sparks no drama, felt like a certified electrician for one glorious minute 💡'),
+    ('今日、思ったより気分よく進んだことは？', 'emily', 'ja', 'ホステルの二段ベッドのライトをまさかのヘアピンだけで直そうとしたら、ほんとに直った。火花もトラブルもなし、あの一瞬だけは資格持ちの電気技師になった気分だった💡')
+on conflict (prompt_text, persona, lang) do update set body = excluded.body;

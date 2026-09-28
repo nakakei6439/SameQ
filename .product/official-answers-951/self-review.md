@@ -835,3 +835,29 @@ keita 2件、emily 2件、計9項目・18行）に限定し、それ以外（rob
   行数増減なし）。
 
 これでバッチ7の修正は完了。
+
+## バッチ7再修正（emily pos64/71をまったく別の場面に差し替え）
+
+直前の修正で入れたemily pos64（屋台のおばちゃん）・pos71（バッグ詰め）を、さらに完全に
+別の場面へ差し替えた。修正範囲はemily pos64/71の4行（en 2行・対応するja訳2行）に限定し、
+それ以外（dragon・keita、および他ポジション）には手を入れていない。
+
+| pos | prompt | 新en | 新ja |
+|---|---|---|---|
+| 64 | 今日受け取った温かみ | woke up in a tiny mountain guesthouse and the whole room was gold with sunrise, just pouring through a crack in the curtain, felt like the place was hugging me 🌄 | 山あいの小さな宿で目が覚めたら、部屋じゅうがカーテンの隙間から差し込む朝日で金色に染まってた。まるで宿そのものに抱きしめられてるみたいだった🌄 |
+| 71 | 思ったより気分よく進んだこと | tried to fix my own hostel bunk light with literally a hair clip and it WORKED, no sparks no drama, felt like a certified electrician for one glorious minute 💡 | ホステルの二段ベッドのライトをまさかのヘアピンだけで直そうとしたら、ほんとに直った。火花もトラブルもなし、あの一瞬だけは資格持ちの電気技師になった気分だった💡 |
+
+日本語訳はemilyのカジュアルな口語・絵文字を文末に置く既存の訳し方に揃えた。
+
+### 投入方法・結果
+
+修正4行を`.product/official-answers-951/batch-007.sql`末尾に
+`insert ... on conflict (prompt_text, persona, lang) do update set body = excluded.body;`
+として追記し、同じ内容を一時ファイルに抽出して`supabase db query --linked -f <一時ファイル>`
+で本番投入した。
+
+- 該当4行をSELECTし、いずれも新しいbodyに置き換わっていることを確認した。
+- `select count(*) from public.official_answers` → **1180件**（修正前と変わらず。upsertのため
+  行数増減なし）。
+
+これでバッチ7の再修正は完了。
