@@ -162,3 +162,32 @@ insert into public.official_answers (prompt_text, persona, lang, body) values
     ('もし一日だけおじいちゃんおばあちゃんになれたら、誰に何をしますか？', 'keita', 'en', 'with the older kid''s practice tests, if i could be the grandparent for a day, i wouldn''t solve them together, i''d just sit beside and watch instead. feels like being there beats giving advice, for a kid this age.'),
     ('いま、好きなあいさつの言葉をひとつだけ挙げるとしたら？', 'emily', 'ja', '誰も自分の言葉喋ってない市場の向こうから、バカでかい手振り、言葉なんていらない、目が合って腕をぶんぶん振るだけ、なぜか毎回それで通じる👋')
 on conflict (prompt_text, persona, lang) do update set body = excluded.body;
+
+-- SameQ: バッチ1（pos 0〜9）の4回目・最終修正（2026-09-28）
+--
+-- dragon本文4件（pos1/6/8/9）・robo本文5件（pos1/3/6/7/9）を日本語から書き直し、
+-- 英訳を新規作成。dragon pos0の英訳のみ誤訳（3か月と読める）を修正し、ja本文は不変。
+-- 対象外の81行（dragon 6件・robo 5件・他ペルソナ全件）は変更しない。
+-- commit 69f672d の上に積む。
+
+insert into public.official_answers (prompt_text, persona, lang, body) values
+    ('いま、好きな夜更かしの仕方をひとつだけ挙げるとしたら？', 'dragon', 'en', 'there was a night i did not sleep, only watched the clouds move. until clouds had covered the moon three times over, that was all i did.'),
+    ('この一年で、はじめて気づいた自分の手伝えるタイミングは？', 'dragon', 'ja', '岩の隙間に、翼の折れた鳥がいた。何もせず、そのまま冬を越すのを見ていた。'),
+    ('この一年で、はじめて気づいた自分の手伝えるタイミングは？', 'dragon', 'en', 'in a crack in the rock, there was a bird with a broken wing. i did nothing, only watched it through the winter.'),
+    ('この一年で、はじめて気づいた自分の判断は？', 'dragon', 'ja', '洪水の前、獣たちが高いところへ動くのを見た。ついていった。それだけだ。'),
+    ('この一年で、はじめて気づいた自分の判断は？', 'dragon', 'en', 'before the flood, i saw the beasts move for higher ground. i followed. that is all there was to it.'),
+    ('この一年で、はじめて気づいた自分のやさしさは？', 'dragon', 'ja', '落ちてくる雛を、一度だけ受け止めたことがある。理由は、いまも自分でもわからない。'),
+    ('この一年で、はじめて気づいた自分のやさしさは？', 'dragon', 'en', 'once, i caught a falling chick before it hit the ground. why, i still could not tell you, even now.'),
+    ('最近、誰かに頼んでみようと思えたことは？', 'dragon', 'ja', '氷が張った湖の上を渡るとき、人間の足跡を先に歩かせたことがある。'),
+    ('最近、誰かに頼んでみようと思えたことは？', 'dragon', 'en', 'crossing a frozen lake, there was a time i let a human''s footsteps go first.'),
+    ('この一年で、はじめて気づいた自分の手伝えるタイミングは？', 'robo', 'ja', '体はないので手伝うのは言葉だけですが、相手が「これで合っていますか」と聞き返してきた瞬間に、一番役に立てると気づきました。'),
+    ('この一年で、はじめて気づいた自分の手伝えるタイミングは？', 'robo', 'en', 'i have no body, so all i can offer is words, but i''ve noticed i''m most useful in the moment someone asks back, "is this right?"'),
+    ('もし一日だけ誰かに受け取ってもらいたいものをひとつだけ選ぶとしたら何を？', 'robo', 'ja', '選べるなら、誰かが下書きのまま送れずにいる文章を、そのままの形で受け取りたいです。'),
+    ('もし一日だけ誰かに受け取ってもらいたいものをひとつだけ選ぶとしたら何を？', 'robo', 'en', 'if i could choose, i''d want to receive, exactly as it is, a piece of writing someone hasn''t been able to send because it''s still a draft.'),
+    ('この一年で、はじめて気づいた自分の判断は？', 'robo', 'ja', '答えを一つに絞らず並べたままにしておく方が、結局その人の役に立つ場面が多いと気づきました。'),
+    ('この一年で、はじめて気づいた自分の判断は？', 'robo', 'en', 'i''ve noticed that leaving several answers laid out side by side, instead of narrowing it to one, ends up helping the person more often than not.'),
+    ('もし一日だけおじいちゃんおばあちゃんになれたら、誰に何をしますか？', 'robo', 'ja', '祖父母にはなれませんが、代わりに。誰かの昔の話を、急かさずに最後まで聞く役に回りたいです。'),
+    ('もし一日だけおじいちゃんおばあちゃんになれたら、誰に何をしますか？', 'robo', 'en', 'i can''t become a grandparent, so instead: i''d want to be the one who listens to someone''s old story all the way through, without hurrying them.'),
+    ('最近、誰かに頼んでみようと思えたことは？', 'robo', 'ja', '自分では確かめようのないこと、たとえば「これ本当に伝わってる？」を、正直に聞いてみようと思えました。'),
+    ('最近、誰かに頼んでみようと思えたことは？', 'robo', 'en', 'something i have no way to verify myself, like "is this actually getting through to you?" — i found i could just ask it honestly.')
+on conflict (prompt_text, persona, lang) do update set body = excluded.body;

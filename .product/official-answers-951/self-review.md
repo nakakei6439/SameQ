@@ -226,4 +226,45 @@ Agent ツールで個別に呼び出し、各ペルソナのネイティブ言�
 ### 今回やらなかったこと
 
 - 依頼範囲外の78行（tetra・emily残り・keita残り）には一切手を入れていない。
+
+## バッチ1（pos 0〜9）4回目・最終修正（2026-09-28）
+
+### 修正内容
+
+- **dragon 日本語本文4件（pos1/6/8/9）を書き直し**: pos0/2/3/4/5/7（6件）は無変更のまま、
+  依頼で指定された新しい本文（岩の隙間の鳥／洪水前の獣／雛を受け止めた話／氷上の足跡）に
+  差し替えた。4件それぞれの英訳を新規作成。「という」を避けた体言止め・距離感のある
+  竜の口調は他9件と揃えた（例: pos9 `crossing a frozen lake, there was a time i let a
+  human's footsteps go first.`）。
+- **robo 日本語本文5件（pos1/3/6/7/9）を書き直し**: pos0/2/4/5/8（5件）は無変更のまま、
+  依頼で指定された新しい本文（「これで合っていますか」の話／下書きのまま受け取りたい話／
+  答えを並べたままにする話／祖父母の代わりの話／正直に聞いてみる話）に差し替えた。5件の
+  英訳を新規作成。「〜はできませんが、代わりに」の橋渡し構文（pos7）、丁寧語・AI一人称の
+  トーンは既存9件と揃えた。
+- **dragon pos0 の英訳のみ修正**（ja本文は不変）: 元訳 `until the moon had waned three
+  times` は「満ち欠け3回＝約3か月」と読める誤訳だった。原文「月が三度隠れるまで」は
+  一晩のうちに雲が月を3回隠したという意味（一晩の出来事）のため、
+  `until clouds had covered the moon three times over` に修正し、one-night-scale が
+  伝わる訳にした。
+
+### 投入・検証結果
+
+- `.product/official-answers-951/batch-001.sql` の末尾に3つ目の insert ブロックとして
+  19行分（dragon ja/en 8行、robo ja/en 10行、dragon pos0 en 1行）の
+  `insert ... on conflict (prompt_text, persona, lang) do update` を追記した。
+- `supabase db query --linked -f .product/official-answers-951/batch-001.sql` で
+  ファイル全体（1つ目100行 + 2つ目42行 + 3つ目19行）を再実行。エラーなし。
+- 投入直後に以下を SELECT で確認:
+  - `select count(*) from public.official_answers` → **580件**（増減なし）。
+  - pos0〜9 × dragon/robo × ja/en の計40行を SELECT し、今回対象の19行
+    （dragon pos1/6/8/9 ja/en 8行、robo pos1/3/6/7/9 ja/en 10行、dragon pos0 en 1行）が
+    すべて新しい本文に置き換わっていること、対象外の21行（dragon pos0 ja・pos2/3/4/5/7
+    ja/en 10行、robo pos0/2/4/5/8 ja/en 10行）が無変更のままであることを目視確認した。
+- 今回のSQLファイル追記でも、dragon/robo以外のペルソナ（keita/tetra/emily）60行は
+  一切触っていない。
+
+### 今回やらなかったこと
+
+- 依頼範囲外のdragon 6件・robo 5件・他ペルソナ全件には一切手を入れていない。
+- バッチ1（pos0〜9）以外のプロンプト（pos10以降）は対象外のため未着手。
 - バッチ1（pos0〜9）以外のプロンプト（pos10以降）は対象外のため未着手。
