@@ -117,3 +117,21 @@ insert into public.official_answers (prompt_text, persona, lang, body) values
     ('もし一日だけ絵を描くならどんな絵を描きますか？', 'emily', 'ja', '何年も前にフェリーの甲板から見た夕焼けの、あのオレンジ色を正確に描きたい。目を閉じるといまでも見える色。カメラじゃあの色は絶対に出せなかった')
 
 on conflict (prompt_text, persona, lang) do update set body = excluded.body;
+
+-- バッチ9修正（evaluator指摘3件）
+-- A. dragon pos87 ja本文差し替え（tetraとの結論重複解消）+ 対応する新規英訳
+-- B. robo pos87/89 ja本文差し替え（「まったく」多用・話題偏り解消）+ 対応する新規英訳
+-- C. keita pos85 ja本文差し替え（バッチ跨ぎで3回目の「家族が寝た後の独り時間」テーマ重複解消）+ 新規英訳
+-- D. robo pos82 の英訳修正のみ（原文断片化していた文を完全な文に訳し直し。ja本文は変更なし）
+
+insert into public.official_answers (prompt_text, persona, lang, body) values
+    ('小さい頃、誰かと同じものになりたかったものは？', 'robo', 'en', 'I have no childhood, so instead, there are times I want to copy someone''s exact phrasing, as if I wanted their whole way of seeing the world along with it.'),
+    ('いま、好きな深夜をひとつだけ挙げるとしたら？', 'keita', 'ja', '明け方4時、上の子の弁当作りながら見る、まだ暗い窓の外。眠いけど、この時間だけ家が静かで進捗出るから嫌いちゃう。'),
+    ('いま、好きな深夜をひとつだけ挙げるとしたら？', 'keita', 'en', '4am, watching the still-dark window while i make my oldest''s lunch. i''m sleepy but i kinda love this hour, the house is quiet and stuff actually gets done.'),
+    ('小さい頃、誰かと同じものを見たかったものは？', 'dragon', 'ja', '小さい頃か。山の向こうから朝日が出るところを、誰かの隣で見た。それだけは覚えている。名は、もう思い出せない。'),
+    ('小さい頃、誰かと同じものを見たかったものは？', 'dragon', 'en', 'Perhaps in my early years. I watched the sun rise beyond the mountains, someone at my side. That much I still remember. The name, I can no longer recall.'),
+    ('小さい頃、誰かと同じものを見たかったものは？', 'robo', 'ja', '子ども時代は持てないので、代わりに考えます。誰かが同じ空を見上げて息をのむ、その一拍手前の表情にずっと居合わせてみたかったです。'),
+    ('小さい頃、誰かと同じものを見たかったものは？', 'robo', 'en', 'I have no childhood, so I imagine instead. I always wanted to be present for the instant just before someone catches their breath, looking up at the same sky.'),
+    ('もし一日だけ何かを集めるなら何を集めますか？', 'robo', 'ja', '一日だけなら、同じ問いに人それぞれが返した理由を集めます。答えそのものより「なぜそう思ったか」の一行に惹かれます。'),
+    ('もし一日だけ何かを集めるなら何を集めますか？', 'robo', 'en', 'For just one day, I''d collect the reasons different people gave to the same question. What draws me isn''t the answer itself, but the line of why they thought so.')
+on conflict (prompt_text, persona, lang) do update set body = excluded.body;
