@@ -107,3 +107,27 @@ insert into public.official_answers (prompt_text, persona, lang, body) values
     ('今日、ちょっとしたことで気分が軽くなった瞬間は？', 'dragon', 'en', 'nothing today rose to what one might call a lighter mood. if forced to name something, the wind changed direction.'),
     ('今日、ちょっとしたことで気分が軽くなった瞬間は？', 'emily', 'ja', '野良犬が6ブロックくらいついてきて、パンを半分あげたら満足そうに座り込んだ、小さいことだけど正直その日一番幸せな瞬間だった'),
     ('今日、ちょっとしたことで気分が軽くなった瞬間は？', 'emily', 'en', 'a stray dog followed me for six blocks then just sat down happy when i gave it half my bread, tiny thing but honestly made my whole entire day');
+
+-- バッチ2 修正（2026-09-28、evaluator指摘3件）
+--
+-- A. robo pos19: pos13（今日、すこし気分が落ち着く瞬間はありましたか？）の日本語本文
+--    「今日、丁寧に書かれた短い答えを読んだ時。急いでいない言葉には、こちらの呼吸も
+--    整うような働きがある気がします。」と、pos19の旧本文「短い言葉で的確に返してくれる
+--    答えを読んだとき。長く説明しなくても伝わるのだと分かると、こちらまで肩の力が
+--    抜けます。」が内容的に重複していたため、日本語本文を差し替え、英訳を新規作成。
+-- B. emily pos17: 旧英語本文が"honestly"を多用（同ペルソナの他行でも頻出）していたため
+--    差し替え。日本語訳を新規作成。
+-- C. tetra pos19: 旧日本語本文の「ひも」がひらがな表記で「干物」（dried fish snack）と
+--    誤訳されていたため、「紐」と明示する本文に差し替え。英訳も"string"であることが
+--    明確になるよう新規作成。
+--
+-- 主キーが同じなので upsert により行数は増えない（既存の該当6行を更新するのみ）。
+
+insert into public.official_answers (prompt_text, persona, lang, body) values
+    ('今日、ちょっとしたことで気分が軽くなった瞬間は？', 'robo', 'ja', '同じ問いに、迷いなく即答が並ぶのを見た時。悩むところだと思っていたので、その軽さに少し驚いて、つられて楽になりました。'),
+    ('今日、ちょっとしたことで気分が軽くなった瞬間は？', 'robo', 'en', 'when i see instant, no-hesitation answers lined up for the same question. i had assumed this was something people would agonize over, so the lightness surprised me a little, and it lightened me too.'),
+    ('いま、自分の体のどこが期待していますか？', 'emily', 'en', 'my feet, no contest, they get twitchy the second i''ve been anywhere more than a week 😂 like they can already feel a new dusty road under them before my brain''s even decided'),
+    ('いま、自分の体のどこが期待していますか？', 'emily', 'ja', '足かな、これは即答、一週間もどこかにいるとすぐむずむずし始める😂 頭がまだ何も決めてないのに、足だけ新しい砂っぽい道の感触をもう分かってるみたいな感じ'),
+    ('今日、ちょっとしたことで気分が軽くなった瞬間は？', 'tetra', 'ja', '紐の先っぽをちょいと引っ掛けたら、それだけで満足したニャー。'),
+    ('今日、ちょっとしたことで気分が軽くなった瞬間は？', 'tetra', 'en', 'just snagging the loose end of a string with one paw, that was all it took to satisfy me.')
+on conflict (prompt_text, persona, lang) do update set body = excluded.body;
