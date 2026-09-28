@@ -36,16 +36,20 @@ final class PromptGenerationTests: XCTestCase {
         )
     }
 
-    /// スプリント19 / F46: 候補プールが約 1,000 件（spec.md 前提30 の 950〜1,100
-    /// 件）に拡張されていること。同じ並びが SQL マイグレーション（`ensure_todays_prompt()`
+    /// スプリント24 / F46: 候補プールが約150件（spec.md 前提30、140〜160件の範囲）に
+    /// 縮小されていること。同じ並びが SQL マイグレーション（`ensure_todays_prompt()`
     /// の v_pool）にも焼き込まれているため、ここの件数を変更したら必ず
-    /// `supabase/migrations/20260908000001_sprint19_*.sql` も同期すること。
-    func testCandidatePoolMeetsSprint19Range() {
+    /// `supabase/migrations/20260928000001_sprint24_*.sql` も同期すること。
+    ///
+    /// 2026-09-28 スプリント24: 999件（スプリント19の~1,000件拡張）から150件へ縮小。
+    /// 運営回答（`official_answers`）でカバーしきれる規模に絞った（詳細は
+    /// `PromptCatalog.swift` のコメントと `.product/prompt-pool-v2/pool-150-selected.tsv`）。
+    func testCandidatePoolMeetsSprint24Range() {
         let count = PromptCatalog.candidatePool.count
-        XCTAssertGreaterThanOrEqual(count, 950,
-            "spec.md F46 / 前提30: 候補プールは 950 件以上（~1,000 件）")
-        XCTAssertLessThanOrEqual(count, 1100,
-            "spec.md F46 / 前提30: 候補プールは 1,100 件以下（~1,000 件）")
+        XCTAssertGreaterThanOrEqual(count, 140,
+            "spec.md F46 / 前提30: 候補プールは 140 件以上（~150 件）")
+        XCTAssertLessThanOrEqual(count, 160,
+            "spec.md F46 / 前提30: 候補プールは 160 件以下（~150 件）")
     }
 
     /// スプリント19 / F46: 既存の約 48 件（受け入れ条件 5 / Sprint09 で手書き）が
@@ -495,8 +499,14 @@ final class PromptGenerationTests: XCTestCase {
     // MARK: スプリント23（text_en / SQL との同期）
 
     /// `PromptCatalog.candidatePool` / `candidatePoolEn` が
-    /// `supabase/migrations/20260923000002_prompt_text_en.sql` の `v_pool_ja` /
-    /// `v_pool_en` と件数・並びとも完全一致することを、SQL ファイルを直接パースして確認する。
+    /// `supabase/migrations/20260928000001_sprint24_prompt_pool_reduction.sql` の
+    /// `v_pool_ja` / `v_pool_en`（`ensure_todays_prompt()` の最新の再定義）と件数・並びとも
+    /// 完全一致することを、SQL ファイルを直接パースして確認する。
+    ///
+    /// スプリント24（2026-09-28）でプールを999件から150件に縮小した際、`ensure_todays_prompt()`
+    /// の最新定義は `create or replace function` で 20260928000001 に移った（20260923000002 の
+    /// 999件配列はその時点の履歴として残るだけで、実行時には使われない）ため、比較対象を
+    /// 最新のマイグレーションファイルに更新した。
     ///
     /// この2つがずれると、サーバー側の自動生成（`ensure_todays_prompt()`）とローカル生成
     /// （`PromptGenerator`）で日ごとに違うお題・違う英語予備文が出てしまう（過去にも
@@ -513,7 +523,7 @@ final class PromptGenerationTests: XCTestCase {
             .deletingLastPathComponent() // SameQTests
             .deletingLastPathComponent() // リポジトリルート
         let migrationURL = repoRoot
-            .appendingPathComponent("supabase/migrations/20260923000002_prompt_text_en.sql")
+            .appendingPathComponent("supabase/migrations/20260928000001_sprint24_prompt_pool_reduction.sql")
         guard let sql = try? String(contentsOf: migrationURL, encoding: .utf8) else {
             throw XCTSkip("マイグレーションファイルが見つからない（\(migrationURL.path)）。CI 等でパスが異なる場合はスキップ")
         }

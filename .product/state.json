@@ -1,8 +1,20 @@
 {
-  "currentSprint": "23",
-  "attempt": 2,
+  "currentSprint": "24",
+  "attempt": 1,
   "status": "passed",
   "history": [
+    {
+      "sprint": "24",
+      "attempt": 1,
+      "result": "passed",
+      "evalNote": "eval-1.md — 合格。150件の選定（既存48∪pos0-104）・Swift⇔SQL⇔TSV⇔ローカルDB関数定義 150/150一致、official_answers 88件（ローカル・本番SELECTとも）孤児0／カバー88・未カバー62、ユニット281/281・UI回帰14/14。詳細: .product/sprints/24-prompt-pool-reduction/eval-1.md"
+    },
+    {
+      "sprint": "23",
+      "attempt": 2,
+      "result": "passed",
+      "evalNote": "eval.md（attempt2セクション） — 合格。attempt1で指摘された英訳10件・「もし一日だけ」today表記124件・pos908/963のja修正をすべて解消。詳細は .product/sprints/23-prompt-text-en/eval.md"
+    },
     {
       "sprint": "23",
       "attempt": 1,
