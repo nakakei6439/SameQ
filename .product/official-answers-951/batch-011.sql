@@ -119,3 +119,17 @@ insert into public.official_answers (prompt_text, persona, lang, body) values
     ('もし一日だけ好きな季節を選べるとしたら、どれにしますか？', 'emily', 'en', 'Autumn, no contest, one perfect crunchy-leaves cold-nose sweater-weather day where everything smells like cinnamon and nothing bad gets to happen'),
     ('もし一日だけ好きな季節を選べるとしたら、どれにしますか？', 'emily', 'ja', '秋、これは文句なし、落ち葉がカサカサ鳴って鼻が冷たくてセーター日和な完璧な一日、全部シナモンの匂いがして悪いことなんて何も起きない')
 on conflict (prompt_text, persona, lang) do update set body = excluded.body;
+
+-- バッチ11 修正（evaluator指摘4件への対応、2026-09-29）
+-- A. dragon pos93: 既存の別お題との重複を解消するため日本語本文を差し替え、英訳を新規作成
+-- B. emily pos94: 既存の別お題との重複を解消するため英語本文を差し替え、日本語訳を新規作成
+-- C. dragon pos98: 英訳のみ修正（「小さな力」= strength のニュアンスに合わせる。ja本文は不変）
+-- D. keita pos102: 英訳のみ修正（末尾"please"の不自然さを解消。ja本文は不変）
+insert into public.official_answers (prompt_text, persona, lang, body) values
+    ('いま、好きなことをひとつだけ手放すとしたら？', 'dragon', 'ja', '好きなことを手放す？ 人間は不思議なことを考える。竜は気に入ったものを、ただ長く持ち続けるだけだ。'),
+    ('いま、好きなことをひとつだけ手放すとしたら？', 'dragon', 'en', 'letting go of something i like? humans think of curious things. a dragon simply keeps what it favors — for a long time, nothing more.'),
+    ('小さい頃、雪の日の過ごし方は？', 'emily', 'en', 'made "snow soup" in the backyard, just snow + every syrup in the fridge stirred together 🍧 ate it proudly, immediately regretted it, did it again the next storm'),
+    ('小さい頃、雪の日の過ごし方は？', 'emily', 'ja', '裏庭で「雪スープ」作った、雪と冷蔵庫にあったシロップ全部混ぜただけ🍧 得意げに食べたらすぐ後悔したのに、次の嵐でまたやった'),
+    ('今日、ほかの誰かから受け取った小さな力をひとつ挙げるとしたら？', 'dragon', 'en', 'i have no memory of receiving a small measure of strength. though humans seem fond of saying such things.'),
+    ('もし一日だけ好きな季節を選べるとしたら、どれにしますか？', 'keita', 'en', 'autumn, no question. easy to get through and i can start doing hot pot for dinner. summer''s a no-go for me at this point, enough already.')
+on conflict (prompt_text, persona, lang) do update set body = excluded.body;

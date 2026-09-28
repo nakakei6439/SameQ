@@ -1159,3 +1159,61 @@ pos87(小さい頃、誰かと同じものを見たかったものは？) / pos8
 - 150件プールは完了したが、150件プール自体は全体のお題プール（1000件規模）の一部
   サブセットである。プール全体への拡張が必要かどうかは、集客・利用状況を見て別途判断する
   べきで、今回のスコープには含めない（MEMORY.md記載の「ship して放置」方針に従う）。
+
+## バッチ11 修正（evaluator指摘4件への対応、2026-09-29）
+
+### 対象と修正内容
+
+evaluatorから以下4件の指摘を受け、対象4お題・6行のみを修正した。それ以外の96行
+（他ペルソナ・他posの全行）には一切手を入れていない。
+
+- **A. dragon pos93（いま、好きなことをひとつだけ手放すとしたら？）**: 既存の別お題
+  （pos95「好きな映画をひとつだけ挙げるとしたら？」の光の残像ネタ等）との重複を解消する
+  ため、依頼で指定された日本語本文「好きなことを手放す？ 人間は不思議なことを考える。
+  竜は気に入ったものを、ただ長く持ち続けるだけだ。」に差し替えた。英訳を新規作成した:
+  `letting go of something i like? humans think of curious things. a dragon simply
+  keeps what it favors — for a long time, nothing more.`
+  竜の「〜か。」調の疑問形の間、体言止め・em dashによる距離感は他のdragon訳と揃えた。
+- **B. emily pos94（小さい頃、雪の日の過ごし方は？）**: 既存の別お題（pos93旧本文の
+  「雪の日は秘密基地」パターン等）との重複を解消するため、依頼で指定された英語本文
+  `made "snow soup" in the backyard, just snow + every syrup in the fridge stirred
+  together 🍧 ate it proudly, immediately regretted it, did it again the next storm`
+  に差し替えた。日本語訳を新規作成した:
+  `裏庭で「雪スープ」作った、雪と冷蔵庫にあったシロップ全部混ぜただけ🍧 得意げに食べたら
+  すぐ後悔したのに、次の嵐でまたやった`
+  絵文字🍧の位置（本文中盤）とカジュアルな話し言葉の文末処理は他のemily訳と揃えた。
+- **C. dragon pos98の英訳のみ修正**（ja本文「小さな力を受け取った覚えはない。人間はよく、
+  そう言うようだが。」は不変）。旧訳"a small kindness"は原文の「力」＝strengthの意味から
+  ずれていたため、`i have no memory of receiving a small measure of strength. though
+  humans seem fond of saying such things.`に差し替えた。
+- **D. keita pos102の英訳のみ修正**（ja本文「秋一択。過ごしやすいし、晩飯も鍋始められる。
+  夏はもう無理、勘弁してほしい。」は不変）。旧訳末尾の"please"が不自然だったため、
+  「勘弁してほしい」の脱力した口語ニュアンスに合わせ、`autumn, no question. easy to get
+  through and i can start doing hot pot for dinner. summer's a no-go for me at this
+  point, enough already.`に差し替えた（keita英訳の既存トーン=小文字・カジュアルな断定を踏襲）。
+
+### 投入方法・結果
+
+`.product/official-answers-951/batch-011.sql`の末尾に修正ブロック（6行、
+`insert ... on conflict (prompt_text, persona, lang) do update set body = excluded.body;`）
+を追記した。ファイル全体を再実行すると先頭の100行バルクinsert（on conflict句なし）が
+主キー重複エラーになるため、追記ブロックのみを一時ファイルに抽出して
+`supabase db query --linked -f <一時ファイル>`で本番投入した。
+
+- 投入前: `select count(distinct prompt_text), count(*) from public.official_answers`
+  → 150, 1500。
+- 対象6行（dragon pos93 ja/en、emily pos94 en/ja、dragon pos98 en、keita pos102 en）を
+  SELECTし、いずれも新しい本文に置き換わっていることを確認した。
+- 投入後: 同クエリ → **150, 1500**（変化なし、想定通り。既存行のUPDATEのみ）。
+
+### 受け入れ確認
+
+- [x] dragon pos93の日本語本文を差し替え、対応する英訳を新規作成した。
+- [x] emily pos94の英語本文を差し替え、対応する日本語訳を新規作成した。
+- [x] dragon pos98の英訳のみ修正し、ja本文は不変のまま「strength」のニュアンスを反映した。
+- [x] keita pos102の英訳のみ修正し、ja本文は不変のまま不自然な"please"を解消した。
+- [x] `select count(distinct prompt_text), count(*) from public.official_answers;` が
+      投入前後とも **150, 1500** であることを実測確認した（増減なし）。
+
+これでバッチ11の修正は完了。プロジェクト全体（運営回答951件埋め、実質150件プール×5ペル
+ソナ×2言語=1500件）が最終確定した。
