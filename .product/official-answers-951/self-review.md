@@ -478,3 +478,27 @@ robo: 落ち着いた説明的な英語、tetra: 短い断定調＋"meow"）を�
 - 指摘された4件（8行）以外には一切手を入れていない。
 - 頻出語チェック自体（「3件以内」の目安の再計算）はevaluatorの指摘をそのまま
   受け入れており、generator側で独自に全780件の頻出語を再集計する作業は行っていない。
+
+## バッチ3 完了（keita pos20 en 誤訳修正、2026-09-28）
+
+前回のバッチ3修正（頻出語対応）で差し替えたkeita pos20の英訳が、日本語本文の主語を
+取り違えていたことが判明したため修正した。
+
+- **問題**: keita pos20のja本文「金曜だけ塾の迎えが要らんかった記憶がある。だから
+  金曜の夜は妙に体が軽かった、あの感覚だけ今も残ってる。」は、**子どもの頃の自分**が
+  金曜だけ塾に迎えが要らなかった（＝自分で帰れた）という記憶を語っている。
+  ところが投入済みのen訳は「i didn''t have to pick up the kids from cram school」
+  （親として子どもを迎えに行かなくてよかった）という誤った主語（親視点）になっていた。
+- **修正**: en本文のみを以下に差し替えた（ja本文は一切変更していない）。
+  `fridays were the only day nobody had to pick me up from cram school. something
+  about that lightness on friday nights has stayed with me.`
+  「誰も自分を迎えに来なくてよかった」＝子ども時代の自分の記憶として読める文に修正した。
+- 修正は`.product/official-answers-951/batch-003.sql`の末尾に、keita pos20 en 1行のみを
+  対象とした`insert ... on conflict (prompt_text, persona, lang) do update set
+  body = excluded.body;`ブロックを追記する形で行った。既存のブロックは変更していない。
+- 投入は`supabase db query --linked -f .product/official-answers-951/batch-003.sql`で
+  実行し、以下を確認した。
+  - keita pos20のja/en 2行をSELECT。jaは不変、enのみ新内容に更新されていることを確認。
+  - `select count(*) from public.official_answers` → **780件**（投入前後で変化なし）。
+
+これでバッチ3（pos 20〜29）は完了。

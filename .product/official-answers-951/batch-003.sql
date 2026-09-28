@@ -121,3 +121,9 @@ insert into public.official_answers (prompt_text, persona, lang, body) values
     ('この一年で、はじめて気づいた自分の大事にしている風は？', 'tetra', 'ja', '風なんて気にしたことないニャー。窓から入ってくる風が涼しくて好きになった、それだけ。'),
     ('この一年で、はじめて気づいた自分の大事にしている風は？', 'tetra', 'en', 'never gave wind a thought before, meow. the breeze through the window was cool, so i started liking it. that''s all.')
 on conflict (prompt_text, persona, lang) do update set body = excluded.body;
+
+-- バッチ3 再修正（keita pos20 en誤訳修正: 主語が親視点になっていたのを子ども時代の自分視点に修正）
+-- ja本文は不変。enのみ差し替え。
+insert into public.official_answers (prompt_text, persona, lang, body) values
+    ('小さい頃、好きな曜日ごとの習慣は？', 'keita', 'en', 'fridays were the only day nobody had to pick me up from cram school. something about that lightness on friday nights has stayed with me.')
+on conflict (prompt_text, persona, lang) do update set body = excluded.body;
