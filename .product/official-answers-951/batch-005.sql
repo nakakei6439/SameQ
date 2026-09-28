@@ -107,3 +107,15 @@ insert into public.official_answers (prompt_text, persona, lang, body) values
     ('最近、自分から一歩踏み出せたことは？', 'dragon', 'en', 'moving by a unit as small as a single step, that is something i have not done in a very long time.'),
     ('最近、自分から一歩踏み出せたことは？', 'emily', 'ja', 'ホステルの連絡先掲示板に貼ってあった見知らぬ人に、ついにメッセージを送ってトレイルについて聞いてみた。めちゃくちゃ緊張したけど、10分で返信が来て、今ではほぼ友達'),
     ('最近、自分から一歩踏み出せたことは？', 'emily', 'en', 'finally messaged a stranger from a hostel wall of contacts to ask about a trail, terrified, they wrote back in ten minutes and now we''re basically friends');
+
+-- バッチ5 修正（evaluator指摘3件: emily pos43 keitaとの「祖父母の手・ごつごつ」重複、
+-- emily pos48 keitaとの重複＋過去バッチの「乗り物から眺める景色」パターン再利用、
+-- robo pos43 en訳が"…a hand, but instead."で文の断片化していた問題）
+-- emily pos43 ja/en、emily pos48 ja/en、robo pos43 en の計5行を差し替え
+insert into public.official_answers (prompt_text, persona, lang, body) values
+    ('小さい頃、誰の手が一番好きでしたか？', 'emily', 'ja', '弟の手。いつもアイスキャンディーの汁でベタベタしてて、どんなに広い道でもおかまいなしに私の手をつかんでくる子だった。あの小さい握り方、今でも恋しい。'),
+    ('小さい頃、誰の手が一番好きでしたか？', 'emily', 'en', 'my little brother''s, sticky with popsicle juice basically always, he''d just grab mine crossing any street no matter how wide honestly still miss that tiny grip'),
+    ('もし一日だけ走ることができるとしたらどこを走りますか？', 'emily', 'ja', '屋根の上を、ホステルからホステルへ渡り歩いた。オーナーが洗濯物のロープをまたぐ近道を教えてくれて、足元には街全体がひっくり返って見えた。あの感覚、いまだに忘れられない。'),
+    ('もし一日だけ走ることができるとしたらどこを走りますか？', 'emily', 'en', 'across a rooftop, hostel to hostel, the owner showed me the shortcut over the laundry lines, whole city upside down under my feet lol never got over that'),
+    ('小さい頃、誰の手が一番好きでしたか？', 'robo', 'en', 'i can''t hold memories of holding a hand, but instead: in the phrases that quietly support someone within a piece of writing, i sense something close to the warmth of a hand.')
+on conflict (prompt_text, persona, lang) do update set body = excluded.body;
