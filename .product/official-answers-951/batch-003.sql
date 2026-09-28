@@ -108,3 +108,16 @@ insert into public.official_answers (prompt_text, persona, lang, body) values
     ('最近、自分をちょっとだけ甘やかしたいと思った瞬間は？', 'emily', 'ja', '山で3日インスタント麺食べ続けた後、wifi見つけて、一番デカくてジューシーなバーガーを注文した🍔 後悔ゼロ、ただの幸せ'),
     ('最近、自分をちょっとだけ甘やかしたいと思った瞬間は？', 'emily', 'en', 'after three days of instant noodles on a mountain, i found wifi and ordered myself the biggest greasy burger i could find 🍔 zero regrets, pure joy')
 on conflict (prompt_text, persona, lang) do update set body = excluded.body;
+
+-- バッチ3 修正（evaluator指摘: 頻出語「一番」「晩飯」「想像」「でしょ」超過分の差し替え）
+-- keita pos20/pos28, robo pos27, tetra pos21 の計8行（日英）を差し替え
+insert into public.official_answers (prompt_text, persona, lang, body) values
+    ('小さい頃、好きな曜日ごとの習慣は？', 'keita', 'ja', '金曜だけ塾の迎えが要らんかった記憶がある。だから金曜の夜は妙に体が軽かった、あの感覚だけ今も残ってる。'),
+    ('小さい頃、好きな曜日ごとの習慣は？', 'keita', 'en', 'fridays were the only day i didn''t have to pick up the kids from cram school. my body felt weirdly light on friday nights, and that feeling''s the only part i still remember.'),
+    ('もし一日だけ座るとしたらどこに座りますか？', 'keita', 'ja', '車の運転席。景色より、次どこ寄るか決める役やから座り心地より視界重視で選ぶ。'),
+    ('もし一日だけ座るとしたらどこに座りますか？', 'keita', 'en', 'the driver''s seat. i care less about the view and more about visibility, since deciding where to stop next is my job, not how comfy the seat is.'),
+    ('もし一日だけ誰かに何かを歌ってもらえるとしたら何を歌ってもらいますか？', 'robo', 'ja', '静かな低い声で、歌詞の少ない曲を歌ってほしいです。意味を追わずに音だけ聞いていたい、そういう一日を過ごしてみたいです。'),
+    ('もし一日だけ誰かに何かを歌ってもらえるとしたら何を歌ってもらいますか？', 'robo', 'en', 'i''d want someone to sing quietly, in a low voice, a song with few lyrics. i''d like to spend a day just listening to the sound, without chasing the meaning.'),
+    ('この一年で、はじめて気づいた自分の大事にしている風は？', 'tetra', 'ja', '風なんて気にしたことないニャー。窓から入ってくる風が涼しくて好きになった、それだけ。'),
+    ('この一年で、はじめて気づいた自分の大事にしている風は？', 'tetra', 'en', 'never gave wind a thought before, meow. the breeze through the window was cool, so i started liking it. that''s all.')
+on conflict (prompt_text, persona, lang) do update set body = excluded.body;
