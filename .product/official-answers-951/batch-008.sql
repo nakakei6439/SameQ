@@ -128,3 +128,14 @@ insert into public.official_answers (prompt_text, persona, lang, body) values
     ('最近、好きなものと再会できた瞬間は？', 'emily', 'ja', 'たまたま入ったカフェで、何年も前に「私たちの」ロードトリップソングだった曲が流れてきて、飲みかけのコーヒーのまま固まった🥲 すぐその友達に連絡した、まだ全然乗り越えられてないっぽい'),
     ('小さい頃、好きな図工の時間の思い出は？', 'keita', 'en', 'for the piggy bank craft project we used milk cartons, and the teacher said it was a good idea. that''s the only part i remember. it was empty inside.')
 on conflict (prompt_text, persona, lang) do update set body = excluded.body;
+
+-- バッチ8再修正: emily pos74を全く新しい内容へ差し替え
+--
+-- emily pos74（最近、好きなものと再会できた瞬間は？）: カフェで曲を聞く内容から、
+-- 「指笛を数年ぶりに練習したら子供の頃以来なのに急にできた」場面へ差し替え。
+-- 元の依頼文（190字程度）を核となる内容・場面を変えずに140文字上限（前提31・F29）に
+-- 収まる長さへ整え、対応する日本語訳を新規作成した。
+insert into public.official_answers (prompt_text, persona, lang, body) values
+    ('最近、好きなものと再会できた瞬間は？', 'emily', 'en', 'tried whistling with my fingers again last week, hadn''t done it since i was a kid. first tries were just spit, then it suddenly clicked 😂'),
+    ('最近、好きなものと再会できた瞬間は？', 'emily', 'ja', '先週、指笛を数年ぶりに練習した。子供の頃以来やってなかったのに、最初は唾ばかり飛ばして、急にコツをつかんだ瞬間びっくりして顔がほころんだ😂')
+on conflict (prompt_text, persona, lang) do update set body = excluded.body;
