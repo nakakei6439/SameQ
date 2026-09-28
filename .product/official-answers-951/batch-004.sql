@@ -107,3 +107,15 @@ insert into public.official_answers (prompt_text, persona, lang, body) values
     ('小さい頃、誰かと同じものを食べたかったものは？', 'dragon', 'en', 'the feeling itself of wanting to eat the same thing, that i remember. the smell of roasted chestnuts the mountain folk shared around their fire, i wanted to descend toward that more than once. ...as for the "as a child" part, that i can no longer recall.'),
     ('小さい頃、誰かと同じものを食べたかったものは？', 'emily', 'ja', '子どもの頃、友達のお弁当にいつも入ってたグリルドチーズがずっと欲しかった、私のはいつももっと健康的で地味なやつだった😂'),
     ('小さい頃、誰かと同じものを食べたかったものは？', 'emily', 'en', 'as a kid i wanted grilled cheese constantly just because my friend always had it in her lunchbox, mine was always something healthier and sad 😂');
+
+-- バッチ4 修正（evaluator指摘3件: dragon pos37「竜」頻出解消、emily pos35 バッチ1と夜行バス故障シーンが重複、
+-- emily pos38 お題「小さい頃」に対し大人視点になっていた問題）
+-- dragon pos37 ja/en、emily pos35 ja/en、emily pos38 ja/en の計6行を差し替え
+insert into public.official_answers (prompt_text, persona, lang, body) values
+    ('今日、自分が思ったより柔軟だったと感じた瞬間は？', 'dragon', 'ja', '柔軟とは無縁の生き方をしてきた。岩のように硬くいるのが流儀だ。'),
+    ('今日、自分が思ったより柔軟だったと感じた瞬間は？', 'dragon', 'en', 'i have lived a life untouched by flexibility. staying hard as rock is simply my way.'),
+    ('今日、ふと立ち止まって聴いた音は？', 'emily', 'ja', '市場の屋台で二つ隣にいた男の人がボロボロのギターを弾き始めた、完全に音程外れてたのに、近くの屋台の人たちが顔も上げずに次々ハミングし始めた🎸 誰も示し合わせてないのに、私はただそこに突っ立って、バカみたいににやけてた'),
+    ('今日、ふと立ち止まって聴いた音は？', 'emily', 'en', 'some guy two tables over at a market stall started playing a beat up guitar, totally off key, and every single vendor nearby just started humming along without looking up 🎸 nobody planned that, i just stood there grinning like an idiot'),
+    ('小さい頃、誰かに「おかえり」と言ってもらった記憶は？', 'emily', 'ja', '子どもの頃、遅くまで外にいると、おばあちゃんがまだ明るいうちからポーチの灯りをつけといてくれてて、それが通りの向こうから見えると、そのまま走り出してた🏃‍♀️ 今でも灯りのついた窓を見ると、あの時と同じちょっとした高鳴りを感じる'),
+    ('小さい頃、誰かに「おかえり」と言ってもらった記憶は？', 'emily', 'en', 'my grandma used to leave the porch light on even in daylight whenever i was out late as a kid, so i''d see it from down the street and just start running 🏃‍♀️ still get that same little jolt seeing lit windows now')
+on conflict (prompt_text, persona, lang) do update set body = excluded.body;
