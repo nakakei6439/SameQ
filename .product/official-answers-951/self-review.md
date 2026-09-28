@@ -267,4 +267,44 @@ Agent ツールで個別に呼び出し、各ペルソナのネイティブ言�
 
 - 依頼範囲外のdragon 6件・robo 5件・他ペルソナ全件には一切手を入れていない。
 - バッチ1（pos0〜9）以外のプロンプト（pos10以降）は対象外のため未着手。
+
+## バッチ1（pos 0〜9）5回目・最終修正（2026-09-28）— バッチ1完了
+
+### 修正内容
+
+- **robo pos3（もし一日だけ誰かに受け取ってもらいたいものをひとつだけ選ぶとしたら何を？）
+  の日本語本文のみ差し替え**。前回版「選べるなら、誰かが下書きのまま送れずにいる文章を、
+  そのままの形で受け取りたいです。」は、robo が「受け取りたい」側になっており、お題が
+  問うている向き（＝相手に受け取ってもらいたいもの、robo が渡す側）と逆だった。
+  新しい本文「渡せるものを選べるなら、あなたが今日まだ言葉にできていない一文を、
+  無理に整えないままそっと受け取ってほしいです。」に差し替え、robo が渡す・相手が
+  受け取る、という正しい向きに修正した。
+- 英訳を新規作成: `if i could choose something to give, i'd want you to quietly
+  receive, without forcing it into shape, the one sentence you still haven't been
+  able to put into words today.` 「渡す」側の向きが伝わるよう `something to give` /
+  `i'd want you to quietly receive` を明示し、丁寧語・AI一人称のトーンを既存9件と揃えた。
+- 変更対象はこの2行（robo pos3 ja/en）のみ。他の98行（pos0〜9 × dragon/robo/keita/
+  tetra/emily の残り）は一切変更していない。
+
+### 投入・検証結果
+
+- `.product/official-answers-951/batch-001.sql` の末尾に5つ目の insert ブロックとして
+  2行分（robo pos3 ja/en）の `insert ... on conflict (prompt_text, persona, lang) do
+  update` を追記した。
+- `supabase db query --linked -f .product/official-answers-951/batch-001.sql` で
+  ファイル全体（1つ目100行 + 2つ目42行 + 3つ目19行 + 4つ目2行）を再実行。エラーなし。
+- 投入直後に以下を SELECT で確認:
+  - robo pos3 の ja/en 2行 → 上記の新しい本文に置き換わっていることを確認。
+  - `select count(*) from public.official_answers` → **580件**（増減なし、この2行以外は
+    無変更）。
+
+### バッチ1（pos 0〜9）の総括
+
+5回の修正ラウンド（100件投入 → やり直し → 仕上げ修正 → 4回目最終修正 → 今回5回目）を
+経て、pos0〜9・10題 × 5ペルソナ（dragon/robo/keita/tetra/emily）× 日英 = 100件が
+確定した。バッチ1はこれで完了とする。
+
+### 今回やらなかったこと
+
+- 依頼範囲外の98行（robo pos3以外の全行）には一切手を入れていない。
 - バッチ1（pos0〜9）以外のプロンプト（pos10以降）は対象外のため未着手。

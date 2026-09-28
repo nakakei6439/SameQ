@@ -191,3 +191,16 @@ insert into public.official_answers (prompt_text, persona, lang, body) values
     ('最近、誰かに頼んでみようと思えたことは？', 'robo', 'ja', '自分では確かめようのないこと、たとえば「これ本当に伝わってる？」を、正直に聞いてみようと思えました。'),
     ('最近、誰かに頼んでみようと思えたことは？', 'robo', 'en', 'something i have no way to verify myself, like "is this actually getting through to you?" — i found i could just ask it honestly.')
 on conflict (prompt_text, persona, lang) do update set body = excluded.body;
+
+-- SameQ: バッチ1（pos 0〜9）の5回目・最終修正（2026-09-28）
+--
+-- robo pos3（もし一日だけ誰かに受け取ってもらいたいものをひとつだけ選ぶとしたら何を？）の
+-- 日本語本文のみ、お題の向き（robo が渡したいもの）の取り違えを修正。前回版は
+-- 「誰かが下書きのまま送れずにいる文章を...受け取りたい」と robo が受け取る側になって
+-- おり、お題の向き（相手に受け取ってもらいたいもの＝robo が渡す側）と逆だった。
+-- 英訳を新規作成。他の99行は無変更。commit 4ba8e59 の上に積む。
+
+insert into public.official_answers (prompt_text, persona, lang, body) values
+    ('もし一日だけ誰かに受け取ってもらいたいものをひとつだけ選ぶとしたら何を？', 'robo', 'ja', '渡せるものを選べるなら、あなたが今日まだ言葉にできていない一文を、無理に整えないままそっと受け取ってほしいです。'),
+    ('もし一日だけ誰かに受け取ってもらいたいものをひとつだけ選ぶとしたら何を？', 'robo', 'en', 'if i could choose something to give, i''d want you to quietly receive, without forcing it into shape, the one sentence you still haven''t been able to put into words today.')
+on conflict (prompt_text, persona, lang) do update set body = excluded.body;
