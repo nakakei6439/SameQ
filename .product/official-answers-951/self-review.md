@@ -895,3 +895,27 @@ progress.jsonの`done`に72〜81を追加、`lastBatch`を`batch-008`に更新�
 ### 提案（今回はやらなかったこと）
 
 特になし。バッチ9（pos 82〜91想定）へ継続。
+
+## バッチ8修正（evaluator指摘2件）
+
+- **emily pos74（最近、好きなものと再会できた瞬間は？）**: 過去バッチとの重複・山テーマ偏りを
+  解消するため英語本文を「たまたま入ったカフェで、何年も前の"我々のロードトリップソング"を
+  聞いた」場面に差し替え。対応する日本語訳を新規作成した。
+- **keita pos79（小さい頃、好きな図工の時間の思い出は？）**: 英訳のみ不自然だった
+  `praised me for "good idea."` を `said it was a good idea.` に修正。ja本文（牛乳パックの
+  貯金箱の話）は変更なし。
+
+### 投入方法・結果
+
+`.product/official-answers-951/batch-008.sql`の末尾に修正ブロック（3行、
+`insert ... on conflict (prompt_text, persona, lang) do update set body = excluded.body;`）を
+追記し、`supabase db query --linked -f .product/official-answers-951/batch-008.sql`で本番投入した。
+
+- 投入前: `select count(*) from public.official_answers` → 1280件。
+- 投入後: 同クエリ → **1280件**（変化なし、想定通り。既存行のUPDATEのみ）。
+- 対象3行（emily pos74 ja/en、keita pos79 en）をSELECTし、いずれも新しい本文に
+  置き換わっていることを確認した。keita pos79 jaは対象外のため未変更のままであることも確認した。
+
+### 提案（今回はやらなかったこと）
+
+特になし。バッチ9（pos 82〜91想定）へ継続。

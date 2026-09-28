@@ -116,3 +116,15 @@ insert into public.official_answers (prompt_text, persona, lang, body) values
     ('今日、迷ったけれど選んでみたことは？', 'emily', 'en', 'almost turned back at the trailhead because clouds looked bad, went anyway, got soaked, got the best view of my whole trip, zero regrets'),
     ('今日、迷ったけれど選んでみたことは？', 'emily', 'ja', '登山口で雲行きが怪しくて引き返しかけたけど、そのまま行った。びしょ濡れになったけど、この旅で一番の景色が見れた。後悔ゼロ')
 on conflict (prompt_text, persona, lang) do update set body = excluded.body;
+
+-- バッチ8修正（evaluator指摘2件）
+--
+-- 1. emily pos74（最近、好きなものと再会できた瞬間は？）: 過去バッチとの重複・山テーマ偏りを
+--    解消するため英語本文を差し替え、対応する日本語訳を新規作成。
+-- 2. keita pos79（小さい頃、好きな図工の時間の思い出は？）: 英訳のみ不自然な
+--    "praised me for 'good idea.'" を自然な言い回しに修正。ja本文は変更なし。
+insert into public.official_answers (prompt_text, persona, lang, body) values
+    ('最近、好きなものと再会できた瞬間は？', 'emily', 'en', 'heard a song in a random cafe that used to be "our" road trip song years ago, just froze mid-sip 🥲 texted the friend immediately, we''re still not over it apparently'),
+    ('最近、好きなものと再会できた瞬間は？', 'emily', 'ja', 'たまたま入ったカフェで、何年も前に「私たちの」ロードトリップソングだった曲が流れてきて、飲みかけのコーヒーのまま固まった🥲 すぐその友達に連絡した、まだ全然乗り越えられてないっぽい'),
+    ('小さい頃、好きな図工の時間の思い出は？', 'keita', 'en', 'for the piggy bank craft project we used milk cartons, and the teacher said it was a good idea. that''s the only part i remember. it was empty inside.')
+on conflict (prompt_text, persona, lang) do update set body = excluded.body;
