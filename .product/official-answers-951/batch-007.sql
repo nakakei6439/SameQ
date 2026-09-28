@@ -115,3 +115,31 @@ insert into public.official_answers (prompt_text, persona, lang, body) values
     ('今日、思ったより気分よく進んだことは？', 'dragon', 'en', '"feeling good" and "today," both are words a dragon has little connection to.'),
     ('今日、思ったより気分よく進んだことは？', 'emily', 'en', 'asked for directions with zero shared language and somehow ended up getting walked there personally by a total stranger, faith in humans restored'),
     ('今日、思ったより気分よく進んだことは？', 'emily', 'ja', '共通言語ゼロの状態で道を聞いたら、なぜか見知らぬ人がそこまで直接連れて行ってくれた。人間への信頼が回復した');
+
+-- バッチ7修正（evaluator指摘対応）
+--
+-- dragon pos62/64/66/70/71: 日本語本文を差し替え、対応する英訳を新規作成。
+-- keita pos69/70: 日本語本文を差し替え、対応する英訳を新規作成。
+-- emily pos64/71: 英語本文を差し替え、対応する日本語訳を新規作成。
+insert into public.official_answers (prompt_text, persona, lang, body) values
+    ('もし一日だけ車に乗れるとしたらどこを走りますか？', 'dragon', 'ja', '轍というものが、まだ珍しかった時代を覚えている。車輪の音は、いまも耳新しい。'),
+    ('もし一日だけ車に乗れるとしたらどこを走りますか？', 'dragon', 'en', 'i remember an age when the wheel rut itself was still a rare thing. the sound of wheels, even now, still strikes my ears as something new.'),
+    ('今日、誰かから受け取った温かみをひとつだけ挙げるとしたら？', 'dragon', 'ja', '日向で目を閉じる直前の、鱗にしみる熱だけは、今日も変わらず温かかった。'),
+    ('今日、誰かから受け取った温かみをひとつだけ挙げるとしたら？', 'dragon', 'en', 'the instant before closing my eyes in the sun, the heat that soaks into my scales — that alone was warm today, unchanged.'),
+    ('もし一日だけ空を飛べるならどこを飛びますか？', 'dragon', 'ja', '羽ばたきは、見た目よりずっと疲れる。人間はそれを知らずに、空を気安く夢見る。'),
+    ('もし一日だけ空を飛べるならどこを飛びますか？', 'dragon', 'en', 'a wingbeat tires you far more than it looks. humans dream of the sky so lightly, never knowing that.'),
+    ('もし一日だけ散歩をするならどこを歩きますか？', 'dragon', 'ja', '散歩、か。海が今の位置に落ち着く前、まだ違う岸だった場所を歩いたことがある。地図には残っていない。'),
+    ('もし一日だけ散歩をするならどこを歩きますか？', 'dragon', 'en', 'a walk, is it. before the sea settled into where it now lies, i once walked a stretch of land that was still a different shore. it appears on no map.'),
+    ('今日、思ったより気分よく進んだことは？', 'dragon', 'ja', '今日ひとつだけ、という数え方が、そもそも竜には合わない。'),
+    ('今日、思ったより気分よく進んだことは？', 'dragon', 'en', 'counting things as "just one, today" — that way of counting never suited a dragon to begin with.'),
+
+    ('今日、何かをやり終えて少し満足したことは？', 'keita', 'ja', '作ってるアプリの通知文言、日英ぶんとも直し終えた。地味やけど、ここサボると全部台無しやからな。'),
+    ('今日、何かをやり終えて少し満足したことは？', 'keita', 'en', 'finished fixing the notification text for the app i''m building, both the japanese and english versions. it''s unglamorous work, but skip it and the whole thing falls apart.'),
+    ('もし一日だけ散歩をするならどこを歩きますか？', 'keita', 'ja', '家の近所の川沿い一択。信号ないから考えごとしながら歩けるし、15分で戻ってこれるのがええ。'),
+    ('もし一日だけ散歩をするならどこを歩きますか？', 'keita', 'en', 'riverside near my house, no question. no traffic lights, so i can walk while thinking things over, and being back in 15 minutes is what makes it good.'),
+
+    ('今日、誰かから受け取った温かみをひとつだけ挙げるとしたら？', 'emily', 'en', 'stall lady handed me an extra skewer when i couldn''t pick, no charge, just smiled and waved me off 🥹 stood there in the street kinda stunned, still thinking about it honestly'),
+    ('今日、誰かから受け取った温かみをひとつだけ挙げるとしたら？', 'emily', 'ja', '屋台のおばちゃんが、選べずにいたらおまけで串を一本くれた、お金は取らずに。ただ笑って手を振ってくれただけ🥹 道端でちょっと呆然と立ち尽くしてた、正直まだそのこと考えてる'),
+    ('今日、思ったより気分よく進んだことは？', 'emily', 'en', 'packed my whole bag before the alarm even finished 😭 no scramble, no forgotten socks, just walked out the door like a functioning adult for once, weirdly proud of that'),
+    ('今日、思ったより気分よく進んだことは？', 'emily', 'ja', 'アラームが鳴り終わる前にバッグを全部詰め終えた😭 バタバタもナシ、靴下の忘れ物もナシ、久しぶりにちゃんとした大人みたいに玄関出られた。なんか変に誇らしい')
+on conflict (prompt_text, persona, lang) do update set body = excluded.body;

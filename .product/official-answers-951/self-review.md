@@ -780,3 +780,58 @@ generatorが新規作成した（keita/robo/tetra/dragon: ja→en、emily: en→
   （頻出語・テーマの粗いチェックのみ実施）。
 
 これでバッチ7（pos 62〜71）は完了。累計1180件（新150件プールのうち118/150カバー、残り32件）。
+
+## バッチ7修正（evaluator指摘への対応）
+
+evaluatorから指摘された3ペルソナ分の本文を修正した。修正範囲は指摘箇所（dragon 5件、
+keita 2件、emily 2件、計9項目・18行）に限定し、それ以外（robo・tetra、および他ポジション）
+には手を入れていない。
+
+### A. dragon pos62/64/66/70/71（日本語本文差し替え・英訳新規作成）
+
+日本語本文をコーディネーター指定の文言に差し替え、対応する英訳を新規に書き起こした。
+既存の他dragon本文と同じく「〜か。」調の重々しさ・竜としての距離感（人間の時間感覚とは
+違う、という前置き）を崩さないよう訳した。
+
+| pos | prompt | 新ja | 新en |
+|---|---|---|---|
+| 62 | 車に乗れるなら | 轍というものが、まだ珍しかった時代を覚えている。車輪の音は、いまも耳新しい。 | i remember an age when the wheel rut itself was still a rare thing. the sound of wheels, even now, still strikes my ears as something new. |
+| 64 | 今日受け取った温かみ | 日向で目を閉じる直前の、鱗にしみる熱だけは、今日も変わらず温かかった。 | the instant before closing my eyes in the sun, the heat that soaks into my scales — that alone was warm today, unchanged. |
+| 66 | 空を飛べるなら | 羽ばたきは、見た目よりずっと疲れる。人間はそれを知らずに、空を気安く夢見る。 | a wingbeat tires you far more than it looks. humans dream of the sky so lightly, never knowing that. |
+| 70 | 散歩するなら | 散歩、か。海が今の位置に落ち着く前、まだ違う岸だった場所を歩いたことがある。地図には残っていない。 | a walk, is it. before the sea settled into where it now lies, i once walked a stretch of land that was still a different shore. it appears on no map. |
+| 71 | 思ったより気分よく進んだこと | 今日ひとつだけ、という数え方が、そもそも竜には合わない。 | counting things as "just one, today" — that way of counting never suited a dragon to begin with. |
+
+### B. keita pos69/70（日本語本文差し替え・英訳新規作成）
+
+日本語本文を差し替え、大阪弁のニュアンス（「〜やからな」「〜がええ」）をカジュアルな
+小文字英語に寄せて訳した（過去バッチのkeita英訳のトーンを踏襲）。
+
+| pos | prompt | 新ja | 新en |
+|---|---|---|---|
+| 69 | やり終えて満足したこと | 作ってるアプリの通知文言、日英ぶんとも直し終えた。地味やけど、ここサボると全部台無しやからな。 | finished fixing the notification text for the app i'm building, both the japanese and english versions. it's unglamorous work, but skip it and the whole thing falls apart. |
+| 70 | 散歩するなら | 家の近所の川沿い一択。信号ないから考えごとしながら歩けるし、15分で戻ってこれるのがええ。 | riverside near my house, no question. no traffic lights, so i can walk while thinking things over, and being back in 15 minutes is what makes it good. |
+
+### C. emily pos64/71（英語本文差し替え・日本語訳新規作成）
+
+英語本文を差し替え、対応する日本語訳を新規に書き起こした。emilyのカジュアルな口語・
+絵文字位置は他バッチの訳し方に揃えた。
+
+| pos | prompt | 新en | 新ja |
+|---|---|---|---|
+| 64 | 今日受け取った温かみ | stall lady handed me an extra skewer when i couldn't pick, no charge, just smiled and waved me off 🥹 stood there in the street kinda stunned, still thinking about it honestly | 屋台のおばちゃんが、選べずにいたらおまけで串を一本くれた、お金は取らずに。ただ笑って手を振ってくれただけ🥹 道端でちょっと呆然と立ち尽くしてた、正直まだそのこと考えてる |
+| 71 | 思ったより気分よく進んだこと | packed my whole bag before the alarm even finished 😭 no scramble, no forgotten socks, just walked out the door like a functioning adult for once, weirdly proud of that | アラームが鳴り終わる前にバッグを全部詰め終えた😭 バタバタもナシ、靴下の忘れ物もナシ、久しぶりにちゃんとした大人みたいに玄関出られた。なんか変に誇らしい |
+
+### 投入方法・結果
+
+修正18行（dragon 5項目×ja/en=10行、keita 2項目×ja/en=4行、emily 2項目×ja/en=4行）を
+`.product/official-answers-951/batch-007.sql`末尾に
+`insert ... on conflict (prompt_text, persona, lang) do update set body = excluded.body;`
+として追記した。追記ブロックのみを一時ファイルに抽出し、
+`supabase db query --linked -f <一時ファイル>`で本番投入した。
+
+- 該当18行をSELECTし、いずれも新しいbodyに置き換わっていることを確認した
+  （英語本文中のアポストロフィ・emダッシュ・絵文字・二重引用符もエスケープ崩れなく格納）。
+- `select count(*) from public.official_answers` → **1180件**（修正前と変わらず。upsertのため
+  行数増減なし）。
+
+これでバッチ7の修正は完了。
