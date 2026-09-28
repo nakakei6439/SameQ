@@ -861,3 +861,37 @@ keita 2件、emily 2件、計9項目・18行）に限定し、それ以外（rob
   行数増減なし）。
 
 これでバッチ7の再修正は完了。
+
+## バッチ8（pos 72,73,74,75,76,77,78,79,80,81）
+
+コーディネーターがsameq-answer-*の5エージェントを個別に呼び、独立に書かせたネイティブ言語の
+本文をそのまま採用した（本文自体は書き直していない）。generatorの作業は翻訳とSQL投入のみ。
+
+- 対象お題: 72(境界)、73(自分のペースで動けた時間)、74(好きなものと再会)、75(裏道)、
+  76(自分にやさしく)、77(静けさの質)、78(自分から動いてよかったこと)、79(図工の時間の思い出)、
+  80(小さい頃頼まれたこと)、81(迷ったけど選んだこと)。
+- 各ペルソナのネイティブ言語本文（keita/robo/tetra/dragon=ja、emily=en）はコーディネーターの
+  指示に記載された文面をそのまま使用。もう一方の言語への翻訳10件×5ペルソナ=50件を新規作成した。
+  - tetraは直近バッチでevaluatorから「meow過多」を指摘されていたため、10行中「meow」の使用は
+    1回（pos78の英訳）に抑えた。
+  - dragon/robo/keita/emilyの声のトーンは既存バッチの訳し方を踏襲（dragonは古風・達観調、
+    roboは丁寧語+「代わりに」を使った類推パターン、keitaは関西弁の一人称+カジュアルな英訳、
+    emilyはカジュアルな口語+絵文字を文末保持）。
+
+### 投入方法・結果
+
+`.product/official-answers-951/batch-008.sql`を新規作成し、100行を
+`insert ... on conflict (prompt_text, persona, lang) do update set body = excluded.body;`で
+`supabase db query --linked -f .product/official-answers-951/batch-008.sql`により本番投入した。
+
+- 投入前: `select count(*) from public.official_answers` → 1180件。
+- 投入後: 同クエリ → **1280件**（1180+100、想定通り）。
+- 対象10題×10ペルソナ/言語の組み合わせをSELECTし、`count(distinct prompt_text)=10, count(*)=100`
+  であることを確認。加えてpos72（境界）の10行をSELECTし、全ペルソナ・全言語のbodyが意図した
+  文面になっていることを目視確認した。
+
+progress.jsonの`done`に72〜81を追加、`lastBatch`を`batch-008`に更新済み。
+
+### 提案（今回はやらなかったこと）
+
+特になし。バッチ9（pos 82〜91想定）へ継続。
