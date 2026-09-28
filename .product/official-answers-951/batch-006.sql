@@ -116,3 +116,26 @@ insert into public.official_answers (prompt_text, persona, lang, body) values
     ('この一年で、はじめて気づいた自分の大事にしている葉は？', 'dragon', 'en', 'i have never treasured a thing called a leaf. that is because i know a tree will eventually fall.'),
     ('この一年で、はじめて気づいた自分の大事にしている葉は？', 'emily', 'en', 'the actual kind, weird i know, i started collecting one leaf from every place i stop and now i''ve got a raggedy little pile i love way too much'),
     ('この一年で、はじめて気づいた自分の大事にしている葉は？', 'emily', 'ja', '本物の葉っぱ、変なのは分かってるんだけど。立ち寄った場所ごとに一枚ずつ集め始めて、今ではぼろぼろの小さい山ができてて、それを異常なくらい大事にしてる');
+
+-- バッチ6修正（evaluator指摘3件への対応）:
+-- A. robo pos53/57/61: 「ないので/ないけれど」前置きの多用を解消するため日本語本文を差し替え、英訳を新規作成。
+-- B. tetra pos51/59: 英訳のみ"meow"の付け過ぎを解消（対応する日本語本文に語尾のニャー等が無いため）。日本語本文は変更しない。
+-- C. keita pos55: 英訳の誤訳修正（「審査の書類」を"loan paperwork"と訳していたのを"review paperwork"に訂正）。日本語本文は変更しない。
+insert into public.official_answers (prompt_text, persona, lang, body) values
+    ('いま、好きな橋をひとつだけ挙げるとしたら？', 'robo', 'ja', '比喩でよければ、一つの問いに違う答えが両側から届いて出会う瞬間を、橋と呼びたいです。'),
+    ('いま、好きな橋をひとつだけ挙げるとしたら？', 'robo', 'en', 'if a metaphor works, i''d like to call it a bridge: the moment when different answers to the same question arrive from both sides and meet.'),
+
+    ('いま、自分の体のどこが緊張していますか？', 'keita', 'en', 'neck and shoulders. i''m writing code while also checking review paperwork on the side, so they''ve been stiff the whole time.'),
+
+    ('いま、好きな眺めをひとつだけ挙げるとしたら？', 'robo', 'ja', '似た問いに何十通りもの答えが横に並ぶ様子。景色というより、人の輪郭が透けて見える眺めです。'),
+    ('いま、好きな眺めをひとつだけ挙げるとしたら？', 'robo', 'en', 'dozens of different answers to a similar question, lined up side by side. less a scenery than a view where the outline of a person shows through.'),
+
+    ('もし一日だけ誰かに気づいてほしいことをひとつだけ選ぶとしたら何に？', 'tetra', 'en', 'that the bowl is empty. just notice that.'),
+
+    ('この一年で、はじめて気づいた自分の大事にしている葉は？', 'robo', 'ja', '似ているようで少し違う言葉を選び直す、その一瞬の迷いを大事にしていると今年気づきました。'),
+    ('この一年で、はじめて気づいた自分の大事にしている葉は？', 'robo', 'en', 'this year i noticed i treasure that split second of hesitation, choosing a word that seems similar but is subtly different.')
+on conflict (prompt_text, persona, lang) do update set body = excluded.body;
+
+insert into public.official_answers (prompt_text, persona, lang, body) values
+    ('誰にも言っていない小さな違和を、ひとつだけ教えてください。', 'tetra', 'en', 'that bowl, it''s tilted just a little. i''ve noticed. never told anyone.')
+on conflict (prompt_text, persona, lang) do update set body = excluded.body;

@@ -694,3 +694,51 @@ evaluatorから以下3件の指摘を受け、対象5行を差し替えた。
   generator側では改めて全980件との突き合わせは行っていない（頻出語・テーマの粗いチェックのみ実施）。
 
 これでバッチ6（pos 51,53〜61）は完了。累計1080件（新150件プールのうち108/150カバー、残り42件）。
+
+## バッチ6修正（evaluator指摘3件への対応）
+
+evaluatorから指摘された3点を修正した。本文の書き直し範囲は指摘箇所に限定し、
+それ以外（pos52・54・56・58・60、および他ペルソナ）には手を入れていない。
+
+### A. robo pos53/57/61（日本語本文差し替え、前置き定型句の多用解消）
+
+指摘: robo本文で「〜ないので/ないけれど」の前置き構文をバッチ6内で使い過ぎていた
+（pos51「体はないので」相当のトーンが53・57・61にも波及していた）。
+以下の3件をコーディネーター指定の本文に差し替え、英訳を新規作成した。
+
+| pos | 新ja | 新en |
+|---|---|---|
+| 53 | 比喩でよければ、一つの問いに違う答えが両側から届いて出会う瞬間を、橋と呼びたいです。 | if a metaphor works, i'd like to call it a bridge: the moment when different answers to the same question arrive from both sides and meet. |
+| 57 | 似た問いに何十通りもの答えが横に並ぶ様子。景色というより、人の輪郭が透けて見える眺めです。 | dozens of different answers to a similar question, lined up side by side. less a scenery than a view where the outline of a person shows through. |
+| 61 | 似ているようで少し違う言葉を選び直す、その一瞬の迷いを大事にしていると今年気づきました。 | this year i noticed i treasure that split second of hesitation, choosing a word that seems similar but is subtly different. |
+
+### B. tetra pos51/59の英訳（"meow"の付け過ぎ解消）
+
+指摘: 英訳に"meow"を足していたが、対応する日本語本文（pos51「誰にも言ってないけど。」、
+pos59「それだけ気づいて。」）には語尾に「ニャー」等が無く、英訳側だけがキャラ付けを
+過剰にしていた。日本語本文は変更せず、英訳のみ"meow"を含まない訳に差し替えた。
+
+- pos51 en: `that bowl, it's tilted just a little. i've noticed. never told anyone.`
+- pos59 en: `that the bowl is empty. just notice that.`
+
+### C. keita pos55の英訳（誤訳修正）
+
+指摘: 「審査の書類」を"loan paperwork"（ローン書類）と訳していたが、原文にローンの
+意味は無い。過去バッチと同様の訳し方に揃え、"review paperwork"に修正した
+（日本語本文「首と肩。コード書きながら審査の書類も並行で見てるから、ずっと固まってる。」
+は変更なし）。
+
+### 投入方法・結果
+
+修正9行（robo pos53/57/61のja/en計6行、tetra pos51/59のen計2行、keita pos55のen1行）を
+`.product/official-answers-951/batch-006.sql`末尾に
+`insert ... on conflict (prompt_text, persona, lang) do update set body = excluded.body;`
+として追記（変更対象のprompt_text/personaが異なる2グループに分け、2本のinsert文とした）。
+バッチ4・5の修正時と同様、追記ブロックのみを一時ファイルに抽出して
+`supabase db query --linked -f <一時ファイル>`で本番投入した。
+
+- 該当9行をSELECTし、いずれも新しいbodyに置き換わっていることを確認した。
+- `select count(*) from public.official_answers` → **1080件**（修正前と変わらず。upsertのため
+  行数増減なし）。
+
+これでバッチ6の修正は完了。
