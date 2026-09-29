@@ -82,6 +82,7 @@ terms, and links to the Terms and Privacy Policy.
 - Launch day (JA): https://x.com/nakakei6439/status/2102955672686194847
 - Demo video: https://youtube.com/shorts/HHfCszrPHQ8
 - Article announcement on X: https://x.com/nakakei6439/status/2104870985015169038
+- Submission announcement on X: https://x.com/nakakei6439/status/2105041174373474672
 
 **How building in public helped**
 

@@ -30,7 +30,7 @@
       → 9/28 に公開: https://hackernoon.com/how-sameq-survived-four-app-store-rejections 。submission-statement.md の TODO を実URLに差し替え済み
 - [x] 9/24: 動画を YouTube に公開 → https://youtube.com/shorts/HHfCszrPHQ8
 - [ ] 9/28–30: #Shipaton #BuildInPublic 付きの投稿を足す（公開の報告、審査の振り返り、記事の告知、提出の報告）
-      → 9/28 に X を確認: 公開の報告(9/24)・審査の振り返り(9/26、日英とも)は投稿済み。記事の告知は 9/29 に投稿済み → https://x.com/nakakei6439/status/2104870985015169038 。提出の報告(9/29予定)はまだ。
+      → 9/28 に X を確認: 公開の報告(9/24)・審査の振り返り(9/26、日英とも)は投稿済み。記事の告知は 9/29 に投稿済み → https://x.com/nakakei6439/status/2104870985015169038 。提出の報告も 9/30 に投稿済み → https://x.com/nakakei6439/status/2105041174373474672
       加えて Product Hunt ローンチ関連の投稿(9/27〜28、「Just launched」「A few hours left」等)も追加で出ている
 - [x] 9/24: Devpost に提出済み（SUBMITTED・5/5）。締切 10/1 15:45 JST まで編集可。9/29 に数字を更新
 

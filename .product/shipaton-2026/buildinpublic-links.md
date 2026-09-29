@@ -80,11 +80,13 @@ JA:
 
 投稿: https://x.com/nakakei6439/status/2104870985015169038
 
-### 4. 提出の報告（9/29）
+### 4. 提出の報告（9/30 投稿済み）
 > Submitted SameQ to #Shipaton 🚢
 > 6 weeks, 1 developer, a planner/generator/evaluator agent harness, 23 sprints, 5 App Reviews.
 > Thanks to everyone who tried the beta.
 > #BuildInPublic
+
+投稿: https://x.com/nakakei6439/status/2105041174373474672
 
 ## Product Hunt
 - 2026-09-27 00:01 PDT（JST 16:01）にローンチ予約済み: https://www.producthunt.com/posts/sameq
