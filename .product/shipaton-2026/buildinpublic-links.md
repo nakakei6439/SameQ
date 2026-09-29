@@ -73,10 +73,12 @@ JA:
 > https://apps.apple.com/us/app/sameq/id6805425491
 > #Shipaton #BuildInPublic
 
-### 3. HackerNoon 記事の告知（記事公開後）
+### 3. HackerNoon 記事の告知（9/29 投稿済み）
 > I wrote up the whole review saga — 5 reviews, what each rejection actually meant, and the bugs I found while waiting.
-> [HackerNoon URL]
+> https://hackernoon.com/how-sameq-survived-four-app-store-rejections
 > #Shipaton #BuildInPublic
+
+投稿: https://x.com/nakakei6439/status/2104870985015169038
 
 ### 4. 提出の報告（9/29）
 > Submitted SameQ to #Shipaton 🚢

@@ -16,7 +16,7 @@
 | ファイル | 中身 | 残作業 |
 |---|---|---|
 | `submission-statement.md` | Devpost 本文＋部門ごとの文章 3 本（英語） | #BuildInPublic のリンク欄（TODO）、動画 URL |
-| `hackernoon-article.md` | HackerNoon 記事の下書き（英語・約1,800語） | 画像の差し込み、**9/27 までに投稿** |
+| `hackernoon-article.md` | HackerNoon 記事の下書き（英語・約1,800語） | 9/28 公開済み → https://hackernoon.com/how-sameq-survived-four-app-store-rejections |
 | `assets/icon-1024.png` | アイコン 1024×1024 | なし |
 | `assets/01-today.png` `02-timeline.png` `05-plus.png` | スクショ 1179×2556、英語 UI、端末フレームなし | Devpost には 1 枚あればよい。`02-timeline` か `01-today` を推奨 |
 | `SameQ-Shipaton-demo.mp4` | 完成版デモ動画（46秒・1080×1920・字幕と BGM 入り。実画面を `video-build/build.py` で編集） | YouTube に公開して URL を本文へ |
@@ -24,14 +24,18 @@
 
 ## 残タスク（ユーザー）
 - [x] 9/24: X の投稿14件を集めて #BuildInPublic 欄を埋めた。追加投稿の下書き4本は `buildinpublic-links.md`
-- [ ] 9/25: Shipaton（Devpost）の参加登録が済んでいるか確認する（HackerNoon の賞も登録が前提）
+- [x] 9/25: Shipaton（Devpost）の参加登録が済んでいるか確認する（HackerNoon の賞も登録が前提）
+      → 9/28 に再確認。Devpost 上で SUBMITTED・5/5 steps done、RevenueCat project ID (proje444c0e4) も登録済み
 - [x] 9/24: HackerNoon に記事を提出（タグ #shipaton-blogging-contest、編集部の確認待ち）
+      → 9/28 に公開: https://hackernoon.com/how-sameq-survived-four-app-store-rejections 。submission-statement.md の TODO を実URLに差し替え済み
 - [x] 9/24: 動画を YouTube に公開 → https://youtube.com/shorts/HHfCszrPHQ8
 - [ ] 9/28–30: #Shipaton #BuildInPublic 付きの投稿を足す（公開の報告、審査の振り返り、記事の告知、提出の報告）
+      → 9/28 に X を確認: 公開の報告(9/24)・審査の振り返り(9/26、日英とも)は投稿済み。記事の告知は 9/29 に投稿済み → https://x.com/nakakei6439/status/2104870985015169038 。提出の報告(9/29予定)はまだ。
+      加えて Product Hunt ローンチ関連の投稿(9/27〜28、「Just launched」「A few hours left」等)も追加で出ている
 - [x] 9/24: Devpost に提出済み（SUBMITTED・5/5）。締切 10/1 15:45 JST まで編集可。9/29 に数字を更新
 
-## 提出前の確認
-- [ ] ストアの URL が米国から開く
-- [ ] 動画は2分未満で、公開設定になっている
-- [ ] 部門を3つ選び、それぞれの欄に文章を入れた
-- [ ] 本文の数字が最新（コミット数などは提出日に取り直す）
+## 提出前の確認（9/28 に再確認）
+- [x] ストアの URL が米国から開く → `curl -sL` で US/JP とも 200 (id6805425491 → sameq)
+- [x] 動画は2分未満で、公開設定になっている → 46秒、YouTube oEmbed が 200 で埋め込み可能を確認
+- [x] 部門を3つ選び、それぞれの欄に文章を入れた → Devpost Additional info で Grand Prize / BuildInPublic / HAMM / Peace Prize / Design Award すべて記入済みを目視確認
+- [ ] 本文の数字が最新（コミット数などは提出日に取り直す）→ Grand Prize/HAMM 欄は現状「Numbers since launch will be updated before the deadline」のプレースホルダー文言のまま。9/29 に ASC Analytics・RevenueCat ダッシュボードの実測値へ差し替えが必要

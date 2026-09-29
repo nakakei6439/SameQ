@@ -77,11 +77,11 @@ terms, and links to the Terms and Privacy Policy.
 - Public beta on TestFlight: https://x.com/nakakei6439/status/2094252470927257663
 - Stuck in App Review: https://x.com/nakakei6439/status/2096362463340228625
 - Approved: https://x.com/nakakei6439/status/2102877623382888782
-- HackerNoon build log: TODO（9/24 提出済み・編集部の確認待ち。公開されたら URL を貼る）
+- HackerNoon build log: https://hackernoon.com/how-sameq-survived-four-app-store-rejections（9/28 公開）
 - Launch day (EN): https://x.com/nakakei6439/status/2102955516893040997
 - Launch day (JA): https://x.com/nakakei6439/status/2102955672686194847
 - Demo video: https://youtube.com/shorts/HHfCszrPHQ8
-- （9/26 の予約投稿2本と HackerNoon は公開後に追加）
+- Article announcement on X: https://x.com/nakakei6439/status/2104870985015169038
 
 **How building in public helped**
 
