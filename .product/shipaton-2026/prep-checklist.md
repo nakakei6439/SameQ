@@ -38,4 +38,4 @@
 - [x] ストアの URL が米国から開く → `curl -sL` で US/JP とも 200 (id6805425491 → sameq)
 - [x] 動画は2分未満で、公開設定になっている → 46秒、YouTube oEmbed が 200 で埋め込み可能を確認
 - [x] 部門を3つ選び、それぞれの欄に文章を入れた → Devpost Additional info で Grand Prize / BuildInPublic / HAMM / Peace Prize / Design Award すべて記入済みを目視確認
-- [ ] 本文の数字が最新（コミット数などは提出日に取り直す）→ Grand Prize/HAMM 欄は現状「Numbers since launch will be updated before the deadline」のプレースホルダー文言のまま。9/29 に ASC Analytics・RevenueCat ダッシュボードの実測値へ差し替えが必要
+- [x] 本文の数字が最新 → 9/29–30 に実測値へ差し替え。Downloads 8件（ASC Analytics、9/24–27の合計。9/28以降は未反映）、Trials started 0・Active subscriptions 0・Revenue $0（RevenueCat Overview）。Devpost（Grand Prize・HAMM欄）とsubmission-statement.mdの両方に反映済み

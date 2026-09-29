@@ -184,8 +184,9 @@ calm messages (cancelled, network, other), so a failed purchase never shows a sc
 paywall includes the auto-renewal terms and links to the Terms of Use and Privacy Policy
 (required by Guideline 3.1.2, which we got right on the second try).
 
-**Results so far (live since September 24, 2026).** Downloads: 【】. Trials started: 【】.
-Active subscriptions: 【】. Revenue: 【】. It's early: the launch was held up by five App Reviews. The model is built to last: no per-message costs (no
+**Results so far (live since September 24, 2026).** Downloads: 8 (Sep 24–27; App Store
+Connect Analytics, later days not yet processed as of Sep 29). Trials started: 0.
+Active subscriptions: 0. Revenue: $0. It's early: the launch was held up by five App Reviews. The model is built to last: no per-message costs (no
 translation API, no runtime AI calls), so even a small number of subscribers covers the
 Supabase bill.
 
@@ -196,7 +197,8 @@ Supabase bill.
 > 9/29 に ASC（App Analytics）と RevenueCat から数字を取り、【】を埋める。
 
 SameQ went live on September 24, 2026 in 175 countries and regions after five App Reviews.
-Since launch: 【】 downloads, 【】 trials, 【】 countries with at least one answer.
+Since launch: 8 downloads and 0 Plus trials started (Sep 24–27; App Store Connect Analytics
+data for later days is not yet processed).
 Growth work so far has been building in public on X (Japanese and English), an in-app
 announcement for each version, and a build log on HackerNoon. Every day's question also comes
 with answers from five labeled operator personas, so the first visitors from any country find
