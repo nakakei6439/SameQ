@@ -8,8 +8,7 @@
 
 ## 状況
 - [x] 1.0.3 (8) が App Store で公開（2026-09-24。ASC 上は READY_FOR_SALE）
-- [ ] **ストアのページが開くか**: 9/24 時点では `apps.apple.com/us/app/id6805425491` と `/jp/` の両方が 404、iTunes lookup も 0 件。
-      公開直後の反映待ちとみられる。**9/25 に再確認し、まだ 404 なら ASC で配信国（米国を含むか）を確認する**（米国から入手できることが応募条件）
+- [x] **ストアのページが開くか**: 9/24 時点では一時 404 だったが解決済み。9/30 最終確認でも US/JP とも 200
 - [x] RevenueCat で課金（Plus 月額・1ヶ月無料トライアル）→ 審査員向けのアクセスはトライアルで満たす
 
 ## 成果物
@@ -29,7 +28,7 @@
 - [x] 9/24: HackerNoon に記事を提出（タグ #shipaton-blogging-contest、編集部の確認待ち）
       → 9/28 に公開: https://hackernoon.com/how-sameq-survived-four-app-store-rejections 。submission-statement.md の TODO を実URLに差し替え済み
 - [x] 9/24: 動画を YouTube に公開 → https://youtube.com/shorts/HHfCszrPHQ8
-- [ ] 9/28–30: #Shipaton #BuildInPublic 付きの投稿を足す（公開の報告、審査の振り返り、記事の告知、提出の報告）
+- [x] 9/28–30: #Shipaton #BuildInPublic 付きの投稿を足す（公開の報告、審査の振り返り、記事の告知、提出の報告）
       → 9/28 に X を確認: 公開の報告(9/24)・審査の振り返り(9/26、日英とも)は投稿済み。記事の告知は 9/29 に投稿済み → https://x.com/nakakei6439/status/2104870985015169038 。提出の報告も 9/30 に投稿済み → https://x.com/nakakei6439/status/2105041174373474672
       加えて Product Hunt ローンチ関連の投稿(9/27〜28、「Just launched」「A few hours left」等)も追加で出ている
 - [x] 9/24: Devpost に提出済み（SUBMITTED・5/5）。締切 10/1 15:45 JST まで編集可。9/29 に数字を更新
@@ -39,3 +38,11 @@
 - [x] 動画は2分未満で、公開設定になっている → 46秒、YouTube oEmbed が 200 で埋め込み可能を確認
 - [x] 部門を3つ選び、それぞれの欄に文章を入れた → Devpost Additional info で Grand Prize / BuildInPublic / HAMM / Peace Prize / Design Award すべて記入済みを目視確認
 - [x] 本文の数字が最新 → 9/29–30 に実測値へ差し替え。Downloads 8件（ASC Analytics、9/24–27の合計。9/28以降は未反映）、Trials started 0・Active subscriptions 0・Revenue $0（RevenueCat Overview）。Devpost（Grand Prize・HAMM欄）とsubmission-statement.mdの両方に反映済み
+
+## 最終チェック（9/30、締切まで19時間の時点）
+- [x] App Store URL が米国・日本とも 200
+- [x] YouTube 動画が oEmbed 200（公開設定を確認）
+- [x] HackerNoon 記事が 200 で閲覧可能
+- [x] Devpost 公開ページ（devpost.com/software/sameq）を実際にレンダリング確認: プレースホルダー文言なし、HackerNoonへのリンクが正しいhrefで貼られている、ギャラリー画像も表示
+- [x] git: main は origin/main と同期済み（Shipaton関連の変更はすべてpush済み）
+- [x] Devpost は SUBMITTED・5/5 steps done のまま維持

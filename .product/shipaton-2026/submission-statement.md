@@ -151,7 +151,7 @@ profile, and post text is never sent to a translation server.
 ## Category: HAMM Award
 
 > 価格と無料トライアルは 2026-09-24 に App Store Connect API で確認済み（米国 $2.99/月、日本 ¥500/月、1ヶ月無料トライアル）。
-> 【】の数字は 9/29 に RevenueCat のダッシュボード（Overview）で取り直して埋める。
+> 数字は 9/29–30 に ASC Analytics・RevenueCat Overview の実測値へ差し替え済み。
 
 **Strategy: charge for more room to express yourself, never for access.**
 
@@ -195,7 +195,7 @@ Supabase bill.
 
 ## Grand Prize（全作品が自動で対象。「公開後の成長」の欄）
 
-> 9/29 に ASC（App Analytics）と RevenueCat から数字を取り、【】を埋める。
+> 9/29–30 に ASC（App Analytics）と RevenueCat から数字を取り、実測値へ差し替え済み。
 
 SameQ went live on September 24, 2026 in 175 countries and regions after five App Reviews.
 Since launch: 8 downloads and 0 Plus trials started (Sep 24–27; App Store Connect Analytics
@@ -221,10 +221,10 @@ Built solo. Thanks for taking the time to try it.
 
 ---
 
-# 提出前セルフチェック
-- [ ] App Store URL が米国から開く（`curl -s -o /dev/null -w '%{http_code}' https://apps.apple.com/us/app/id6805425491` が 200）
-- [ ] 動画: 2分未満・YouTube/Vimeo で公開・実機かシミュレータで動くアプリが映っている
-- [ ] アイコン 1024×1024 / スクショ 1179×2556（端末フレームなし）を添付
-- [ ] #BuildInPublic のリンク TODO をすべて埋めた
-- [ ] 審査員向けアクセス（1ヶ月無料トライアル）を記載
-- [ ] Devpost 各欄の文字数上限に収まっている
+# 提出前セルフチェック（9/30 最終確認済み）
+- [x] App Store URL が米国から開く（US/JP とも 200 を再確認）
+- [x] 動画: 46秒・YouTube で公開・実機の画面が映っている（oEmbed 200 で公開設定を確認）
+- [x] アイコン 1024×1024 / スクショを添付（Devpost 5/5 steps done）
+- [x] #BuildInPublic のリンクをすべて実URLに差し替えた（HackerNoon 記事・X告知2本含む）
+- [x] 審査員向けアクセス（1ヶ月無料トライアル）を記載
+- [x] Devpost 各欄の文字数上限に収まっている（保存エラーなし）
