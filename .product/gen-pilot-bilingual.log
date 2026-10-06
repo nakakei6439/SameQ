@@ -1,8 +1,0 @@
-⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors
-完了しました。
-
-- **作業**: `.product/official-answers-48/pilot-bilingual.tsv` を作成（入力40行 + 新規40行、計81行）
-- **追加分**: robo/dragon/tetra/keita の英訳 32行、emily の日本語版 8行。声の核を保ったまま内容同一の言い換え
-- **検証**: 81行/4列・8お題×10行・persona×lang完全網羅・入力40行バイト単位一致を機械チェックで確認
-- **書き分けの判断**: ロボ=I(フォーマル)、他4体は小文字i、テトラの「ニャー」は語尾の口癖にせず文末トーンで、猫口癖はEN2の動詞"meowed"のみ残し、エミリーの絵文字はEN1のみ😭→😂、他は保持
-- **課題**: 詳細は `pilot-self-review.md` に方言・語尾・絵文字の判断具体例つきで記載
