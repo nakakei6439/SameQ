@@ -152,10 +152,21 @@ struct NotificationsView: View {
         }
     }
 
+    /// キャンセルされたら「空」と確定させず、画面が見えている間（この task が生きている間）は
+    /// 再読み込みする。この task 自体がキャンセルされたときは、新しい `.task` が引き継ぐので
+    /// 何も確定させずに終わる。`isLoading` では二重起動を止めない（止めると、キャンセルされた
+    /// 旧 task の後始末より先に新 task が走ったとき、誰も読み込まなくなる）。
     private func loadAnnouncementsIfNeeded() async {
-        guard announcements.isEmpty, !isLoading else { return }
+        guard announcements.isEmpty else { return }
         isLoading = true
         defer { isLoading = false }
-        announcements = await session.loadAnnouncements()
+        for attempt in 0..<4 {
+            if let result = await session.loadAnnouncementsOrNilIfCancelled() {
+                if !Task.isCancelled { announcements = result }
+                return
+            }
+            if Task.isCancelled { return }
+            if attempt < 3 { try? await Task.sleep(nanoseconds: 300_000_000) }
+        }
     }
 }

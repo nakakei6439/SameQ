@@ -296,8 +296,25 @@ final class AppSession {
 
     /// 運営お知らせ一覧を取得する（新機能）。取得できなければ空配列を返し、
     /// 補助的な機能のため `alertMessage` は立てない（空状態表示に委ねる）。
+    ///
+    /// キャンセル（`CancellationError` / `URLError.cancelled`）は「空」と確定させず `nil` を返す。
+    /// メニュー経由で通知を開くと、シート表示の途中で `.task` がキャンセルされ読み込みが
+    /// 途中で止まることがあるため、呼び出し側が再読み込みできるように区別する。
+    /// 通信の本当の失敗は従来どおり空配列（空状態表示）。
+    func loadAnnouncementsOrNilIfCancelled() async -> [Announcement]? {
+        do {
+            return try await backend.announcements(locale: L10n.isJapanese ? "ja" : "en")
+        } catch is CancellationError {
+            return nil
+        } catch let error as URLError where error.code == .cancelled {
+            return nil
+        } catch {
+            return []
+        }
+    }
+
     func loadAnnouncements() async -> [Announcement] {
-        (try? await backend.announcements(locale: L10n.isJapanese ? "ja" : "en")) ?? []
+        await loadAnnouncementsOrNilIfCancelled() ?? []
     }
 
     #if DEBUG
